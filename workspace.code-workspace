@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "client-core"
+		},
+		{
+			"path": "web"
+		}
+	],
+	"settings": {
+		"git.ignoreLimitWarning": true
+	}
+}
