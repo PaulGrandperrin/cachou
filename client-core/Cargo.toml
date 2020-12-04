@@ -7,3 +7,16 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+log = "0.4"
+reqwest = "0.10"
+#rand = "0.7"
+rand = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.7.4
+getrandom = { version = "0.2", features = ["js"] }
+
+zxcvbn = {git = "https://github.com/1Password/zxcvbn-rs.git", branch = "master"} # includes a patch to work in wasm
+validator = { version = "0.12", default-features = false }
+pbkdf2 = { version = "0.6", default-features = false }
+hmac = "0.10"
+sha2 = "0.9"
+pwned = "0.3"
+thiserror = "1.0"

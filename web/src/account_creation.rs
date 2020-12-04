@@ -1,9 +1,6 @@
-use hmac::Hmac;
-use sha2::Sha256;
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 use yewtil::future::LinkFuture;
-use pwned::api::*;
 
 pub struct Model {
     link: ComponentLink<Self>,
@@ -21,36 +18,6 @@ pub enum Msg {
     Done(String)
 }
 
-impl Model {
-    async fn send_signup(password: &str) -> Result<String, JsValue> {
-
-
-        /*
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::Cors);
-
-        let request = Request::new_with_str_and_init("http://ip.jsontest.com/", &opts)?;
-        let window = web_sys::window().unwrap();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().unwrap();
-        let text = JsFuture::from(resp.text()?).await?;
-        Ok(text.as_string().unwrap())
-        */
-
-        let pwned = PwnedBuilder::default()
-        .build().unwrap();
-
-        match pwned.check_password(password).await {
-            Ok(pwd) => Ok(format!("Pwned? {} - Occurrences {}", pwd.found, pwd.count)),
-            Err(e) => Err(format!("Error: {}", e).into()),
-        }
-        
-
-
-    }
-}
-
 
 impl Component for Model {
     type Message = Msg;
@@ -59,9 +26,9 @@ impl Component for Model {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         Self {
             link,
-            email: "".to_string(),
-            password: "".to_string(),
-            password2: "".to_string(),
+            email: String::default(),
+            password: String::default(),
+            password2: String::default(),
             processing: false,
         }
     }
@@ -74,17 +41,12 @@ impl Component for Model {
             Msg::SignUp => {
                 self.processing = true;
 
-                let mut res=[0u8; 8];
-                pbkdf2::pbkdf2::<Hmac<Sha256>>(self.password.as_bytes(), b"", 1, &mut res);
-
-                self.password2 = format!{"{:X?}", res};
-
-                client_core::send_signup();
+                client_core::send_signup(&self.password);
                 
                 let password = self.password.clone();
 
                 self.link.send_future(async move {
-                    match Self::send_signup(&password).await {
+                    match client_core::send_signup_req(&password).await {
                         Ok(text) => {
                             Msg::Done(text)
                         },
@@ -113,7 +75,7 @@ impl Component for Model {
                 <input type="email" id="email" oninput=self.link.callback(|e: InputData| Msg::UpdateEmail(e.value))/>
                 <br/>
                 {
-                    if validator::validate_email(&self.email) {
+                    if client_core::check_email(&self.email) {
                         "good"
                     } else {
                         "bad"
@@ -135,11 +97,7 @@ impl Component for Model {
                 <br/>
                 {
                     {
-                        let user_inputs: Vec<_> = self.email.split(|c| c == '@' || c == '.').collect();
-                        match zxcvbn::zxcvbn(&self.password, &user_inputs) {
-                            Ok(e) => e.score(),
-                            Err(_) => 0,
-                        }
+                        client_core::check_pass(&self.password, &self.email)
                     }
                 }
                 
