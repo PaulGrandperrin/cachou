@@ -15,8 +15,6 @@ getrandom = { version = "0.2", features = ["js"] }
 
 zxcvbn = {git = "https://github.com/1Password/zxcvbn-rs.git", branch = "master"} # includes a patch to work in wasm
 validator = { version = "0.12", default-features = false }
-pbkdf2 = { version = "0.6", default-features = false }
-hmac = "0.10"
-sha2 = "0.9"
+rust-argon2 = "0.8"
 pwned = "0.3"
 thiserror = "1.0"

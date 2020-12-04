@@ -46,7 +46,7 @@ impl Component for Model {
                 let password = self.password.clone();
 
                 self.link.send_future(async move {
-                    match client_core::send_signup_req(&password).await {
+                    match client_core::check_password_is_pwned(&password).await {
                         Ok(text) => {
                             Msg::Done(text)
                         },
@@ -97,7 +97,7 @@ impl Component for Model {
                 <br/>
                 {
                     {
-                        client_core::check_pass(&self.password, &self.email)
+                        client_core::check_password_strength(&self.password, &self.email)
                     }
                 }
                 
