@@ -1,4 +1,4 @@
-use wasm_bindgen::prelude::*;
+
 use yew::prelude::*;
 use yewtil::future::LinkFuture;
 
