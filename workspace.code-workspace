@@ -4,9 +4,6 @@
 			"path": "client-core"
 		},
 		{
-			"path": "web"
-		},
-		{
 			"path": "client-cli"
 		},
 		{
