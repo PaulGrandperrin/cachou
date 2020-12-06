@@ -1,6 +1,8 @@
 use rand::Rng;
 use pwned::api::*;
 
+use tracing::info;
+
 pub fn send_signup(password: &str) {
     let salt: [u8; 16] = rand::thread_rng().gen();
     //pbkdf2::pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, 1, &mut res);
@@ -16,11 +18,11 @@ pub fn send_signup(password: &str) {
         ad: &[],
         hash_length: 32
     };
-    log::info!("computing argon2");
+    info!("computing argon2");
     let hash = argon2::hash_raw(password.as_bytes(), &salt, &config);
 
-    log::info!("salt: {:X?}", salt);
-    log::info!("derived key: {:X?}", hash);
+    info!("salt: {:X?}", salt);
+    info!("derived key: {:X?}", hash);
 
 }
 

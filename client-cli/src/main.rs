@@ -1,8 +1,20 @@
+use tracing::{info, Level};
+use tracing_subscriber::FmtSubscriber;
+
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-fn main() {
+fn setup_logger() {
+    let subscriber = FmtSubscriber::builder()
+    .with_max_level(Level::TRACE)
+    .finish();
 
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("setting default subscriber failed");
+}
+
+fn main() {
+    setup_logger();
 
 
     client_core::send_signup("hey");
