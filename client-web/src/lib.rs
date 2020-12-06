@@ -1,4 +1,5 @@
 #![feature(never_type)]
+#![feature(once_cell)]
 #![recursion_limit="512"]
 
 
@@ -6,10 +7,17 @@
 //#[global_allocator]
 //static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+use client_core::Session;
 use yew::prelude::*;
 use yew_router::prelude::*;
-
 pub mod account_creation;
+
+
+// instanciate our session as a singleton
+use std::{lazy::SyncLazy, sync::Mutex};
+static SESSION: SyncLazy<Mutex<Session>> = SyncLazy::new(|| Mutex::new(Session::new()));
+
+
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {

@@ -16,8 +16,8 @@ fn setup_logger() {
 fn main() {
     setup_logger();
 
-
-    client_core::send_signup("hey");
+    let mut session = client_core::Session::new();
+    session.signup("hey");
 
 
 

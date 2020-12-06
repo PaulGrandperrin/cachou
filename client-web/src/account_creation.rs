@@ -2,6 +2,9 @@
 use yew::prelude::*;
 use yewtil::future::LinkFuture;
 
+use crate::SESSION;
+
+
 pub struct Model {
     link: ComponentLink<Self>,
     email: String,
@@ -41,7 +44,7 @@ impl Component for Model {
             Msg::SignUp => {
                 self.processing = true;
 
-                client_core::send_signup(&self.password);
+                SESSION.lock().unwrap().signup(&self.password);
                 
                 let password = self.password.clone();
 

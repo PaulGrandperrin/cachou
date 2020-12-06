@@ -3,27 +3,36 @@ use pwned::api::*;
 
 use tracing::info;
 
-pub fn send_signup(password: &str) {
-    let salt: [u8; 16] = rand::thread_rng().gen();
-    //pbkdf2::pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, 1, &mut res);
+pub struct Session {
 
-    let config = argon2::Config { // TODO adapt
-        variant: argon2::Variant::Argon2id,
-        version: argon2::Version::Version13,
-        mem_cost: 16384, //16384 32768  65536
-        time_cost: 1,
-        lanes: 16,
-        thread_mode: argon2::ThreadMode::Sequential, // Parallel not yet available on WASM
-        secret: &[],
-        ad: &[],
-        hash_length: 32
-    };
-    info!("computing argon2");
-    let hash = argon2::hash_raw(password.as_bytes(), &salt, &config);
+}
 
-    info!("salt: {:X?}", salt);
-    info!("derived key: {:X?}", hash);
+impl Session {
+    pub fn new() -> Self {
+        Self {}
+    }
 
+    pub fn signup(&mut self, password: &str) {
+        let salt: [u8; 16] = rand::thread_rng().gen();
+        //pbkdf2::pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, 1, &mut res);
+    
+        let config = argon2::Config { // TODO adapt
+            variant: argon2::Variant::Argon2id,
+            version: argon2::Version::Version13,
+            mem_cost: 16384, //16384 32768  65536
+            time_cost: 1,
+            lanes: 16,
+            thread_mode: argon2::ThreadMode::Sequential, // Parallel not yet available on WASM
+            secret: &[],
+            ad: &[],
+            hash_length: 32
+        };
+        info!("computing argon2");
+        let hash = argon2::hash_raw(password.as_bytes(), &salt, &config);
+    
+        info!("salt: {:X?}", salt);
+        info!("derived key: {:X?}", hash);
+    }
 }
 
 pub fn check_email(email: &str) -> bool {

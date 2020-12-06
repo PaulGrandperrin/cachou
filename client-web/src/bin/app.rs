@@ -1,4 +1,6 @@
+
 use client_web::Question;
+
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "logging")] {
@@ -13,6 +15,7 @@ cfg_if::cfg_if! {
 }
 
 fn main() {
+
     init_log();
     yew::start_app::<client_web::Question>();
 }
