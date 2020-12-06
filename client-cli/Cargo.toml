@@ -1,0 +1,9 @@
+[package]
+name = "client-cli"
+version = "0.1.0"
+authors = ["Paul Grandperrin <paul.grandperrin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+client-core = {path = "../client-core/"}
+rustyline = "7.0"
