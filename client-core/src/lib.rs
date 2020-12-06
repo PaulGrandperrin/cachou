@@ -8,7 +8,7 @@ pub fn send_signup(password: &str) {
     let config = argon2::Config { // TODO adapt
         variant: argon2::Variant::Argon2id,
         version: argon2::Version::Version13,
-        mem_cost: 8192,
+        mem_cost: 16384, //16384 32768  65536
         time_cost: 1,
         lanes: 16,
         thread_mode: argon2::ThreadMode::Sequential, // Parallel not yet available on WASM
@@ -17,7 +17,7 @@ pub fn send_signup(password: &str) {
         hash_length: 32
     };
     log::info!("computing argon2");
-    let hash = argon2::hash_encoded(password.as_bytes(), &salt, &config);
+    let hash = argon2::hash_raw(password.as_bytes(), &salt, &config);
 
     log::info!("salt: {:X?}", salt);
     log::info!("derived key: {:X?}", hash);

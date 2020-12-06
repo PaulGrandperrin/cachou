@@ -5,6 +5,12 @@
 		},
 		{
 			"path": "web"
+		},
+		{
+			"path": "client-cli"
+		},
+		{
+			"path": "client-web"
 		}
 	],
 	"settings": {
