@@ -3,7 +3,6 @@ use pwned::api::*;
 
 use tracing::info;
 
-mod rpc;
 
 pub struct Session {
     sym_key: Option<Vec<u8>>

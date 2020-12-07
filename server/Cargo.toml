@@ -7,6 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-futures = "0.3"
-tarpc = { version = "0.23", features = ["tokio1"] }
-tokio = {version = "0.3", features = ["macros"]}
+common = { path = "../common/"}
+tracing = "0.1"
+async-std = { version = "1.7", features = ["attributes"]}
+tide = "0.15"
+rmp-serde = "0.15"
