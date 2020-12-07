@@ -4,6 +4,9 @@ use tracing_subscriber::FmtSubscriber;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
+use tokio_compat_02::FutureExt; // could be async_compat::CompatExt
+
+
 fn setup_logger() {
     let subscriber = FmtSubscriber::builder()
     .with_max_level(Level::TRACE)
@@ -17,6 +20,9 @@ fn main() {
     setup_logger();
 
     let mut session = client_core::Session::new();
+    let f = session.signup_test("paul");
+    
+    dbg!(futures::executor::block_on(f.compat()));
     
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();

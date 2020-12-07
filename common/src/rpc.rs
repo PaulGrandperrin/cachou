@@ -11,3 +11,4 @@ pub enum Call {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RespSignup(pub String);
+

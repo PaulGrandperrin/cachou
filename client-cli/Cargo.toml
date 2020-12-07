@@ -9,3 +9,5 @@ client-core = {path = "../client-core/"}
 tracing = "0.1"
 tracing-subscriber = "0.2"
 rustyline = "7.0"
+tokio-compat-02 = "0.1" # could also use async-compat
+futures = "0.3"
