@@ -5,7 +5,7 @@ authors = ["Paul Grandperrin <paul.grandperrin@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-client-core = {path = "../client-core/"}
+client-common = {path = "../client-common"}
 tracing = "0.1"
 tracing-subscriber = "0.2"
 rustyline = "7.0"

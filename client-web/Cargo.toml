@@ -22,7 +22,7 @@ yew = "0.17"
 yewtil = "0.3"
 yew-router = "0.14"
 
-client-core = {path = "../client-core/"}
+client-common = {path = "../client-common"}
 
 #static_assertions
 

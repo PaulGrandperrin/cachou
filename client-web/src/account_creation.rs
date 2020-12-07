@@ -49,7 +49,7 @@ impl Component for Model {
                 let password = self.password.clone();
 
                 self.link.send_future(async move {
-                    match client_core::check_password_is_pwned(&password).await {
+                    match client_common::check_password_is_pwned(&password).await {
                         Ok(text) => {
                             Msg::Done(text)
                         },
@@ -78,7 +78,7 @@ impl Component for Model {
                 <input type="email" id="email" oninput=self.link.callback(|e: InputData| Msg::UpdateEmail(e.value))/>
                 <br/>
                 {
-                    if client_core::check_email(&self.email) {
+                    if client_common::check_email(&self.email) {
                         "good"
                     } else {
                         "bad"
@@ -100,7 +100,7 @@ impl Component for Model {
                 <br/>
                 {
                     {
-                        client_core::check_password_strength(&self.password, &self.email)
+                        client_common::check_password_strength(&self.password, &self.email)
                     }
                 }
                 

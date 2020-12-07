@@ -7,7 +7,7 @@
 //#[global_allocator]
 //static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-use client_core::Session;
+use client_common::Session;
 use yew::prelude::*;
 use yew_router::prelude::*;
 pub mod account_creation;
