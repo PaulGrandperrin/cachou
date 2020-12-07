@@ -17,12 +17,7 @@ fn main() {
     setup_logger();
 
     let mut session = client_core::Session::new();
-    session.signup("hey");
-
-
-
-
-
+    
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
     if rl.load_history("history.txt").is_err() {
@@ -33,7 +28,14 @@ fn main() {
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                println!("Line: {}", line);
+                match line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
+                    ["signup", password] => {
+                        session.signup(password);
+                    }
+                    _ => {
+                        tracing::error!("unknown command");
+                    }
+                }
             },
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");

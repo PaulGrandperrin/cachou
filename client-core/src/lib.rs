@@ -3,18 +3,21 @@ use pwned::api::*;
 
 use tracing::info;
 
-pub struct Session {
+mod rpc;
 
+pub struct Session {
+    sym_key: Option<Vec<u8>>
 }
 
 impl Session {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            sym_key: None
+        }
     }
 
     pub fn signup(&mut self, password: &str) {
         let salt: [u8; 16] = rand::thread_rng().gen();
-        //pbkdf2::pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, 1, &mut res);
     
         let config = argon2::Config { // TODO adapt
             variant: argon2::Variant::Argon2id,
@@ -28,10 +31,13 @@ impl Session {
             hash_length: 32
         };
         info!("computing argon2");
-        let hash = argon2::hash_raw(password.as_bytes(), &salt, &config);
+        let hash = argon2::hash_raw(password.as_bytes(), &salt, &config).unwrap();
     
         info!("salt: {:X?}", salt);
         info!("derived key: {:X?}", hash);
+
+        self.sym_key = Some(hash);
+
     }
 }
 
