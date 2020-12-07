@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "client-web"
+		},
+		{
+			"path": "server"
 		}
 	],
 	"settings": {
