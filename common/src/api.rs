@@ -5,7 +5,9 @@ use serde::{Serialize, Deserialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
     Signup {
-        password: String
+        email: String,
+        password_hash: Vec<u8>,
+        password_salt: Vec<u8>
     }
 }
 

@@ -17,8 +17,6 @@ impl Session {
         }
     }
 
-
-
     pub fn signup(&mut self, password: &str) {
         let salt: [u8; 16] = rand::thread_rng().gen();
     
@@ -34,7 +32,10 @@ impl Session {
             hash_length: 32
         };
         info!("computing argon2");
-        let hash = argon2::hash_raw(password.as_bytes(), &salt, &config).unwrap();
+        // password based client-side secret: use for client-side symmetric encryption
+        let pb_secret = argon2::hash_raw(password.as_bytes(), &salt, &config).unwrap();
+        // password based server-side secret
+        let hash = blake2b_simd::blake2b(&hash);
     
         info!("salt: {:X?}", salt);
         info!("derived key: {:X?}", hash);

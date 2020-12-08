@@ -19,8 +19,8 @@ async fn api(mut req: Request<()>) -> tide::Result {
     trace!("call: {:?}", rpc);
 
     let resp = match rpc {
-        api::Call::Signup { password } => {
-            let resp = api::RespSignup(format!("hey {:?}", password).into());
+        api::Call::Signup { email, password_hash, password_salt } => {
+            let resp = api::RespSignup(format!("Welcome {}", email).into());
             trace!("resp: {:?}", resp);
             rmp_serde::to_vec_named(&resp)?
         }
