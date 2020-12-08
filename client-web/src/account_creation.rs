@@ -44,11 +44,12 @@ impl Component for Model {
             Msg::SignUp => {
                 self.processing = true;
 
-                SESSION.lock().unwrap().signup(&self.password);
-                
+                let email = self.email.clone();
                 let password = self.password.clone();
 
                 self.link.send_future(async move {
+                    SESSION.lock().unwrap().signup(&email, &password).await;
+                    
                     match client_common::check_password_is_pwned(&password).await {
                         Ok(text) => {
                             Msg::Done(text)

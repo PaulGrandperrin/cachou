@@ -7,18 +7,20 @@ use tracing::info;
 mod rpc;
 
 pub struct Session {
-    sym_key: Option<Vec<u8>>
+    sym_key: Option<Vec<u8>>,
+    rpc_client: rpc::Client,
 }
 
 impl Session {
     pub fn new() -> Self {
         Self {
-            sym_key: None
+            sym_key: None,
+            rpc_client: rpc::Client::new("http://127.0.0.1:8081/api"),
         }
     }
 
-    pub fn signup(&mut self, password: &str) {
-        let salt: [u8; 16] = rand::thread_rng().gen();
+    pub async fn signup(&mut self, email: &str, password: &str) {
+        let password_salt: [u8; 16] = rand::thread_rng().gen();
     
         let config = argon2::Config { // TODO adapt
             variant: argon2::Variant::Argon2id,
@@ -33,14 +35,16 @@ impl Session {
         };
         info!("computing argon2");
         // password based client-side secret: use for client-side symmetric encryption
-        let pb_secret = argon2::hash_raw(password.as_bytes(), &salt, &config).unwrap();
-        // password based server-side secret
-        let hash = blake2b_simd::blake2b(&hash);
+        let password_hash = argon2::hash_raw(password.as_bytes(), &password_salt, &config).unwrap();
+        // password based server-side secret: used 
+        //let hash = blake2b_simd::blake2b(&pb_secret);
     
-        info!("salt: {:X?}", salt);
-        info!("derived key: {:X?}", hash);
+        info!("salt: {:X?}", password_salt);
+        info!("derived key: {:X?}", password_hash);
 
-        self.sym_key = Some(hash);
+        self.sym_key = Some(password_hash.clone());
+
+        self.rpc_client.signup(email, password_hash, password_salt).await;
 
     }
 }

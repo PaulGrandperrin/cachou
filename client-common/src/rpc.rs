@@ -1,6 +1,6 @@
 
 
-struct Client {
+pub struct Client {
     reqwest_client: reqwest::Client,
     url: String // maybe use Url type directly
 }
@@ -15,15 +15,15 @@ impl Client {
 
     pub async fn signup(
             &self,
-            email: impl ToOwned<Owned=String>,
-            password_hash: impl ToOwned<Owned=Vec<u8>>,
-            password_salt: impl ToOwned<Owned=Vec<u8>>)
+            email: impl Into<String>,
+            password_hash: impl Into<Vec<u8>>,
+            password_salt: impl Into<Vec<u8>>)
             -> String {
     
         let req = common::api::Call::Signup {
-            email: email.to_owned(),
-            password_hash: password_hash.to_owned(),
-            password_salt: password_salt.to_owned()
+            email: email.into(),
+            password_hash: password_hash.into(),
+            password_salt: password_salt.into(),
         };
 
         let body = rmp_serde::to_vec_named(&req).unwrap();

@@ -20,9 +20,7 @@ fn main() {
     setup_logger();
 
     let mut session = client_common::Session::new();
-    let f = session.signup_test("paul");
     
-    dbg!(futures::executor::block_on(f.compat()));
     
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
@@ -35,8 +33,9 @@ fn main() {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
                 match line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
-                    ["signup", password] => {
-                        session.signup(password);
+                    ["signup", email, password] => {
+                        let f = session.signup(email, password);
+                        dbg!(futures::executor::block_on(f.compat()));
                     }
                     _ => {
                         tracing::error!("unknown command");
