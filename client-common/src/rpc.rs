@@ -18,7 +18,7 @@ impl Client {
             email: impl Into<String>,
             password_hash: impl Into<Vec<u8>>,
             password_salt: impl Into<Vec<u8>>)
-            -> String {
+            -> anyhow::Result<String> {
     
         let req = common::api::Call::Signup {
             email: email.into(),
@@ -26,16 +26,16 @@ impl Client {
             password_salt: password_salt.into(),
         };
 
-        let body = rmp_serde::to_vec_named(&req).unwrap();
+        let body = rmp_serde::to_vec_named(&req)?;
     
         let res = self.reqwest_client.post(&self.url)
             .body(body)
             .send()
-            .await.unwrap(); // FIXME
+            .await?;
     
-        let res = res.bytes().await.unwrap().to_vec(); // FIXME
-        let res: common::api::RespSignup = rmp_serde::from_slice(&res).unwrap(); // FIXME
-        res.0
+        let res = res.bytes().await?.to_vec();
+        let res: common::api::RespSignup = rmp_serde::from_slice(&res)?;
+        Ok(res.0)
     }
 }
 

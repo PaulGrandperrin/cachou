@@ -16,7 +16,7 @@ impl Session {
         }
     }
 
-    pub async fn signup(&mut self, email: &str, password: &str) -> String {
+    pub async fn signup(&mut self, email: &str, password: &str) -> anyhow::Result<String> {
         let password_salt: [u8; 16] = rand::thread_rng().gen();
     
         let config = argon2::Config { // TODO adapt
@@ -32,7 +32,7 @@ impl Session {
         };
         info!("computing argon2");
         // password based client-side secret: use for client-side symmetric encryption
-        let password_hash = argon2::hash_raw(password.as_bytes(), &password_salt, &config).unwrap();
+        let password_hash = argon2::hash_raw(password.as_bytes(), &password_salt, &config)?;
         // password based server-side secret: used 
         //let hash = blake2b_simd::blake2b(&pb_secret);
     
@@ -41,7 +41,7 @@ impl Session {
 
         self.sym_key = Some(password_hash.clone());
 
-        let ret = self.rpc_client.signup(email, password_hash, password_salt).await;
+        let ret = self.rpc_client.signup(email, password_hash, password_salt).await?;
 
         // OPAQUE
 
@@ -50,10 +50,10 @@ impl Session {
             b"password",
             Some(b"pepper"),
             &mut client_rng,
-        ).unwrap();
+        )?;
         // END OPAQUE
 
-        ret
+        Ok(ret)
 
     }
 }

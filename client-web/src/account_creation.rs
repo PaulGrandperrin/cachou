@@ -48,7 +48,7 @@ impl Component for Model {
                 let password = self.password.clone();
 
                 self.link.send_future(async move {
-                    SESSION.lock().unwrap().signup(&email, &password).await;
+                    let _drop = SESSION.lock().unwrap().signup(&email, &password).await;
                     
                     match client_common::check_password_is_pwned(&password).await {
                         Ok(text) => {

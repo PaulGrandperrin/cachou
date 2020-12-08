@@ -7,7 +7,7 @@ pub enum Call {
     Signup {
         email: String,
         password_hash: Vec<u8>,
-        password_salt: Vec<u8>
+        password_salt: Vec<u8>,
     }
 }
 

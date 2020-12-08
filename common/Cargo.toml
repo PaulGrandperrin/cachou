@@ -7,10 +7,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tracing = "0.1"
-tracing-subscriber = "0.2"
 serde = {version = "1.0", features = ["derive"]}
 
+# logging / tracing
+tracing = "0.1"
+tracing-subscriber = "0.2"
+
+# crypto
 opaque-ke = "0.2"
 curve25519-dalek = "3.0"
 sha2 = "0.9"

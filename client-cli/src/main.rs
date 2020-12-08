@@ -1,3 +1,4 @@
+use anyhow::Context;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
@@ -7,16 +8,18 @@ use rustyline::Editor;
 use tokio_compat_02::FutureExt; // could be async_compat::CompatExt
 
 
-fn setup_logger() {
-    let subscriber = FmtSubscriber::builder()
-    .with_max_level(Level::TRACE)
+fn setup_logger() -> anyhow::Result<()> {
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    .with_max_level(tracing::Level::TRACE)
     .finish();
 
     tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
+        .context("setting default subscriber failed")?;
+
+    Ok(())
 }
 
-fn main() {
+fn main() -> anyhow::Result<()>{
     setup_logger();
 
     let mut session = client_common::core::Session::new();
@@ -35,7 +38,7 @@ fn main() {
                 match line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", email, password] => {
                         let f = session.signup(email, password);
-                        dbg!(futures::executor::block_on(f.compat()));
+                        dbg!(futures::executor::block_on(f.compat()))?;
                     }
                     _ => {
                         tracing::error!("unknown command");
@@ -56,5 +59,6 @@ fn main() {
             }
         }
     }
-    rl.save_history("history.txt").unwrap();
+    rl.save_history("history.txt")?;
+    Ok(())
 }

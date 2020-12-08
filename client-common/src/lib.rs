@@ -20,14 +20,12 @@ pub fn check_password_strength(password: &str, email: &str) -> u8 {
     }
 }
 
-pub async fn check_password_is_pwned(password: &str) -> Result<String, pwned::errors::Error> {
-
+pub async fn check_password_is_pwned(password: &str) -> anyhow::Result<String> {
     let pwned = PwnedBuilder::default()
-    .build().unwrap();
+    .build().map_err(|f| anyhow::anyhow!("the field {:?} has not been initialized", f))?;
 
     match pwned.check_password(password).await {
         Ok(pwd) => Ok(format!("Pwned? {} - Occurrences {}", pwd.found, pwd.count)),
-        Err(e) => Err(e),
+        Err(e) => Err(anyhow::anyhow!(e.description().to_owned()))
     }
-
 }

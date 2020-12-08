@@ -14,5 +14,6 @@ async-std = { version = "1.7", features = ["attributes"]}
 tide = "0.15"
 rmp-serde = "0.15"
 rand = "0.7"
+anyhow = "1.0"
 
 opaque-ke = "0.2"
