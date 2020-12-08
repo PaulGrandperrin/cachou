@@ -3,12 +3,24 @@ use anyhow::Context;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-use tokio_compat_02::FutureExt; // could be async_compat::CompatExt
+use tokio_compat_02::FutureExt;
+use tracing::{metadata::LevelFilter, trace};
+use tracing_subscriber::EnvFilter; // could be async_compat::CompatExt
 
 
 fn setup_logger() -> anyhow::Result<()> {
+
+    let filter = EnvFilter::from_default_env()
+        // Set the base level when not matched by other directives to WARN.
+        .add_directive(LevelFilter::WARN.into())
+        // Set the max level for `my_crate::my_mod` to DEBUG, overriding
+        // any directives parsed from the env variable.
+        .add_directive("client_cli=trace".parse()?);
+
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
     .with_max_level(tracing::Level::TRACE)
+    .with_env_filter(filter)
     .finish();
 
     tracing::subscriber::set_global_default(subscriber)
@@ -36,7 +48,8 @@ fn main() -> anyhow::Result<()>{
                 match line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", email, password] => {
                         let f = session.signup(email, password);
-                        dbg!(futures::executor::block_on(f.compat()))?;
+                        let res = futures::executor::block_on(f.compat())?;
+                        trace!("got : {:?}", res);
                     }
                     _ => {
                         tracing::error!("unknown command");
