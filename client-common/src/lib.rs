@@ -19,7 +19,7 @@ impl Session {
         }
     }
 
-    pub async fn signup(&mut self, email: &str, password: &str) {
+    pub async fn signup(&mut self, email: &str, password: &str) -> String {
         let password_salt: [u8; 16] = rand::thread_rng().gen();
     
         let config = argon2::Config { // TODO adapt
@@ -44,10 +44,27 @@ impl Session {
 
         self.sym_key = Some(password_hash.clone());
 
-        self.rpc_client.signup(email, password_hash, password_salt).await;
+        let ret = self.rpc_client.signup(email, password_hash, password_salt).await;
+
+        // OPAQUE
+
+
+        let mut client_rng = rand_core::OsRng;
+        let (r1, client_state) = opaque_ke::opaque::ClientRegistration::<common::crypto::Default>::start(
+            b"password",
+            Some(b"pepper"),
+            &mut client_rng,
+        ).unwrap();
+
+
+        // END OPAQUE
+
+        ret
 
     }
 }
+
+
 
 pub fn check_email(email: &str) -> bool {
     validator::validate_email(email)

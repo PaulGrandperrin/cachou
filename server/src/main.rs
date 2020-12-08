@@ -1,3 +1,5 @@
+use opaque_ke::ciphersuite::CipherSuite;
+use rand::rngs::OsRng;
 use tracing::trace;
 
 use tide::{Body, Request, http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
@@ -37,11 +39,21 @@ async fn api(mut req: Request<()>) -> tide::Result {
 
     let resp = match rpc {
         api::Call::Signup { email, password_hash, password_salt } => {
-            let resp = api::RespSignup(format!("Welcome {}", email).into());
+            let resp = api::RespSignup(signup(&email, &password_hash, &password_salt).await);
             trace!("resp: {:?}", resp);
             rmp_serde::to_vec_named(&resp)?
         }
     };
     
     Ok(Body::from_bytes(resp).into())
+}
+
+
+
+
+async fn signup(email: &str, password_hash: &[u8], password_salt: &[u8]) -> String {
+    let mut rng = OsRng;
+    let server_kp = common::crypto::Default::generate_random_keypair(&mut rng).unwrap();
+
+    format!("Welcome {}", email).into()
 }

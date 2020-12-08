@@ -13,7 +13,7 @@ impl Client {
         }
     }
 
-    pub async fn signup(
+    pub async fn signup (
             &self,
             email: impl Into<String>,
             password_hash: impl Into<Vec<u8>>,
