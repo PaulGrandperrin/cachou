@@ -46,7 +46,7 @@ impl Session {
         // OPAQUE
 
         let mut client_rng = FakeRng;
-        let (r1, client_state) = opaque_ke::opaque::ClientRegistration::<common::crypto::Default>::start(
+        let (_r1, _client_state) = opaque_ke::opaque::ClientRegistration::<common::crypto::Default>::start(
             b"password",
             Some(b"pepper"),
             &mut client_rng,
@@ -71,9 +71,9 @@ impl rand_core::RngCore for FakeRng {
         rand::thread_rng().gen()
     }
 
-    fn fill_bytes(&mut self, dest: &mut [u8]) {}
+    fn fill_bytes(&mut self, _dest: &mut [u8]) {}
 
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+    fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), rand_core::Error> {
         Ok(())
     }
 }

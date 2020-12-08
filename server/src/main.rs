@@ -17,7 +17,7 @@ fn setup_logger() -> anyhow::Result<()> {
 
 #[async_std::main]
 async fn main() -> tide::Result<()> {
-    setup_logger();
+    setup_logger()?;
 
     let cors = CorsMiddleware::new() // FIXME used for dev, probably remove later
         .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>()?)

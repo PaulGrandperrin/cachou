@@ -30,8 +30,8 @@ pub enum AppRoute {
 type AppRouter = Router<AppRoute>;
 type AppAnchor = RouterAnchor<AppRoute>;
 
-
 pub struct Question {
+    #[allow(dead_code)] // FIXME
     link: ComponentLink<Self>,
     text: String,
 }

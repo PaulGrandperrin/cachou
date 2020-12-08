@@ -1,6 +1,4 @@
 use anyhow::Context;
-use tracing::{info, Level};
-use tracing_subscriber::FmtSubscriber;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -20,7 +18,7 @@ fn setup_logger() -> anyhow::Result<()> {
 }
 
 fn main() -> anyhow::Result<()>{
-    setup_logger();
+    setup_logger()?;
 
     let mut session = client_common::core::Session::new();
     
