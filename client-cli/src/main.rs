@@ -19,7 +19,7 @@ fn setup_logger() {
 fn main() {
     setup_logger();
 
-    let mut session = client_common::Session::new();
+    let mut session = client_common::core::Session::new();
     
     
     // `()` can be used when no completer is required

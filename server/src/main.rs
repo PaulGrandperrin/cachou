@@ -1,11 +1,7 @@
-use opaque_ke::ciphersuite::CipherSuite;
-use rand::rngs::OsRng;
-use tracing::trace;
+use tide::{http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
 
-use tide::{Body, Request, http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
-use tide::prelude::*;
-
-use common::api;
+mod rpc;
+mod core;
 
 fn setup_logger() {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -20,40 +16,20 @@ fn setup_logger() {
 async fn main() -> tide::Result<()> {
     setup_logger();
 
-    let cors = CorsMiddleware::new()
+    let cors = CorsMiddleware::new() // FIXME used for dev, probably remove later
         .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())
         .allow_origin(Origin::from("*"))
         .allow_credentials(false);
     
     let mut app = tide::new();
     app.with(cors);
-    app.at("/api").post(api);
+    app.at("/api").post(rpc::rpc);
     app.listen("127.0.0.1:8081").await?;
     Ok(())
 }
 
-async fn api(mut req: Request<()>) -> tide::Result {
-    let body = req.body_bytes().await?;
-    let rpc: api::Call = rmp_serde::from_read_ref(&body)?;
-    trace!("call: {:?}", rpc);
-
-    let resp = match rpc {
-        api::Call::Signup { email, password_hash, password_salt } => {
-            let resp = api::RespSignup(signup(&email, &password_hash, &password_salt).await);
-            trace!("resp: {:?}", resp);
-            rmp_serde::to_vec_named(&resp)?
-        }
-    };
-    
-    Ok(Body::from_bytes(resp).into())
-}
 
 
 
 
-async fn signup(email: &str, password_hash: &[u8], password_salt: &[u8]) -> String {
-    let mut rng = OsRng;
-    let server_kp = common::crypto::Default::generate_random_keypair(&mut rng).unwrap();
 
-    format!("Welcome {}", email).into()
-}
