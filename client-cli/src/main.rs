@@ -4,7 +4,7 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 use tokio_compat_02::FutureExt;
-use tracing::{metadata::LevelFilter, trace};
+use tracing::{error, metadata::LevelFilter, trace};
 use tracing_subscriber::EnvFilter; // could be async_compat::CompatExt
 
 
@@ -48,8 +48,15 @@ fn main() -> anyhow::Result<()>{
                 match line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", email, password] => {
                         let f = session.signup(email, password);
-                        let res = futures::executor::block_on(f.compat())?;
-                        trace!("got : {:?}", res);
+                        match futures::executor::block_on(f.compat()) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                        };
+                        
                     }
                     _ => {
                         tracing::error!("unknown command");
