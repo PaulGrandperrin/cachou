@@ -1,0 +1,13 @@
+[workspace]
+
+members = [
+  "common",
+  "server",
+  "client-common",
+  "client-cli",
+  "client-web",
+]
+
+[patch.crates-io]
+rand = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.8
+rand_core = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.6

@@ -26,6 +26,3 @@ pwned = "0.3"
 validator = { version = "0.12", default-features = false }
 
 opaque-ke = "0.2"
-
-[patch.crates-io]
-rand_core = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.6
