@@ -45,7 +45,7 @@ impl Session {
 
         // OPAQUE
 
-        let mut client_rng = FakeRng;
+        let mut client_rng = rand_core::OsRng;
         let (_r1, _client_state) = opaque_ke::opaque::ClientRegistration::<common::crypto::Default>::start(
             b"password",
             Some(b"pepper"),
@@ -55,25 +55,5 @@ impl Session {
 
         Ok(ret)
 
-    }
-}
-
-// opaque_ke needs an implementation of rand_core::CryptoRng but rand_core implementations are not wasm compatible..
-// so we created one from the rand crate wich is wasm compatible
-struct FakeRng;
-impl rand_core::CryptoRng for FakeRng {}
-impl rand_core::RngCore for FakeRng {
-    fn next_u32(&mut self) -> u32 {
-        rand::thread_rng().gen()
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        rand::thread_rng().gen()
-    }
-
-    fn fill_bytes(&mut self, _dest: &mut [u8]) {}
-
-    fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        Ok(())
     }
 }
