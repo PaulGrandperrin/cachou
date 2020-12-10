@@ -22,6 +22,6 @@ pub async fn check_password_is_pwned(password: &str) -> anyhow::Result<String> {
 
     match pwned.check_password(password).await {
         Ok(pwd) => Ok(format!("Pwned? {} - Occurrences {}", pwd.found, pwd.count)),
-        Err(e) => Err(anyhow::anyhow!(e.description().to_owned()))
+        Err(e) => Err(e.into())
     }
 }

@@ -22,7 +22,7 @@ rust-argon2 = "0.8"
 
 # password and email check
 zxcvbn = {git = "https://github.com/1Password/zxcvbn-rs.git", branch = "master"} # includes a patch to work in wasm
-pwned = "0.3"
+pwned = "0.4"
 validator = { version = "0.12", default-features = false }
 
 opaque-ke = "0.2"
