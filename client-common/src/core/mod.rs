@@ -1,5 +1,5 @@
 use rand::Rng;
-use tracing::info;
+use tracing::{info, log};
 
 use crate::rpc;
 
