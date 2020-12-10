@@ -25,4 +25,4 @@ zxcvbn = {git = "https://github.com/1Password/zxcvbn-rs.git", branch = "master"}
 pwned = "0.4"
 validator = { version = "0.12", default-features = false }
 
-opaque-ke = "0.2"
+opaque-ke = { git = "https://github.com/kevinlewi/opaque-ke.git", branch = "docs_cleanup" }

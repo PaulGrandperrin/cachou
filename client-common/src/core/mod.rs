@@ -45,12 +45,53 @@ impl Session {
 
         // OPAQUE
 
+        // on server, once:
+        let mut rng = rand_core::OsRng;
+        let server_kp = <common::crypto::Default as opaque_ke::ciphersuite::CipherSuite>::generate_random_keypair(&mut rng)?;
+        
+        info!("ClientRegistration start");
         let mut client_rng = rand_core::OsRng;
-        let (_r1, _client_state) = opaque_ke::opaque::ClientRegistration::<common::crypto::Default>::start(
-            b"password",
-            Some(b"pepper"),
+        let client_registration_start_result = opaque_ke::ClientRegistration::<common::crypto::Default>::start(
             &mut client_rng,
+            b"password",
+            opaque_ke::ClientRegistrationStartParameters::default(), // TODO fill
+            #[cfg(test)] // only way to get rust-analyzer not complaining
+            std::convert::identity, // whatever, this is not used
         )?;
+        let registration_request_bytes = client_registration_start_result.message.serialize();
+
+        // Client sends registration_request_bytes to server
+        info!("ServerRegistration start");
+        use opaque_ke::keypair::KeyPair;
+        let mut server_rng = rand_core::OsRng;
+        let server_registration_start_result = opaque_ke::ServerRegistration::<common::crypto::Default>::start(
+            &mut server_rng,
+            opaque_ke::RegistrationRequest::deserialize(&registration_request_bytes[..]).unwrap(),
+            server_kp.public(),
+        )
+        .unwrap();
+        let registration_response_bytes = server_registration_start_result.message.serialize();
+
+        // Server sends registration_response_bytes to client
+        info!("ClientRegistration finish");
+        let client_finish_registration_result = client_registration_start_result
+        .state
+        .finish(
+            &mut client_rng,
+            opaque_ke::RegistrationResponse::deserialize(&registration_response_bytes[..]).unwrap(),
+        )
+        .unwrap();
+        let message_bytes = client_finish_registration_result.message.serialize();
+
+        // Client sends message_bytes to server
+        info!("ServerRegistration finish");
+        let password_file = server_registration_start_result
+            .state
+            .finish(opaque_ke::RegistrationUpload::deserialize(&message_bytes[..]).unwrap())
+            .unwrap();
+
+        let p = password_file.to_bytes();
+
         // END OPAQUE
 
         Ok(ret)

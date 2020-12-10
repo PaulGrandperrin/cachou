@@ -14,6 +14,6 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 
 # crypto
-opaque-ke = "0.2"
+opaque-ke = { git = "https://github.com/kevinlewi/opaque-ke.git", branch = "docs_cleanup" }
 curve25519-dalek = "3.0"
 sha2 = "0.9"
