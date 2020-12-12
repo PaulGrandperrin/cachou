@@ -5,6 +5,7 @@ use tracing_subscriber::EnvFilter;
 
 mod rpc;
 mod core;
+mod state;
 
 fn setup_logger() -> anyhow::Result<()> {
 
@@ -35,8 +36,14 @@ async fn main() -> tide::Result<()> {
         .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>()?)
         .allow_origin(Origin::from("*"))
         .allow_credentials(false);
-    
-    let mut app = tide::new();
+
+    let mut app = tide::with_state(state::State::new());
+
+    app.with(tide::sessions::SessionMiddleware::new(
+        tide::sessions::MemoryStore::new(),
+        b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" // FIXME
+    ));
+
     app.with(cors);
     app.at("/api").post(rpc::rpc);
     app.listen("127.0.0.1:8081").await?;

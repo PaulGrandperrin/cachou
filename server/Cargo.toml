@@ -14,6 +14,8 @@ async-std = { version = "1.8", features = ["attributes"]}
 tide = "0.15"
 rmp-serde = "0.15"
 rand = "0.7"
+rand_core = "*" # 0.6
 anyhow = "1.0"
 
-opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
+#opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
+opaque-ke = { path = "../../opaque-ke" }

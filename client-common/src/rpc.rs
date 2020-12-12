@@ -37,5 +37,34 @@ impl Client {
         let res: common::api::RespSignup = rmp_serde::from_slice(&res)?;
         Ok(res.0)
     }
+
+    pub async fn signup_get_userid(&self) -> anyhow::Result<Vec<u8>> {
+        let req = common::api::Call::SignupGetUserid;
+        let body = rmp_serde::to_vec_named(&req)?;
+
+        let res = self.reqwest_client.post(&self.url)
+            .body(body)
+            .send()
+            .await?;
+
+        let res = res.bytes().await?.to_vec();
+        let res: common::api::RespSignupGetUserid = rmp_serde::from_slice(&res)?;
+        Ok(res.0)
+    }
+
+    pub async fn signup_opaque_start(&self, message: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+        let req = common::api::Call::SignupOpaqueStart { message };
+        let body = rmp_serde::to_vec_named(&req)?;
+
+        let res = self.reqwest_client.post(&self.url)
+            .body(body)
+            .send()
+            .await?;
+
+        let res = res.bytes().await?.to_vec();
+        let res: common::api::RespSignupOpaqueStart = rmp_serde::from_slice(&res)?;
+        Ok(res.0)
+    }
+
 }
 

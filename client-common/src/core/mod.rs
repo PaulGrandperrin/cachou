@@ -1,5 +1,5 @@
 use rand::Rng;
-use tracing::{info, log};
+use tracing::{info, trace};
 
 use crate::rpc;
 
@@ -43,7 +43,11 @@ impl Session {
 
         let ret = self.rpc_client.signup(email, password_hash, password_salt).await?;
 
+        
         // OPAQUE
+ 
+        let userid = self.rpc_client.signup_get_userid().await?;
+        trace!("userid: {:X?}", &userid);
 
         // on server, once:
         let mut rng = rand_core::OsRng;
@@ -58,19 +62,8 @@ impl Session {
             #[cfg(test)] // only way to get rust-analyzer not complaining
             std::convert::identity, // whatever, this is not used
         )?;
-        let registration_request_bytes = client_registration_start_result.message.serialize();
 
-        // Client sends registration_request_bytes to server
-        info!("ServerRegistration start");
-        use opaque_ke::keypair::KeyPair;
-        let mut server_rng = rand_core::OsRng;
-        let server_registration_start_result = opaque_ke::ServerRegistration::<common::crypto::Default>::start(
-            &mut server_rng,
-            opaque_ke::RegistrationRequest::deserialize(&registration_request_bytes[..]).unwrap(),
-            server_kp.public(),
-        )
-        .unwrap();
-        let registration_response_bytes = server_registration_start_result.message.serialize();
+        let registration_response_bytes = self.rpc_client.signup_opaque_start(client_registration_start_result.message.serialize()).await?;
 
         // Server sends registration_response_bytes to client
         info!("ClientRegistration finish");
@@ -84,13 +77,15 @@ impl Session {
         let message_bytes = client_finish_registration_result.message.serialize();
 
         // Client sends message_bytes to server
+        /*
         info!("ServerRegistration finish");
         let password_file = server_registration_start_result
             .state
             .finish(opaque_ke::RegistrationUpload::deserialize(&message_bytes[..]).unwrap())
             .unwrap();
 
-        let p = password_file.to_bytes();
+        let _p = password_file.to_bytes();
+        */
 
         // END OPAQUE
 

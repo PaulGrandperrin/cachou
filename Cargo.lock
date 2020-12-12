@@ -1664,7 +1664,6 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 [[package]]
 name = "opaque-ke"
 version = "0.3.0-pre.1"
-source = "git+https://github.com/PaulGrandperrin/opaque-ke.git?branch=master#412c275625d5321d6d169eb6bb92d6b4c69c751d"
 dependencies = [
  "curve25519-dalek",
  "digest",
@@ -2197,6 +2196,7 @@ dependencies = [
  "common",
  "opaque-ke",
  "rand",
+ "rand_core",
  "rmp-serde",
  "tide",
  "tracing",
