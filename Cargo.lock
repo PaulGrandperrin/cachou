@@ -2199,6 +2199,7 @@ dependencies = [
  "rand_core",
  "rmp-serde",
  "tide",
+ "tide-tracing",
  "tracing",
  "tracing-subscriber",
 ]
@@ -2444,6 +2445,18 @@ dependencies = [
  "route-recognizer",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "tide-tracing"
+version = "0.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7151f5a7f7ab0798481810d3ce6d89719cec4ae308639a72bd54eac2eb41d557"
+dependencies = [
+ "async-trait",
+ "tide",
+ "tracing",
+ "tracing-futures",
 ]
 
 [[package]]

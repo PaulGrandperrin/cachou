@@ -14,7 +14,8 @@ fn setup_logger() -> anyhow::Result<()> {
         .add_directive(LevelFilter::WARN.into())
         // Set the max level for `my_crate::my_mod` to DEBUG, overriding
         // any directives parsed from the env variable.
-        .add_directive("server=trace".parse()?);
+        .add_directive("server=trace".parse()?)
+        .add_directive("tide_tracing=trace".parse()?);
 
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -39,10 +40,7 @@ async fn main() -> tide::Result<()> {
 
     let mut app = tide::with_state(state::State::new());
 
-    app.with(tide::sessions::SessionMiddleware::new(
-        tide::sessions::MemoryStore::new(),
-        b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" // FIXME
-    ));
+    app.with(tide_tracing::TraceMiddleware::new());
 
     app.with(cors);
     app.at("/api").post(rpc::rpc);

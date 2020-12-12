@@ -9,12 +9,6 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
     let rpc: api::Call = rmp_serde::from_read_ref(&body)?;
     trace!("call: {:?}", rpc);
 
-    let session = req.session_mut();
-    let visits: usize = session.get("visits").unwrap_or_default();
-    session.insert("visits", visits + 1).unwrap();
-
-    trace!("visit: {}", visits);
-
     let resp = match rpc {
         api::Call::Signup { email, password_hash, password_salt } => {
             let ret = auth::signup(&email, &password_hash, &password_salt).await?;
