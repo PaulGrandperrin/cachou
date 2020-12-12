@@ -584,7 +584,7 @@ checksum = "784ad0fbab4f3e9cef09f20e0aea6000ae08d2cb98ac4c0abc53df18803d702f"
 dependencies = [
  "aes-gcm",
  "base64 0.12.3",
- "hkdf 0.10.0",
+ "hkdf",
  "hmac 0.10.1",
  "percent-encoding",
  "rand",
@@ -659,16 +659,6 @@ name = "crypto-mac"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
-dependencies = [
- "generic-array",
- "subtle",
-]
-
-[[package]]
-name = "crypto-mac"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58bcd97a54c7ca5ce2f6eb16f6bede5b0ab5f0055fedc17d2f0b4466e21671ca"
 dependencies = [
  "generic-array",
  "subtle",
@@ -1216,16 +1206,6 @@ dependencies = [
 
 [[package]]
 name = "hkdf"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe1149865383e4526a43aee8495f9a325f0b806c63ce6427d06336a590abbbc9"
-dependencies = [
- "digest",
- "hmac 0.8.1",
-]
-
-[[package]]
-name = "hkdf"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51ab2f639c231793c5f6114bdb9bbe50a7dbbfcd7c7c6bd8475dec2d991e964f"
@@ -1241,16 +1221,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "126888268dcc288495a26bf004b38c5fdbb31682f992c84ceb046a1f0fe38840"
 dependencies = [
  "crypto-mac 0.8.0",
- "digest",
-]
-
-[[package]]
-name = "hmac"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deae6d9dbb35ec2c502d62b8f7b1c000a0822c3b0794ba36b3149c0a1c840dff"
-dependencies = [
- "crypto-mac 0.9.1",
  "digest",
 ]
 
@@ -1694,7 +1664,7 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 [[package]]
 name = "opaque-ke"
 version = "0.3.0-pre.1"
-source = "git+https://github.com/kevinlewi/opaque-ke.git?branch=docs_cleanup#8703a7d278438dcf1d1fbd6f7f1e8df26b63589f"
+source = "git+https://github.com/PaulGrandperrin/opaque-ke.git?branch=master#412c275625d5321d6d169eb6bb92d6b4c69c751d"
 dependencies = [
  "curve25519-dalek",
  "digest",
@@ -1703,8 +1673,8 @@ dependencies = [
  "generic-array",
  "generic-bytes",
  "generic-bytes-derive",
- "hkdf 0.9.0",
- "hmac 0.9.0",
+ "hkdf",
+ "hmac 0.10.1",
  "rand_core",
  "sha2",
  "subtle",

@@ -16,4 +16,4 @@ rmp-serde = "0.15"
 rand = "0.7"
 anyhow = "1.0"
 
-opaque-ke = { git = "https://github.com/kevinlewi/opaque-ke.git", branch = "docs_cleanup" }
+opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
