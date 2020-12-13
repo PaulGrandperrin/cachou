@@ -33,6 +33,26 @@ fn setup_logger() -> anyhow::Result<()> {
 async fn main() -> tide::Result<()> {
     setup_logger()?;
 
+    //let pool = sqlx::MySqlPool::connect("mysql://root@127.0.0.1:3306/test").await?;
+
+    let pool = sqlx::MySqlPool::connect_with(
+sqlx::mysql::MySqlConnectOptions::new()
+            .host("localhost")
+            .port(4000)
+            .username("root")
+            //.password("password")
+            .database("test")
+    ).await?;
+
+
+    // Make a simple query to return the given parameter
+    let row: (i64,) = sqlx::query_as("SELECT 1+?")
+        .bind(150_i64)
+        .fetch_one(&pool).await?;   
+
+    assert_eq!(row.0, 151);
+
+
     let cors = CorsMiddleware::new() // FIXME used for dev, probably remove later
         .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>()?)
         .allow_origin(Origin::from("*"))

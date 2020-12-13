@@ -17,6 +17,7 @@ rmp-serde = "0.15"
 rand = "0.7"
 rand_core = "*" # 0.6
 anyhow = "1.0"
+sqlx = { version = "0.4", default-features = false, features = [ "mysql","runtime-async-std-rustls" ] }
 
 #opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
 opaque-ke = { path = "../../opaque-ke" }
