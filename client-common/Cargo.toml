@@ -25,5 +25,4 @@ zxcvbn = {git = "https://github.com/1Password/zxcvbn-rs.git", branch = "master"}
 pwned = "0.4"
 validator = { version = "0.12", default-features = false }
 
-#opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
-opaque-ke = { path = "../../opaque-ke" }
+opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git", branch = "master" }
