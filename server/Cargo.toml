@@ -20,5 +20,3 @@ anyhow = "1.0"
 sqlx = { version = "0.4", default-features = false, features = [ "mysql","runtime-async-std-rustls" ] }
 
 opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git", branch = "master" }
-generic-bytes = "0.1"
-generic-array = "0.14"

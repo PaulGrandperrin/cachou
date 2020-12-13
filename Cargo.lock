@@ -2517,8 +2517,6 @@ dependencies = [
  "anyhow",
  "async-std",
  "common",
- "generic-array",
- "generic-bytes",
  "opaque-ke",
  "rand 0.7.3",
  "rand_core",
