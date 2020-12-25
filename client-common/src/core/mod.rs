@@ -58,7 +58,6 @@ impl Session {
         let client_registration_start_result = opaque_ke::ClientRegistration::<common::crypto::Default>::start(
             &mut client_rng,
             b"password",
-            opaque_ke::ClientRegistrationStartParameters::default(), // TODO fill
             #[cfg(test)] // only way to get rust-analyzer not complaining
             std::convert::identity, // whatever, this is not used
         )?;
@@ -72,6 +71,7 @@ impl Session {
         .finish(
             &mut client_rng,
             opaque_ke::RegistrationResponse::deserialize(&registration_response_bytes[..]).unwrap(),
+            opaque_ke::ClientRegistrationFinishParameters::default(),
         )
         .unwrap();
         let message_bytes = client_finish_registration_result.message.serialize();

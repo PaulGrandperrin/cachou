@@ -10,5 +10,8 @@ members = [
 
 [patch.crates-io]
 #rand = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.8
-rand_core = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.6
+#rand_core = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.6
 
+x25519-dalek = { git = "https://github.com/PaulGrandperrin/x25519-dalek.git", branch="patch-1" }
+curve25519-dalek = { git = "https://github.com/PaulGrandperrin/curve25519-dalek.git", branch="patch-1" }
+proptest = { git = "https://github.com/PaulGrandperrin/proptest.git", branch="master" }

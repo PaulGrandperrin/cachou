@@ -8,9 +8,8 @@ edition = "2018"
 common = { path = "../common" }
 tracing = "0.1"
 reqwest = "0.10"
-#rand = "0.7"
-rand = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.8
-rand_core = "0.5"
+rand = "0.8"
+rand_core = "0.6"
 getrandom = { version = "0.2", features = ["js"] }
 anyhow = "1.0"
 
@@ -25,4 +24,4 @@ zxcvbn = {git = "https://github.com/1Password/zxcvbn-rs.git", branch = "master"}
 pwned = "0.4"
 validator = { version = "0.12", default-features = false }
 
-opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git", branch = "master" }
+opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
