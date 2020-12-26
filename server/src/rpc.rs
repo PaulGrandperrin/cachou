@@ -1,6 +1,6 @@
 use common::api;
 use tide::{Body, Request};
-use tracing::trace;
+use tracing::{info, trace};
 
 use crate::core::auth;
 
@@ -8,6 +8,12 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
     let body = req.body_bytes().await?;
     let rpc: api::Call = rmp_serde::from_read_ref(&body)?;
     trace!("call: {:?}", rpc);
+
+    let row: (i64,) = sqlx::query_as("SELECT 1+?")
+    .bind(150_i64)
+    .fetch_one(&req.state().sql).await?;
+
+    info!("SQL IN QUERY: {}", row.0);
 
     let resp = match rpc {
         api::Call::Signup { email, password_hash, password_salt } => {

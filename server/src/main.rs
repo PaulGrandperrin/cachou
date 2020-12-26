@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use anyhow::Context;
+use sqlx::mysql::MySqlPoolOptions;
 use tide::{http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
-use tracing::metadata::LevelFilter;
+use tracing::{info, metadata::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
 mod rpc;
@@ -35,7 +38,7 @@ async fn main() -> tide::Result<()> {
 
     //let pool = sqlx::MySqlPool::connect("mysql://root@127.0.0.1:3306/test").await?;
 
-    let pool = sqlx::MySqlPool::connect_with(
+    let pool = MySqlPoolOptions::new().connect_timeout(Duration::from_secs(1)).connect_with(
 sqlx::mysql::MySqlConnectOptions::new()
             .host("localhost")
             .port(4000)
@@ -44,11 +47,13 @@ sqlx::mysql::MySqlConnectOptions::new()
             .database("test")
     ).await?;
 
+    info!("Successfully connected to DB");
+
 
     // Make a simple query to return the given parameter
     let row: (i64,) = sqlx::query_as("SELECT 1+?")
         .bind(150_i64)
-        .fetch_one(&pool).await?;   
+        .fetch_one(&pool).await?;
 
     assert_eq!(row.0, 151);
 
@@ -58,7 +63,7 @@ sqlx::mysql::MySqlConnectOptions::new()
         .allow_origin(Origin::from("*"))
         .allow_credentials(false);
 
-    let mut app = tide::with_state(state::State::new());
+    let mut app = tide::with_state(state::State::new().await?);
 
     app.with(tide_tracing::TraceMiddleware::new());
 
