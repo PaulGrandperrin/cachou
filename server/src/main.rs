@@ -1,14 +1,13 @@
-use std::time::Duration;
 
 use anyhow::Context;
-use sqlx::mysql::MySqlPoolOptions;
 use tide::{http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
-use tracing::{info, metadata::LevelFilter};
+use tracing::metadata::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
 mod rpc;
 mod core;
 mod state;
+mod db;
 
 fn setup_logger() -> anyhow::Result<()> {
 
@@ -37,26 +36,6 @@ async fn main() -> tide::Result<()> {
     setup_logger()?;
 
     //let pool = sqlx::MySqlPool::connect("mysql://root@127.0.0.1:3306/test").await?;
-
-    let pool = MySqlPoolOptions::new().connect_timeout(Duration::from_secs(1)).connect_with(
-sqlx::mysql::MySqlConnectOptions::new()
-            .host("localhost")
-            .port(4000)
-            .username("root")
-            //.password("password")
-            .database("test")
-    ).await?;
-
-    info!("Successfully connected to DB");
-
-
-    // Make a simple query to return the given parameter
-    let row: (i64,) = sqlx::query_as("SELECT 1+?")
-        .bind(150_i64)
-        .fetch_one(&pool).await?;
-
-    assert_eq!(row.0, 151);
-
 
     let cors = CorsMiddleware::new() // FIXME used for dev, probably remove later
         .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>()?)
