@@ -1,2 +1,2 @@
 
-select user_id,INET_NTOA(ip),expiration,state from opaque
+select user_id,INET_NTOA(ip),expiration,state from opaque_registration

@@ -1,7 +1,7 @@
 use std::{time::Duration};
 
 use sqlx::{Executor, Row, mysql::{MySqlConnectOptions, MySqlPoolOptions, MySqlRow}};
-use tracing::trace;
+use tracing::{error, trace};
 
 // making things generic doesn't seem very useful at this point
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ impl Db {
             .connect_with(options.clone())
             .await?;
 
-        sqlx::query("create database if not exists `?`").bind(common::consts::DATABASE_NAME).execute(&pool).await?;
+        sqlx::query(&format!("create database if not exists `{}`", common::consts::DATABASE_NAME)).execute(&pool).await?;
         drop(pool);
 
         let pool = MySqlPoolOptions::new()
@@ -52,12 +52,30 @@ impl Db {
     }
 
     async fn init(&self) -> anyhow::Result<()> {
-        self.pool.execute("create table if not exists `opaque` (`user_id` binary(32) not null, `ip` varbinary(16) not null, `expiration` timestamp not null, `state` varbinary(256) not null, primary key (user_id))").await?;
+        self.pool.execute("
+                create table if not exists `opaque_registration` (
+                    `user_id` binary(32) not null,
+                    `ip` varbinary(16) not null,
+                    `expiration` timestamp not null,
+                    `state` varbinary(32) not null,
+                    primary key (user_id)
+                )"
+            ).await?;
+
+        self.pool.execute("
+            create table if not exists `user` (
+                `user_id` binary(32) not null,
+                `opaque_password` varbinary(204) not null,
+                primary key (user_id)
+            )"
+        ).await?;
+
+
         Ok(())
     }
 
-    pub async fn save_opaque_state(&self, user_id: &[u8], ip: &str, expiration: i64, state: &[u8]) -> anyhow::Result<()> {
-        sqlx::query("insert into `opaque` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?)")
+    pub async fn save_opaque_registration_state(&self, user_id: &[u8], ip: &str, expiration: i64, state: &[u8]) -> anyhow::Result<()> {
+        sqlx::query("insert into `opaque_registration` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?)")
         .bind(user_id)
         .bind(ip)
         .bind(expiration)
@@ -66,8 +84,33 @@ impl Db {
         Ok(())
     }
 
-    pub async fn restore_opaque_state(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
-        let row: MySqlRow = sqlx::query("select state from `opaque` where `user_id` = ?")
+    pub async fn restore_opaque_registration_state(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
+        let mut tx = self.pool.begin().await?;
+        
+        let row: MySqlRow = sqlx::query("select `state` from `opaque_registration` where `user_id` = ?")
+        .bind(user_id)
+        .fetch_one(&mut tx).await?;
+        let state: Vec<u8> = row.try_get(0)?;
+
+        sqlx::query("delete from `opaque_registration` where `user_id` = ?")
+        .bind(user_id)
+        .execute(&mut tx).await?;
+
+        tx.commit().await?;
+
+        Ok(state)
+    }
+
+    pub async fn save_user_opaque_password(&self, user_id: &[u8], opaque_password: &[u8]) -> anyhow::Result<()> {
+        sqlx::query("insert into `user` values (?, ?)")
+        .bind(user_id)
+        .bind(opaque_password)
+        .execute(&self.pool).await?;
+        Ok(())
+    }
+
+    pub async fn restore_user_opaque_password(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
+        let row: MySqlRow = sqlx::query("select `opaque_password` from `user` where `user_id` = ?")
         .bind(user_id)
         .fetch_one(&self.pool).await?;
 

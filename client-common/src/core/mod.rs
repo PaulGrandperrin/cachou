@@ -63,7 +63,7 @@ impl Session {
         .finish(
             &mut client_rng,
             opaque_ke::RegistrationResponse::deserialize(&opaque_msg[..]).unwrap(),
-            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::DOMAIN_NAME.as_bytes().to_vec()),
+            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_IDS.to_vec()),
         )
         .unwrap();
         let message_bytes = client_finish_registration_result.message.serialize();

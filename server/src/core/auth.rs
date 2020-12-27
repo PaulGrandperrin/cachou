@@ -24,7 +24,7 @@ pub async fn signup_start(req: &Request<crate::state::State>, opaque_msg: &[u8])
     trace!("client ip: {:?}", &ip);
     let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
     
-    req.state().db.save_opaque_state(&user_id, ip, expiration, &opaque_state).await?;
+    req.state().db.save_opaque_registration_state(&user_id, ip, expiration, &opaque_state).await?;
 
     Ok(api::RespSignupStart {
         user_id: user_id.to_vec(),
@@ -35,16 +35,14 @@ pub async fn signup_start(req: &Request<crate::state::State>, opaque_msg: &[u8])
 
 pub async fn signup_finish(req: &Request<crate::state::State>, user_id: &[u8], opaque_msg: &[u8]) -> anyhow::Result<api::RespSignupFinish> {
 
-    let opaque_state = req.state().db.restore_opaque_state(&user_id).await?;
+    let opaque_state = req.state().db.restore_opaque_registration_state(&user_id).await?;
     let opaque_state = opaque_ke::ServerRegistration::<common::crypto::Default>::try_from(&opaque_state[..])?;
 
-    let password_file = opaque_state
+    let opaque_password = opaque_state
         .finish(opaque_ke::RegistrationUpload::deserialize(&opaque_msg[..]).unwrap())
-        .unwrap();
+        .unwrap().to_bytes();
 
-    let _p = password_file.to_bytes();
-    
-    error!("finish");
+    req.state().db.save_user_opaque_password(user_id, &opaque_password).await?;
 
     Ok(api::RespSignupFinish)
 }

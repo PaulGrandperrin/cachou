@@ -1,2 +1,2 @@
 pub const DATABASE_NAME: &str = "cachou";
-pub const DOMAIN_NAME: &str = "cachou.org";
+pub const OPAQUE_IDS: [u8; 32] = hex_literal::hex!("71a39610745b1f6601ec0699e32452175fd722f9dad797fb43276bb013c706ce"); // our domain name might change, so let's just use some random bytes
