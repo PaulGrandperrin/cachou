@@ -1,3 +1,4 @@
+use common::api::RespSignupStart;
 use rand::Rng;
 use tracing::{info, trace};
 
@@ -40,18 +41,8 @@ impl Session {
         info!("derived key: {:X?}", password_hash);
 
         self.sym_key = Some(password_hash.clone());
-
-        let ret = self.rpc_client.signup(email, password_hash, password_salt).await?;
-
         
         // OPAQUE
- 
-        let userid = self.rpc_client.signup_get_userid().await?;
-        trace!("userid: {:X?}", &userid);
-
-        // on server, once:
-        let mut rng = rand_core::OsRng;
-        let server_kp = <common::crypto::Default as opaque_ke::ciphersuite::CipherSuite>::generate_random_keypair(&mut rng)?;
         
         info!("ClientRegistration start");
         let mut client_rng = rand_core::OsRng;
@@ -62,7 +53,8 @@ impl Session {
             std::convert::identity, // whatever, this is not used
         )?;
 
-        let registration_response_bytes = self.rpc_client.signup_opaque_start(client_registration_start_result.message.serialize()).await?;
+        let RespSignupStart { user_id, opaque_msg } = self.rpc_client.signup_start(client_registration_start_result.message.serialize()).await?;
+        trace!("user_id: {:X?}", &user_id);
 
         // Server sends registration_response_bytes to client
         info!("ClientRegistration finish");
@@ -70,26 +62,16 @@ impl Session {
         .state
         .finish(
             &mut client_rng,
-            opaque_ke::RegistrationResponse::deserialize(&registration_response_bytes[..]).unwrap(),
-            opaque_ke::ClientRegistrationFinishParameters::default(),
+            opaque_ke::RegistrationResponse::deserialize(&opaque_msg[..]).unwrap(),
+            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::DOMAIN_NAME.as_bytes().to_vec()),
         )
         .unwrap();
         let message_bytes = client_finish_registration_result.message.serialize();
 
-        // Client sends message_bytes to server
-        /*
-        info!("ServerRegistration finish");
-        let password_file = server_registration_start_result
-            .state
-            .finish(opaque_ke::RegistrationUpload::deserialize(&message_bytes[..]).unwrap())
-            .unwrap();
 
-        let _p = password_file.to_bytes();
-        */
+        self.rpc_client.signup_finish(user_id, message_bytes).await?;
 
-        // END OPAQUE
-
-        Ok(ret)
+        Ok("hey".to_owned())
 
     }
 }

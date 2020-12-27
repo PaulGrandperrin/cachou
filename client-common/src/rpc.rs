@@ -1,3 +1,4 @@
+use common::api;
 
 
 pub struct Client {
@@ -13,33 +14,22 @@ impl Client {
         }
     }
 
-    pub async fn signup (
-            &self,
-            email: impl Into<String>,
-            password_hash: impl Into<Vec<u8>>,
-            password_salt: impl Into<Vec<u8>>)
-            -> anyhow::Result<String> {
-    
-        let req = common::api::Call::Signup {
-            email: email.into(),
-            password_hash: password_hash.into(),
-            password_salt: password_salt.into(),
-        };
-
+    pub async fn signup_start(&self, opaque_msg: Vec<u8>) -> anyhow::Result<api::RespSignupStart> {
+        let req = common::api::Call::SignupStart { opaque_msg };
         let body = rmp_serde::to_vec_named(&req)?;
-    
+
         let res = self.reqwest_client.post(&self.url)
             .body(body)
             .send()
             .await?;
-    
+
         let res = res.bytes().await?.to_vec();
-        let res: common::api::RespSignup = rmp_serde::from_slice(&res)?;
-        Ok(res.0)
+        let res: common::api::RespSignupStart = rmp_serde::from_slice(&res)?;
+        Ok(res)
     }
 
-    pub async fn signup_get_userid(&self) -> anyhow::Result<Vec<u8>> {
-        let req = common::api::Call::SignupGetUserid;
+    pub async fn signup_finish(&self, user_id: Vec<u8>, opaque_msg: Vec<u8>) -> anyhow::Result<api::RespSignupFinish> {
+        let req = common::api::Call::SignupFinish { user_id, opaque_msg };
         let body = rmp_serde::to_vec_named(&req)?;
 
         let res = self.reqwest_client.post(&self.url)
@@ -48,22 +38,8 @@ impl Client {
             .await?;
 
         let res = res.bytes().await?.to_vec();
-        let res: common::api::RespSignupGetUserid = rmp_serde::from_slice(&res)?;
-        Ok(res.0)
-    }
-
-    pub async fn signup_opaque_start(&self, message: Vec<u8>) -> anyhow::Result<Vec<u8>> {
-        let req = common::api::Call::SignupOpaqueStart { message };
-        let body = rmp_serde::to_vec_named(&req)?;
-
-        let res = self.reqwest_client.post(&self.url)
-            .body(body)
-            .send()
-            .await?;
-
-        let res = res.bytes().await?.to_vec();
-        let res: common::api::RespSignupOpaqueStart = rmp_serde::from_slice(&res)?;
-        Ok(res.0)
+        let res: common::api::RespSignupFinish = rmp_serde::from_slice(&res)?;
+        Ok(res)
     }
 
 }
