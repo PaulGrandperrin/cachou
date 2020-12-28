@@ -33,7 +33,7 @@ pub async fn signup_start(req: &Request<crate::state::State>, opaque_msg: &[u8])
 }
 
 
-pub async fn signup_finish(req: &Request<crate::state::State>, user_id: &[u8], opaque_msg: &[u8]) -> anyhow::Result<api::RespSignupFinish> {
+pub async fn signup_finish(req: &Request<crate::state::State>, user_id: &[u8], email: &str, opaque_msg: &[u8]) -> anyhow::Result<api::RespSignupFinish> {
 
     let opaque_state = req.state().db.restore_opaque_registration_state(&user_id).await?;
     let opaque_state = opaque_ke::ServerRegistration::<common::crypto::Default>::try_from(&opaque_state[..])?;
@@ -42,7 +42,7 @@ pub async fn signup_finish(req: &Request<crate::state::State>, user_id: &[u8], o
         .finish(opaque_ke::RegistrationUpload::deserialize(&opaque_msg[..]).unwrap())
         .unwrap().to_bytes();
 
-    req.state().db.save_user_opaque_password(user_id, &opaque_password).await?;
+    req.state().db.insert_user(user_id, email, &opaque_password).await?;
 
     Ok(api::RespSignupFinish)
 }

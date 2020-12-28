@@ -9,8 +9,12 @@ pub enum Call {
     },
     SignupFinish {
         user_id: Vec<u8>,
+        email: String,
         opaque_msg: Vec<u8>,
-    }
+    },
+    //GetUserIdFromEmail {
+    //    email: String
+    //}
 }
 
 #[derive(Serialize, Deserialize, Debug)]

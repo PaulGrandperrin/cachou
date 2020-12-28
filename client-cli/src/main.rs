@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()>{
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                match line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
+                match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", email, password] => {
                         let f = session.signup(email, password);
                         match futures::executor::block_on(f.compat()) {

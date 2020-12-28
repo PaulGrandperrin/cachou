@@ -28,8 +28,8 @@ impl Client {
         Ok(res)
     }
 
-    pub async fn signup_finish(&self, user_id: Vec<u8>, opaque_msg: Vec<u8>) -> anyhow::Result<api::RespSignupFinish> {
-        let req = common::api::Call::SignupFinish { user_id, opaque_msg };
+    pub async fn signup_finish(&self, user_id: Vec<u8>, email: String, opaque_msg: Vec<u8>) -> anyhow::Result<api::RespSignupFinish> {
+        let req = common::api::Call::SignupFinish { user_id, email, opaque_msg };
         let body = rmp_serde::to_vec_named(&req)?;
 
         let res = self.reqwest_client.post(&self.url)

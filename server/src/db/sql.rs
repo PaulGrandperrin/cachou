@@ -59,17 +59,18 @@ impl Db {
                     `expiration` timestamp not null,
                     `state` varbinary(32) not null,
                     primary key (user_id)
-                )"
-            ).await?;
+                )
+            ").await?;
 
         self.pool.execute("
             create table if not exists `user` (
                 `user_id` binary(32) not null,
-                `opaque_password` varbinary(204) not null,
-                primary key (user_id)
-            )"
-        ).await?;
-
+                `email` varchar(64) not null,
+                `opaque_password` varbinary(256) not null,
+                primary key (user_id),
+                unique index unique_email (email)
+            )
+        ").await?;
 
         Ok(())
     }
@@ -101,17 +102,26 @@ impl Db {
         Ok(state)
     }
 
-    pub async fn save_user_opaque_password(&self, user_id: &[u8], opaque_password: &[u8]) -> anyhow::Result<()> {
-        sqlx::query("insert into `user` values (?, ?)")
+    pub async fn insert_user(&self, user_id: &[u8], email: &str, opaque_password: &[u8]) -> anyhow::Result<()> {
+        sqlx::query("insert into `user` values (?, ?, ?)")
         .bind(user_id)
+        .bind(email)
         .bind(opaque_password)
         .execute(&self.pool).await?;
         Ok(())
     }
 
-    pub async fn restore_user_opaque_password(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
+    pub async fn get_user_password_from_user_id(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
         let row: MySqlRow = sqlx::query("select `opaque_password` from `user` where `user_id` = ?")
         .bind(user_id)
+        .fetch_one(&self.pool).await?;
+
+        Ok(row.try_get(0)?)
+    }
+
+    pub async fn get_user_id_from_email(&self, email: &str) -> anyhow::Result<Vec<u8>> {
+        let row: MySqlRow = sqlx::query("select `user_id` from `user` where `email` = ?")
+        .bind(email)
         .fetch_one(&self.pool).await?;
 
         Ok(row.try_get(0)?)
