@@ -3,28 +3,26 @@ use std::convert::TryFrom;
 use anyhow::anyhow;
 use chrono::Duration;
 use common::api;
+use opaque_ke::{CredentialFinalization, CredentialRequest, ServerLogin, ServerLoginStartParameters, keypair::KeyPair};
 use rand::Rng;
 use tide::Request;
 use tracing::{error, info, trace};
 
 pub async fn signup_start(req: &Request<crate::state::State>, opaque_msg: &[u8]) -> anyhow::Result<api::RespSignupStart> {
 
-    use opaque_ke::keypair::KeyPair;
-    let mut server_rng = rand_core::OsRng;
+    let mut rng = rand_core::OsRng;
     let opaque = opaque_ke::ServerRegistration::<common::crypto::Default>::start(
-        &mut server_rng,
-        opaque_ke::RegistrationRequest::deserialize(opaque_msg).unwrap(),
+        &mut rng,
+        opaque_ke::RegistrationRequest::deserialize(opaque_msg)?,
         req.state().opaque_pk.public(),
     )?;
     let opaque_state = opaque.state.to_bytes();
 
     let user_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    trace!("generated user_id: {:X?}", &user_id);
     let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
-    trace!("client ip: {:?}", &ip);
     let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
     
-    req.state().db.save_opaque_registration_state(&user_id, ip, expiration, &opaque_state).await?;
+    req.state().db.save_opaque_state(&user_id, ip, expiration, &opaque_state).await?;
 
     Ok(api::RespSignupStart {
         user_id: user_id.to_vec(),
@@ -35,15 +33,54 @@ pub async fn signup_start(req: &Request<crate::state::State>, opaque_msg: &[u8])
 
 pub async fn signup_finish(req: &Request<crate::state::State>, user_id: &[u8], email: &str, opaque_msg: &[u8]) -> anyhow::Result<api::RespSignupFinish> {
 
-    let opaque_state = req.state().db.restore_opaque_registration_state(&user_id).await?;
+    let opaque_state = req.state().db.restore_opaque_state(&user_id).await?;
     let opaque_state = opaque_ke::ServerRegistration::<common::crypto::Default>::try_from(&opaque_state[..])?;
 
     let opaque_password = opaque_state
-        .finish(opaque_ke::RegistrationUpload::deserialize(&opaque_msg[..]).unwrap())
-        .unwrap().to_bytes();
+        .finish(opaque_ke::RegistrationUpload::deserialize(opaque_msg)?)?.to_bytes();
 
     req.state().db.insert_user(user_id, email, &opaque_password).await?;
 
     Ok(api::RespSignupFinish)
 }
 
+pub async fn get_user_id_from_email(req: &Request<crate::state::State>, email: &str) -> anyhow::Result<api::RespGetUserIdFromEmail> {
+
+    let user_id = req.state().db.get_user_id_from_email(email).await?;
+
+    Ok(api::RespGetUserIdFromEmail{user_id})
+}
+
+pub async fn login_start(req: &Request<crate::state::State>, user_id: &[u8], opaque_msg: &[u8]) -> anyhow::Result<api::RespLoginStart> {
+    let mut rng = rand_core::OsRng;
+
+    let opaque_password = req.state().db.get_opaque_password_from_user_id(user_id).await?;
+    
+    let opaque_password = opaque_ke::ServerRegistration::<common::crypto::Default>::try_from(&opaque_password[..])?;
+    let opaque = ServerLogin::start(
+        &mut rng,
+        opaque_password,
+        req.state().opaque_pk.public(),
+        CredentialRequest::deserialize(opaque_msg)?,
+        ServerLoginStartParameters::default(), // FIXME 
+    )?;
+
+    let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
+    let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
+    req.state().db.save_opaque_state(&user_id, ip, expiration, &opaque.state.to_bytes()).await?;
+    
+    let opaque_msg = opaque.message.serialize();
+
+    Ok(api::RespLoginStart{opaque_msg})
+}
+
+pub async fn login_finish(req: &Request<crate::state::State>, user_id: &[u8], opaque_msg: &[u8]) -> anyhow::Result<api::RespLoginFinish> {
+
+    let opaque_state = req.state().db.restore_opaque_state(user_id).await?;
+    let opaque_state = opaque_ke::ServerLogin::<common::crypto::Default>::try_from(&opaque_state[..])?;
+    let opaque_log_finish_result =opaque_state.finish(CredentialFinalization::deserialize(opaque_msg)?)?;
+
+    //opaque_log_finish_result.shared_secret
+
+    Ok(api::RespLoginFinish)
+}

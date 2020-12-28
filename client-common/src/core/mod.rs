@@ -1,5 +1,5 @@
-use common::api::RespSignupStart;
-use opaque_ke::{ClientLogin, ClientLoginStartParameters};
+use common::api::{RespGetUserIdFromEmail, RespLoginStart, RespSignupStart};
+use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, CredentialResponse};
 use rand::Rng;
 use tracing::{info, trace};
 
@@ -48,7 +48,6 @@ impl Session {
         
         // OPAQUE
         
-        info!("ClientRegistration start");
         let mut rng = rand_core::OsRng;
         let opaque_reg_start = opaque_ke::ClientRegistration::<common::crypto::Default>::start(
             &mut rng,
@@ -60,16 +59,13 @@ impl Session {
         let RespSignupStart { user_id, opaque_msg } = self.rpc_client.signup_start(opaque_reg_start.message.serialize()).await?;
         trace!("user_id: {:X?}", &user_id);
 
-        // Server sends registration_response_bytes to client
-        info!("ClientRegistration finish");
         let opaque_reg_finish = opaque_reg_start
         .state
         .finish(
             &mut rng,
-            opaque_ke::RegistrationResponse::deserialize(&opaque_msg[..]).unwrap(),
-            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_IDS.to_vec()),
-        )
-        .unwrap();
+            opaque_ke::RegistrationResponse::deserialize(&opaque_msg[..])?,
+            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+        )?;
         let message_bytes = opaque_reg_finish.message.serialize();
 
 
@@ -79,16 +75,29 @@ impl Session {
 
     }
 
-    pub async fn login(&mut self, email: &str, password: &str) -> anyhow::Result<()> {
+    pub async fn login(&mut self, email: impl Into<String>, password: &str) -> anyhow::Result<()> {
         let mut rng = rand_core::OsRng;
 
-        let opque_log_start = ClientLogin::<common::crypto::Default>::start(
+        let RespGetUserIdFromEmail{user_id} = self.rpc_client.get_user_id_from_email(email.into()).await?;
+
+        let opaque_log_start = ClientLogin::<common::crypto::Default>::start(
             &mut rng,
-            b"password", // FIXME
-            ClientLoginStartParameters::WithInfoAndIdentifiers(b"".to_vec(), b"".to_vec(), b"".to_vec()),
+            password.as_bytes(),
+            ClientLoginStartParameters::WithInfoAndIdentifiers(vec![], user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
             #[cfg(test)] // only way to get rust-analyzer not complaining
             std::convert::identity, // whatever, this is not used
         )?;
+
+        let RespLoginStart {opaque_msg} = self.rpc_client.login_start(user_id.clone(), opaque_log_start.message.serialize()).await?;
+
+        let opaque_log_finish = opaque_log_start.state.finish(
+            CredentialResponse::deserialize(&opaque_msg)?, 
+            ClientLoginFinishParameters::default(), // FIXME
+        )?;
+
+        self.rpc_client.login_finish(user_id, opaque_log_finish.message.serialize()).await?;
+
+        //opaque_log_finish.shared_secret
 
         Ok(())
     }

@@ -53,11 +53,11 @@ impl Db {
 
     async fn init(&self) -> anyhow::Result<()> {
         self.pool.execute("
-                create table if not exists `opaque_registration` (
+                create table if not exists `opaque_state` (
                     `user_id` binary(32) not null,
                     `ip` varbinary(16) not null,
                     `expiration` timestamp not null,
-                    `state` varbinary(32) not null,
+                    `state` varbinary(128) not null,
                     primary key (user_id)
                 )
             ").await?;
@@ -75,8 +75,9 @@ impl Db {
         Ok(())
     }
 
-    pub async fn save_opaque_registration_state(&self, user_id: &[u8], ip: &str, expiration: i64, state: &[u8]) -> anyhow::Result<()> {
-        sqlx::query("insert into `opaque_registration` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?)")
+    pub async fn save_opaque_state(&self, user_id: &[u8], ip: &str, expiration: i64, state: &[u8]) -> anyhow::Result<()> {
+        tracing::error!("LEN {}", state.len());
+        sqlx::query("replace into `opaque_state` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?)")
         .bind(user_id)
         .bind(ip)
         .bind(expiration)
@@ -85,15 +86,15 @@ impl Db {
         Ok(())
     }
 
-    pub async fn restore_opaque_registration_state(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
+    pub async fn restore_opaque_state(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
         let mut tx = self.pool.begin().await?;
         
-        let row: MySqlRow = sqlx::query("select `state` from `opaque_registration` where `user_id` = ?")
+        let row: MySqlRow = sqlx::query("select `state` from `opaque_state` where `user_id` = ?")
         .bind(user_id)
         .fetch_one(&mut tx).await?;
         let state: Vec<u8> = row.try_get(0)?;
 
-        sqlx::query("delete from `opaque_registration` where `user_id` = ?")
+        sqlx::query("delete from `opaque_state` where `user_id` = ?")
         .bind(user_id)
         .execute(&mut tx).await?;
 
@@ -111,7 +112,7 @@ impl Db {
         Ok(())
     }
 
-    pub async fn get_user_password_from_user_id(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
+    pub async fn get_opaque_password_from_user_id(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
         let row: MySqlRow = sqlx::query("select `opaque_password` from `user` where `user_id` = ?")
         .bind(user_id)
         .fetch_one(&self.pool).await?;

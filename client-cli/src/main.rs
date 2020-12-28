@@ -60,6 +60,18 @@ fn main() -> anyhow::Result<()>{
                         };
                         
                     }
+                    ["login", email, password] => {
+                        let f = session.login(email, password);
+                        match futures::executor::block_on(f.compat()) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                        };
+                        
+                    }
                     _ => {
                         tracing::error!("unknown command");
                     }

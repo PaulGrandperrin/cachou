@@ -42,5 +42,47 @@ impl Client {
         Ok(res)
     }
 
+    pub async fn get_user_id_from_email(&self, email: String) -> anyhow::Result<api::RespGetUserIdFromEmail> {
+        let req = common::api::Call::GetUserIdFromEmail { email };
+        let body = rmp_serde::to_vec_named(&req)?;
+
+        let res = self.reqwest_client.post(&self.url)
+            .body(body)
+            .send()
+            .await?;
+
+        let res = res.bytes().await?.to_vec();
+        let res: common::api::RespGetUserIdFromEmail = rmp_serde::from_slice(&res)?;
+        Ok(res)
+    }
+
+    pub async fn login_start(&self, user_id: Vec<u8>, opaque_msg: Vec<u8>) -> anyhow::Result<api::RespLoginStart> {
+        let req = common::api::Call::LoginStart { user_id, opaque_msg };
+        let body = rmp_serde::to_vec_named(&req)?;
+
+        let res = self.reqwest_client.post(&self.url)
+            .body(body)
+            .send()
+            .await?;
+
+        let res = res.bytes().await?.to_vec();
+        let res: common::api::RespLoginStart = rmp_serde::from_slice(&res)?;
+        Ok(res)
+    }
+
+    pub async fn login_finish(&self, user_id: Vec<u8>, opaque_msg: Vec<u8>) -> anyhow::Result<api::RespLoginFinish> {
+        let req = common::api::Call::LoginFinish { user_id, opaque_msg };
+        let body = rmp_serde::to_vec_named(&req)?;
+
+        let res = self.reqwest_client.post(&self.url)
+            .body(body)
+            .send()
+            .await?;
+
+        let res = res.bytes().await?.to_vec();
+        let res: common::api::RespLoginFinish = rmp_serde::from_slice(&res)?;
+        Ok(res)
+    }
+
 }
 

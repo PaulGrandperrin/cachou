@@ -12,9 +12,17 @@ pub enum Call {
         email: String,
         opaque_msg: Vec<u8>,
     },
-    //GetUserIdFromEmail {
-    //    email: String
-    //}
+    GetUserIdFromEmail {
+        email: String
+    },
+    LoginStart {
+        user_id: Vec<u8>,
+        opaque_msg: Vec<u8>,
+    },
+    LoginFinish {
+        user_id: Vec<u8>,
+        opaque_msg: Vec<u8>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -25,3 +33,16 @@ pub struct RespSignupStart {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RespSignupFinish;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RespGetUserIdFromEmail {
+    pub user_id: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RespLoginStart {
+    pub opaque_msg: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RespLoginFinish;
