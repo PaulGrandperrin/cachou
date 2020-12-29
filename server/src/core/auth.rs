@@ -15,7 +15,7 @@ pub async fn signup_start(req: &Request<crate::state::State>, opaque_msg: &[u8])
     let opaque = ServerRegistration::<OpaqueConf>::start(
         &mut rng,
         RegistrationRequest::deserialize(opaque_msg)?,
-        req.state().opaque_pk.public(),
+        req.state().opaque_kp.public(),
     )?;
     let opaque_state = opaque.state.to_bytes();
 
@@ -61,7 +61,7 @@ pub async fn login_start(req: &Request<crate::state::State>, user_id: &[u8], opa
     let opaque = ServerLogin::start(
         &mut rng,
         opaque_password,
-        req.state().opaque_pk.public(),
+        req.state().opaque_kp.private(),
         CredentialRequest::deserialize(opaque_msg)?,
         ServerLoginStartParameters::default(), // FIXME 
     )?;
