@@ -15,10 +15,6 @@ anyhow = "1.0"
 
 rmp-serde = "0.15"
 
-# key derivation
-blake2b_simd = "0.5"
-rust-argon2 = "0.8"
-
 # password and email check
 zxcvbn = {git = "https://github.com/1Password/zxcvbn-rs.git", branch = "master"} # includes a patch to work in wasm
 pwned = "0.4"

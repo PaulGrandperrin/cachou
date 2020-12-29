@@ -15,6 +15,7 @@ fn setup_logger() -> anyhow::Result<()> {
         .add_directive(LevelFilter::WARN.into())
         // Set the max level for `my_crate::my_mod` to DEBUG, overriding
         // any directives parsed from the env variable.
+        .add_directive("common=trace".parse()?)
         .add_directive("client_common=trace".parse()?)
         .add_directive("client_cli=trace".parse()?)
     ;

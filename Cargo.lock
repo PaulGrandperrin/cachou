@@ -610,7 +610,6 @@ name = "client-common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "blake2b_simd",
  "common",
  "getrandom 0.2.0",
  "opaque-ke",
@@ -619,7 +618,6 @@ dependencies = [
  "rand_core 0.6.0",
  "reqwest",
  "rmp-serde",
- "rust-argon2",
  "tracing",
  "validator",
  "zxcvbn",
@@ -646,6 +644,7 @@ dependencies = [
  "curve25519-dalek",
  "hex-literal",
  "opaque-ke",
+ "rust-argon2",
  "serde",
  "sha2",
  "tracing",
