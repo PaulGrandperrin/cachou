@@ -76,7 +76,6 @@ impl Db {
     }
 
     pub async fn save_opaque_state(&self, user_id: &[u8], ip: &str, expiration: i64, state: &[u8]) -> anyhow::Result<()> {
-        tracing::error!("LEN {}", state.len());
         sqlx::query("replace into `opaque_state` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?)")
         .bind(user_id)
         .bind(ip)

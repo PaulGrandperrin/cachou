@@ -3,17 +3,18 @@ use std::convert::TryFrom;
 use anyhow::anyhow;
 use chrono::Duration;
 use common::api;
-use opaque_ke::{CredentialFinalization, CredentialRequest, ServerLogin, ServerLoginStartParameters, keypair::KeyPair};
+use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use tide::Request;
 use tracing::{error, info, trace};
+use common::crypto::OpaqueConf;
 
 pub async fn signup_start(req: &Request<crate::state::State>, opaque_msg: &[u8]) -> anyhow::Result<api::RespSignupStart> {
 
     let mut rng = rand_core::OsRng;
-    let opaque = opaque_ke::ServerRegistration::<common::crypto::Default>::start(
+    let opaque = ServerRegistration::<OpaqueConf>::start(
         &mut rng,
-        opaque_ke::RegistrationRequest::deserialize(opaque_msg)?,
+        RegistrationRequest::deserialize(opaque_msg)?,
         req.state().opaque_pk.public(),
     )?;
     let opaque_state = opaque.state.to_bytes();
@@ -34,12 +35,12 @@ pub async fn signup_start(req: &Request<crate::state::State>, opaque_msg: &[u8])
 pub async fn signup_finish(req: &Request<crate::state::State>, user_id: &[u8], email: &str, opaque_msg: &[u8]) -> anyhow::Result<api::RespSignupFinish> {
 
     let opaque_state = req.state().db.restore_opaque_state(&user_id).await?;
-    let opaque_state = opaque_ke::ServerRegistration::<common::crypto::Default>::try_from(&opaque_state[..])?;
+    let opaque_state = ServerRegistration::<OpaqueConf>::try_from(&opaque_state[..])?;
 
     let opaque_password = opaque_state
-        .finish(opaque_ke::RegistrationUpload::deserialize(opaque_msg)?)?.to_bytes();
+        .finish(RegistrationUpload::deserialize(opaque_msg)?)?;
 
-    req.state().db.insert_user(user_id, email, &opaque_password).await?;
+    req.state().db.insert_user(user_id, email, &opaque_password.to_bytes()).await?;
 
     Ok(api::RespSignupFinish)
 }
@@ -56,7 +57,7 @@ pub async fn login_start(req: &Request<crate::state::State>, user_id: &[u8], opa
 
     let opaque_password = req.state().db.get_opaque_password_from_user_id(user_id).await?;
     
-    let opaque_password = opaque_ke::ServerRegistration::<common::crypto::Default>::try_from(&opaque_password[..])?;
+    let opaque_password = ServerRegistration::<OpaqueConf>::try_from(&opaque_password[..])?;
     let opaque = ServerLogin::start(
         &mut rng,
         opaque_password,
@@ -77,7 +78,7 @@ pub async fn login_start(req: &Request<crate::state::State>, user_id: &[u8], opa
 pub async fn login_finish(req: &Request<crate::state::State>, user_id: &[u8], opaque_msg: &[u8]) -> anyhow::Result<api::RespLoginFinish> {
 
     let opaque_state = req.state().db.restore_opaque_state(user_id).await?;
-    let opaque_state = opaque_ke::ServerLogin::<common::crypto::Default>::try_from(&opaque_state[..])?;
+    let opaque_state = ServerLogin::<OpaqueConf>::try_from(&opaque_state[..])?;
     let opaque_log_finish_result =opaque_state.finish(CredentialFinalization::deserialize(opaque_msg)?)?;
 
     //opaque_log_finish_result.shared_secret

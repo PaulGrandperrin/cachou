@@ -1,7 +1,8 @@
 use common::api::{RespGetUserIdFromEmail, RespLoginStart, RespSignupStart};
-use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, CredentialResponse};
+use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use rand::Rng;
 use tracing::{info, trace};
+use common::crypto::OpaqueConf;
 
 use crate::rpc;
 
@@ -47,9 +48,8 @@ impl Session {
         */
         
         // OPAQUE
-        
         let mut rng = rand_core::OsRng;
-        let opaque_reg_start = opaque_ke::ClientRegistration::<common::crypto::Default>::start(
+        let opaque_reg_start = ClientRegistration::<OpaqueConf>::start(
             &mut rng,
             password.as_bytes(),
             #[cfg(test)] // only way to get rust-analyzer not complaining
@@ -59,15 +59,18 @@ impl Session {
         let RespSignupStart { user_id, opaque_msg } = self.rpc_client.signup_start(opaque_reg_start.message.serialize()).await?;
         trace!("user_id: {:X?}", &user_id);
 
+        
         let opaque_reg_finish = opaque_reg_start
         .state
         .finish(
             &mut rng,
-            opaque_ke::RegistrationResponse::deserialize(&opaque_msg[..])?,
-            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            RegistrationResponse::deserialize(&opaque_msg)?,
+            //opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            ClientRegistrationFinishParameters::default(),
         )?;
         let message_bytes = opaque_reg_finish.message.serialize();
 
+        //opaque_reg_finish.export_key;
 
         self.rpc_client.signup_finish(user_id, email.into(), message_bytes).await?;
 
@@ -80,10 +83,11 @@ impl Session {
 
         let RespGetUserIdFromEmail{user_id} = self.rpc_client.get_user_id_from_email(email.into()).await?;
 
-        let opaque_log_start = ClientLogin::<common::crypto::Default>::start(
+        let opaque_log_start = ClientLogin::<OpaqueConf>::start (
             &mut rng,
             password.as_bytes(),
-            ClientLoginStartParameters::WithInfoAndIdentifiers(vec![], user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            //ClientLoginStartParameters::WithInfoAndIdentifiers(vec![], user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            ClientLoginStartParameters::default(),
             #[cfg(test)] // only way to get rust-analyzer not complaining
             std::convert::identity, // whatever, this is not used
         )?;
@@ -96,7 +100,6 @@ impl Session {
         )?;
 
         self.rpc_client.login_finish(user_id, opaque_log_finish.message.serialize()).await?;
-
         //opaque_log_finish.shared_secret
 
         Ok(())

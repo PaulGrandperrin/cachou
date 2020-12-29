@@ -12,12 +12,12 @@ impl<D: opaque_ke::hash::Hash> opaque_ke::slow_hash::SlowHash<D> for P {
     }
 }
 
-pub struct Default;
-impl CipherSuite for Default {
+pub struct OpaqueConf;
+impl CipherSuite for OpaqueConf {
     type Group = curve25519_dalek::ristretto::RistrettoPoint;
     type KeyFormat = opaque_ke::keypair::X25519KeyPair;
     type KeyExchange = opaque_ke::key_exchange::tripledh::TripleDH;
     type Hash = sha2::Sha256;
-    type SlowHash = P;
-    //type SlowHash = opaque_ke::slow_hash::NoOpHash;
+    //type SlowHash = P;
+    type SlowHash = opaque_ke::slow_hash::NoOpHash;
 }
