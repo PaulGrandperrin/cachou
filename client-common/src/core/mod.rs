@@ -37,8 +37,7 @@ impl Session {
         .finish(
             &mut rng,
             RegistrationResponse::deserialize(&opaque_msg)?,
-            //opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
-            ClientRegistrationFinishParameters::default(),
+            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let message_bytes = opaque_reg_finish.message.serialize();
 
@@ -55,8 +54,7 @@ impl Session {
         let opaque_log_start = ClientLogin::<OpaqueConf>::start (
             &mut rng,
             password.as_bytes(),
-            //ClientLoginStartParameters::WithInfoAndIdentifiers(vec![], user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
-            ClientLoginStartParameters::default(),
+            ClientLoginStartParameters::WithInfoAndIdentifiers(vec![], user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
             #[cfg(test)] // only way to get rust-analyzer not complaining
             std::convert::identity, // whatever, this is not used
         )?;
