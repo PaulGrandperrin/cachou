@@ -24,7 +24,7 @@ impl<D: opaque_ke::hash::Hash> SlowHash<D> for SlowHashT {
             &input,
             &vec![0u8; 8], // OPAQUE already took care of salting but argon2 require a salt of 8 bytes minimum
             &config)
-            .map_err(|_| InternalPakeError::SlowHashError)?;
+                .map_err(|_| InternalPakeError::SlowHashError)?;
         Ok(output)
     }
 }

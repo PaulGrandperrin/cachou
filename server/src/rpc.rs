@@ -7,7 +7,7 @@ use crate::core::auth;
 pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
     let body = req.body_bytes().await?;
     let rpc: api::Call = rmp_serde::from_read_ref(&body)?;
-    trace!("call: {:?}", rpc);
+    trace!("call: {}", rpc);
 
     let resp = match rpc {
         api::Call::SignupStart { opaque_msg } => {

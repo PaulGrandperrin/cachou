@@ -18,7 +18,7 @@ fn setup_logger() -> anyhow::Result<()> {
         // any directives parsed from the env variable.
         .add_directive("common=trace".parse()?)
         .add_directive("server=trace".parse()?)
-        .add_directive("tide_tracing=trace".parse()?);
+        .add_directive("tide_tracing=info".parse()?);
 
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
