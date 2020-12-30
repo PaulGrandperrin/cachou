@@ -1,13 +1,9 @@
-
 use anyhow::Context;
 use tide::{http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
-mod rpc;
-mod core;
-mod state;
-mod db;
+use server::*;
 
 fn setup_logger() -> anyhow::Result<()> {
 
