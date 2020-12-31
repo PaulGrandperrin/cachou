@@ -7,14 +7,12 @@ use common::crypto::OpaqueConf;
 use crate::rpc;
 
 pub struct Session {
-    sym_key: Option<Vec<u8>>,
     rpc_client: rpc::Client,
 }
 
 impl Session {
     pub fn new() -> Self {
         Self {
-            sym_key: None,
             rpc_client: rpc::Client::new("http://127.0.0.1:8081/api"),
         }
     }

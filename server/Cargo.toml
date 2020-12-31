@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Paul Grandperrin <paul.grandperrin@gmail.com>"]
 edition = "2018"
 
+default-run = "server"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -19,5 +20,8 @@ rand_core = "0.6"
 anyhow = "1.0"
 sqlx = { version = "0.4", default-features = false, features = [ "mysql","runtime-async-std-rustls" ] }
 chrono = "0.4"
+structopt = "0.3"
+generic-bytes = "0.1"
+generic-array = "0.14"
 
 opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }

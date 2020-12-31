@@ -41,6 +41,11 @@ impl Db {
         Ok(db)
     }
 
+    pub async fn drop_database(&self) -> anyhow::Result<()> {
+        self.pool.execute(&*format!("drop database `{}`", common::consts::DATABASE_NAME)).await?;
+        Ok(())
+    }
+
     pub async fn test(&self) -> anyhow::Result<()> {
         // Make a simple query to return the given parameter
         let row: (i64,) = sqlx::query_as("SELECT 1+?")

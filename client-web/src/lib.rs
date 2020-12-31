@@ -1,7 +1,7 @@
 #![feature(never_type)]
 #![feature(once_cell)]
 #![recursion_limit="512"]
-
+#![allow(unused_imports)]
 
 // Use `wee_alloc` as the global allocator.
 //#[global_allocator]

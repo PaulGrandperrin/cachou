@@ -79,7 +79,7 @@ pub async fn login_finish(req: &Request<crate::state::State>, user_id: &[u8], op
 
     let opaque_state = req.state().db.restore_opaque_state(user_id).await?;
     let opaque_state = ServerLogin::<OpaqueConf>::try_from(&opaque_state[..])?;
-    let opaque_log_finish_result =opaque_state.finish(CredentialFinalization::deserialize(opaque_msg)?)?;
+    let _opaque_log_finish_result =opaque_state.finish(CredentialFinalization::deserialize(opaque_msg)?)?;
 
     //opaque_log_finish_result.shared_secret
 

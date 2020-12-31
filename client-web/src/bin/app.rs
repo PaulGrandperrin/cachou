@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 cfg_if::cfg_if! {
     if #[cfg(feature = "logging")] {
         fn init_log() {
