@@ -1,4 +1,3 @@
-use common::api::{RespGetUserIdFromEmail, RespLoginStart, RespSignupStart};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use rand::Rng;
 use tracing::{info, trace};
@@ -26,9 +25,11 @@ impl Session {
             std::convert::identity, // whatever, this is not used
         )?;
 
-        let RespSignupStart { user_id, opaque_msg } = self.rpc_client.signup_start(opaque_reg_start.message.serialize()).await?;
-        trace!("user_id: {:X?}", &user_id);
+        let (user_id, opaque_msg) = self.rpc_client.call(
+            common::api::SignupStart{opaque_msg: opaque_reg_start.message.serialize()}
+        ).await?;
 
+        trace!("user_id: {:X?}", &user_id);
         
         let opaque_reg_finish = opaque_reg_start
         .state
@@ -37,9 +38,11 @@ impl Session {
             RegistrationResponse::deserialize(&opaque_msg)?,
             opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
-        let message_bytes = opaque_reg_finish.message.serialize();
+        let opaque_msg = opaque_reg_finish.message.serialize();
 
-        self.rpc_client.signup_finish(user_id, email.into(), message_bytes).await?;
+        self.rpc_client.call(
+            common::api::SignupFinish{user_id, email: email.into(), opaque_msg}
+        ).await?;
 
         Ok(opaque_reg_finish.export_key.to_vec())
     }
@@ -47,7 +50,9 @@ impl Session {
     pub async fn login(&mut self, email: impl Into<String>, password: &str) -> anyhow::Result<Vec<u8>> {
         let mut rng = rand_core::OsRng;
 
-        let RespGetUserIdFromEmail{user_id} = self.rpc_client.get_user_id_from_email(email.into()).await?;
+        let user_id = self.rpc_client.call(
+            common::api::GetUserIdFromEmail{email: email.into()}
+        ).await?;
 
         let opaque_log_start = ClientLogin::<OpaqueConf>::start (
             &mut rng,
@@ -57,15 +62,19 @@ impl Session {
             std::convert::identity, // whatever, this is not used
         )?;
 
-        let RespLoginStart {opaque_msg} = self.rpc_client.login_start(user_id.clone(), opaque_log_start.message.serialize()).await?;
+        let opaque_msg = self.rpc_client.call(
+            common::api::LoginStart{user_id: user_id.clone(), opaque_msg: opaque_log_start.message.serialize()}
+        ).await?;
 
         let opaque_log_finish = opaque_log_start.state.finish(
             CredentialResponse::deserialize(&opaque_msg)?, 
             ClientLoginFinishParameters::default(), // FIXME
         )?;
+        let opaque_msg = opaque_log_finish.message.serialize();
 
-        self.rpc_client.login_finish(user_id, opaque_log_finish.message.serialize()).await?;
-        
+        self.rpc_client.call(
+            common::api::LoginFinish{user_id, opaque_msg}
+        ).await?;
 
         Ok(opaque_log_finish.export_key.to_vec())
     }

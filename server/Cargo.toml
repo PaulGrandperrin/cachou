@@ -23,5 +23,7 @@ chrono = "0.4"
 structopt = "0.3"
 generic-bytes = "0.1"
 generic-array = "0.14"
+serde = "1.0"
+async-trait = "0.1"
 
 opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }

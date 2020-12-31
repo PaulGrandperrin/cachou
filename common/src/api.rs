@@ -1,54 +1,75 @@
-use serde::{Serialize, Deserialize};
-use derive_more::Display;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use derive_more::Display; // TODO remove
 
-// TODO feature gate serialize/deserialize for client/server
-
-#[derive(Serialize, Deserialize, Debug, Display)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
-    #[display(fmt = "SignupStart")]
-    SignupStart {
-        opaque_msg: Vec<u8>,
-    },
-    #[display(fmt = "SignupFinish")]
-    SignupFinish {
-        user_id: Vec<u8>,
-        email: String,
-        opaque_msg: Vec<u8>,
-    },
-    #[display(fmt = "GetUserIdFromEmail")]
-    GetUserIdFromEmail {
-        email: String
-    },
-    #[display(fmt = "LoginStart")]
-    LoginStart {
-        user_id: Vec<u8>,
-        opaque_msg: Vec<u8>,
-    },
-    #[display(fmt = "LoginFinish")]
-    LoginFinish {
-        user_id: Vec<u8>,
-        opaque_msg: Vec<u8>,
-    },
+    GetUserIdFromEmail(GetUserIdFromEmail),
+    SignupStart(SignupStart),
+    SignupFinish(SignupFinish),
+    LoginStart(LoginStart),
+    LoginFinish(LoginFinish),
 }
 
+pub trait Rpc: Serialize {
+    type Ret: DeserializeOwned; // our deserialized structs will need to be self owned to be easily given back from rpc calls
+    fn into_call(self) -> Call;
+}
+
+// GetUserIdFromEmail
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RespSignupStart {
+pub struct GetUserIdFromEmail {
+    pub email: String
+}
+impl Rpc for GetUserIdFromEmail {
+    type Ret = Vec<u8>;
+    fn into_call(self) -> Call { Call::GetUserIdFromEmail(self) }
+}
+
+// SignupStart
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SignupStart {
+    pub opaque_msg: Vec<u8>,
+}
+impl Rpc for SignupStart {
+    type Ret = (Vec<u8>, Vec<u8>);
+    fn into_call(self) -> Call { Call::SignupStart(self) }
+}
+
+// SignupFinish
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SignupFinish {
+    pub user_id: Vec<u8>,
+    pub email: String,
+    pub opaque_msg: Vec<u8>,
+}
+impl Rpc for SignupFinish {
+    type Ret = ();
+    fn into_call(self) -> Call { Call::SignupFinish(self) }
+}
+
+// LoginStart
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LoginStart {
     pub user_id: Vec<u8>,
     pub opaque_msg: Vec<u8>,
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RespSignupFinish;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RespGetUserIdFromEmail {
-    pub user_id: Vec<u8>,
+impl Rpc for LoginStart {
+    type Ret = Vec<u8>;
+    fn into_call(self) -> Call { Call::LoginStart(self) }
 }
 
+// LoginFinish
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RespLoginStart {
+pub struct LoginFinish {
+    pub user_id: Vec<u8>,
     pub opaque_msg: Vec<u8>,
 }
+impl Rpc for LoginFinish {
+    type Ret = ();
+    fn into_call(self) -> Call { Call::LoginFinish(self) }
+}
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RespLoginFinish;
+
+
+
+
