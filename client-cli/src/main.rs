@@ -5,7 +5,6 @@ use anyhow::Context;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-use tokio_compat_02::FutureExt;
 use tracing::{error, metadata::LevelFilter, trace};
 use tracing_subscriber::EnvFilter; // could be async_compat::CompatExt
 
@@ -37,6 +36,7 @@ fn setup_logger() -> anyhow::Result<()> {
 fn main() -> anyhow::Result<()>{
     setup_logger()?;
 
+    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
     let mut session = client_common::core::Session::new();
     
     
@@ -53,7 +53,7 @@ fn main() -> anyhow::Result<()>{
                 match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", email, password] => {
                         let f = session.signup(email, password);
-                        match futures::executor::block_on(f.compat()) {
+                        match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
                             },
@@ -65,7 +65,7 @@ fn main() -> anyhow::Result<()>{
                     }
                     ["login", email, password] => {
                         let f = session.login(email, password);
-                        match futures::executor::block_on(f.compat()) {
+                        match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
                             },
