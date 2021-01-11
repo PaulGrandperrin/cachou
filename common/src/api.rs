@@ -3,7 +3,6 @@ use derive_more::Display; // TODO remove
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
-    GetUserIdFromEmail(GetUserIdFromEmail),
     SignupStart(SignupStart),
     SignupFinish(SignupFinish),
     LoginStart(LoginStart),
@@ -15,23 +14,13 @@ pub trait Rpc: Serialize {
     fn into_call(self) -> Call;
 }
 
-// GetUserIdFromEmail
-#[derive(Serialize, Deserialize, Debug)]
-pub struct GetUserIdFromEmail {
-    pub email: String
-}
-impl Rpc for GetUserIdFromEmail {
-    type Ret = Vec<u8>;
-    fn into_call(self) -> Call { Call::GetUserIdFromEmail(self) }
-}
-
 // SignupStart
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SignupStart {
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for SignupStart {
-    type Ret = (Vec<u8>, Vec<u8>);
+    type Ret = (Vec<u8>, Vec<u8>); // user_id, opaque_msg
     fn into_call(self) -> Call { Call::SignupStart(self) }
 }
 
@@ -50,11 +39,11 @@ impl Rpc for SignupFinish {
 // LoginStart
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginStart {
-    pub user_id: Vec<u8>,
+    pub email: String,
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for LoginStart {
-    type Ret = Vec<u8>;
+    type Ret = (Vec<u8>, Vec<u8>); // user_id, opaque_msg
     fn into_call(self) -> Call { Call::LoginStart(self) }
 }
 

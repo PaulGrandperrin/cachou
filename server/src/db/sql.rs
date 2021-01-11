@@ -71,7 +71,7 @@ impl Db {
             create table if not exists `user` (
                 `user_id` binary(32) not null,
                 `email` varchar(64) not null,
-                `opaque_password` varbinary(256) not null,
+                `opaque_password` varbinary(1024) not null,
                 primary key (user_id),
                 unique index unique_email (email)
             )

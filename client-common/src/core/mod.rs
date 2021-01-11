@@ -36,7 +36,7 @@ impl Session {
         .finish(
             &mut rng,
             RegistrationResponse::deserialize(&opaque_msg)?,
-            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            opaque_ke::ClientRegistrationFinishParameters::default(), //WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let opaque_msg = opaque_reg_finish.message.serialize();
 
@@ -50,25 +50,21 @@ impl Session {
     pub async fn login(&mut self, email: impl Into<String>, password: &str) -> anyhow::Result<Vec<u8>> {
         let mut rng = rand_core::OsRng;
 
-        let user_id = self.rpc_client.call(
-            common::api::GetUserIdFromEmail{email: email.into()}
-        ).await?;
-
         let opaque_log_start = ClientLogin::<OpaqueConf>::start (
             &mut rng,
             password.as_bytes(),
-            ClientLoginStartParameters::WithInfoAndIdentifiers(vec![], user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            ClientLoginStartParameters::default(),
             #[cfg(test)] // only way to get rust-analyzer not complaining
             std::convert::identity, // whatever, this is not used
         )?;
 
-        let opaque_msg = self.rpc_client.call(
-            common::api::LoginStart{user_id: user_id.clone(), opaque_msg: opaque_log_start.message.serialize()}
+        let (user_id, opaque_msg) = self.rpc_client.call(
+            common::api::LoginStart{email: email.into(), opaque_msg: opaque_log_start.message.serialize()}
         ).await?;
 
         let opaque_log_finish = opaque_log_start.state.finish(
             CredentialResponse::deserialize(&opaque_msg)?, 
-            ClientLoginFinishParameters::default(), // FIXME
+            ClientLoginFinishParameters::default(), //WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let opaque_msg = opaque_log_finish.message.serialize();
 

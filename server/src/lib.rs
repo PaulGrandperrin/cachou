@@ -1,3 +1,4 @@
+//#![feature(result_flattening)]
 #![allow(unused_imports)]
 pub mod rpc;
 pub mod core;
