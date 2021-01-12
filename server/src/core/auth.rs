@@ -59,7 +59,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) ->
         opaque_password,
         req.state().opaque_kp.private(),
         CredentialRequest::deserialize(&args.opaque_msg)?,
-        ServerLoginStartParameters::default(), // FIXME 
+        ServerLoginStartParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
     )?;
 
     let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;

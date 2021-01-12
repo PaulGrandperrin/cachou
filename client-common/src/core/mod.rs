@@ -36,7 +36,7 @@ impl Session {
         .finish(
             &mut rng,
             RegistrationResponse::deserialize(&opaque_msg)?,
-            opaque_ke::ClientRegistrationFinishParameters::default(), //WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let opaque_msg = opaque_reg_finish.message.serialize();
 
@@ -64,7 +64,7 @@ impl Session {
 
         let opaque_log_finish = opaque_log_start.state.finish(
             CredentialResponse::deserialize(&opaque_msg)?, 
-            ClientLoginFinishParameters::default(), //WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            ClientLoginFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let opaque_msg = opaque_log_finish.message.serialize();
 
