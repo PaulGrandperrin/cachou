@@ -7,15 +7,15 @@
 //#[global_allocator]
 //static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-use client_common::core::Session;
+use client_common::core::Client;
 use yew::prelude::*;
 use yew_router::prelude::*;
 pub mod account_creation;
 
 
-// instanciate our session as a singleton
+// instanciate our client as a singleton
 use std::{lazy::SyncLazy, sync::Mutex};
-static SESSION: SyncLazy<Mutex<Session>> = SyncLazy::new(|| Mutex::new(Session::new()));
+static CLIENT: SyncLazy<Mutex<Client>> = SyncLazy::new(|| Mutex::new(Client::new()));
 
 
 

@@ -5,11 +5,11 @@ use common::crypto::OpaqueConf;
 
 use crate::rpc;
 
-pub struct Session {
+pub struct Client {
     rpc_client: rpc::Client,
 }
 
-impl Session {
+impl Client {
     pub fn new() -> Self {
         Self {
             rpc_client: rpc::Client::new("http://127.0.0.1:8081/api"),

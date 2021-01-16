@@ -37,7 +37,7 @@ fn main() -> anyhow::Result<()>{
     setup_logger()?;
 
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
-    let mut session = client_common::core::Session::new();
+    let mut session = client_common::core::Client::new();
     
     
     // `()` can be used when no completer is required
