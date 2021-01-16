@@ -21,3 +21,7 @@ pwned = "0.4"
 validator = { version = "0.12", default-features = false }
 
 opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
+
+xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git" }
+ed25519-dalek = { git = "https://github.com/PaulGrandperrin/ed25519-dalek.git" }
+aead = "0.3"

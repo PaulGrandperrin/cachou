@@ -4,6 +4,7 @@ use pwned::api::*;
 
 mod rpc;
 pub mod core;
+mod crypto;
 
 
 pub fn check_email(email: &str) -> bool {
