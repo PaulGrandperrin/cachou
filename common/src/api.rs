@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use derive_more::Display; // TODO remove
+use derive_more::Display;
+
+use crate::crypto::{PrivateData, Sealed}; // TODO remove
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -30,6 +32,8 @@ pub struct SignupFinish {
     pub user_id: Vec<u8>,
     pub email: String,
     pub opaque_msg: Vec<u8>,
+    pub secret_id: Vec<u8>, // NOTE: this is the Sha256 of the masterkey, used as a last resort way of login in without user_id and skipping OPAQUE auth
+    pub sealed_private_data: Sealed<PrivateData>,
 }
 impl Rpc for SignupFinish {
     type Ret = ();

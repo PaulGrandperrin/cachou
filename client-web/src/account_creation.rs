@@ -47,7 +47,7 @@ impl Component for Model {
                 let email = self.email.clone();
                 let password = self.password.clone();
 
-                self.link.send_future(async move {
+/*                 self.link.send_future(async move {
                     let _drop = CLIENT.lock().unwrap().signup(&email, &password).await;
                     
                     match client_common::check_password_is_pwned(&password).await {
@@ -58,7 +58,7 @@ impl Component for Model {
                             unimplemented!()
                         }
                     }
-                });
+                }); */
             },
             Msg::Done(text) => {
                 self.processing = false;

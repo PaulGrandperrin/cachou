@@ -8,9 +8,13 @@ edition = "2018"
 
 [dependencies]
 serde = {version = "1.0", features = ["derive"]}
+rmp-serde = "0.15"
 hex-literal = "0.3"
 derive_more = "0.99"
-#derivative = "2.1"
+derivative = "2.1"
+rand = "0.8"
+rand_core = "0.6"
+anyhow = "1"
 
 # logging / tracing
 tracing = "0.1"
@@ -18,8 +22,11 @@ tracing-subscriber = "0.2"
 
 # crypto
 opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
-curve25519-dalek = "3.0"
+curve25519-dalek = "3"
+xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git" }
+ed25519-dalek = { git = "https://github.com/PaulGrandperrin/ed25519-dalek.git" }
 sha2 = "0.9"
+aead = "0.3"
 
 # key derivation
 #blake2b_simd = "0.5"

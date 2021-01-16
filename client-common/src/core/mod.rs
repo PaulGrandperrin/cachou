@@ -1,13 +1,31 @@
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use rand::Rng;
+use sha2::Digest;
 use tracing::{info, trace};
-use common::crypto::OpaqueConf;
+use common::crypto::{OpaqueConf, PrivateData, Sealed};
+use derivative::Derivative;
+use serde::{Deserialize, Serialize, Serializer, de::DeserializeOwned};
+use ed25519_dalek::Keypair;
 
 use crate::rpc;
 
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct Client {
+    #[derivative(Debug="ignore")]
     rpc_client: rpc::Client,
 }
+
+#[derive(Debug)]
+pub struct LoggedClient {
+    client: Client,
+    pdk: Vec<u8>,
+    masterkey: [u8; 32],
+    private_data: PrivateData,
+}
+
+
+
 
 impl Client {
     pub fn new() -> Self {
@@ -15,8 +33,10 @@ impl Client {
             rpc_client: rpc::Client::new("http://127.0.0.1:8081/api"),
         }
     }
+}
 
-    pub async fn signup(&mut self, email: impl Into<String>, password: &str) -> anyhow::Result<Vec<u8>> {
+impl LoggedClient {
+    pub async fn signup(client: Client, email: impl Into<String>, password: &str) -> anyhow::Result<Self> { // FIXME don't loose client on failure
         let mut rng = rand_core::OsRng;
         let opaque_reg_start = ClientRegistration::<OpaqueConf>::start(
             &mut rng,
@@ -25,7 +45,7 @@ impl Client {
             std::convert::identity, // whatever, this is not used
         )?;
 
-        let (user_id, opaque_msg) = self.rpc_client.call(
+        let (user_id, opaque_msg) = client.rpc_client.call(
             common::api::SignupStart{opaque_msg: opaque_reg_start.message.serialize()}
         ).await?;
 
@@ -40,14 +60,36 @@ impl Client {
         )?;
         let opaque_msg = opaque_reg_finish.message.serialize();
 
-        self.rpc_client.call(
-            common::api::SignupFinish{user_id, email: email.into(), opaque_msg}
+        // Instanciate our local private data
+        let masterkey = rand::random::<[u8; 32]>();
+        let secret_id = sha2::Sha256::digest(&masterkey).to_vec();
+
+        let private_data = PrivateData {
+            ident_keypair: Keypair::generate(&mut rand::thread_rng())
+        };
+        let sealed_private_data = Sealed::seal(&masterkey, &private_data, Vec::new())?;
+        
+        client.rpc_client.call(
+            common::api::SignupFinish {
+                user_id,
+                email: email.into(),
+                opaque_msg,
+                secret_id,
+                sealed_private_data,
+            }
         ).await?;
 
-        Ok(opaque_reg_finish.export_key.to_vec())
+        let pdk = opaque_reg_finish.export_key.to_vec();
+
+        Ok( Self {
+            client,
+            pdk,
+            masterkey,
+            private_data,
+        })
     }
 
-    pub async fn login(&mut self, email: impl Into<String>, password: &str) -> anyhow::Result<Vec<u8>> {
+    pub async fn login(client: Client, email: impl Into<String>, password: &str) -> anyhow::Result<Vec<u8>> {
         let mut rng = rand_core::OsRng;
 
         let opaque_log_start = ClientLogin::<OpaqueConf>::start (
@@ -58,7 +100,7 @@ impl Client {
             std::convert::identity, // whatever, this is not used
         )?;
 
-        let (user_id, opaque_msg) = self.rpc_client.call(
+        let (user_id, opaque_msg) = client.rpc_client.call(
             common::api::LoginStart{email: email.into(), opaque_msg: opaque_log_start.message.serialize()}
         ).await?;
 
@@ -68,10 +110,14 @@ impl Client {
         )?;
         let opaque_msg = opaque_log_finish.message.serialize();
 
-        self.rpc_client.call(
+        client.rpc_client.call(
             common::api::LoginFinish{user_id, opaque_msg}
         ).await?;
 
         Ok(opaque_log_finish.export_key.to_vec())
+    }
+
+    fn save_private_data(&self) {
+
     }
 }

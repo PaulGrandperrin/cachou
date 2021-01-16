@@ -11,9 +11,11 @@ reqwest = "0.11"
 rand = "0.8"
 rand_core = "0.6"
 getrandom = { version = "0.2", features = ["js"] }
-anyhow = "1.0"
+anyhow = "1"
+derivative = "2"
+sha2 = "0.9" # used to derive the secret_id from the masterkey
 
-serde = {version = "1.0", features = ["derive"]}
+serde = {version = "1.0", features = ["derive"]} 
 rmp-serde = "0.15"
 
 # password and email check
@@ -22,7 +24,4 @@ pwned = "0.4"
 validator = { version = "0.12", default-features = false }
 
 opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
-
-xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git" }
 ed25519-dalek = { git = "https://github.com/PaulGrandperrin/ed25519-dalek.git" }
-aead = "0.3"
