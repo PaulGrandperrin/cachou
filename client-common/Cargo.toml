@@ -13,6 +13,7 @@ rand_core = "0.6"
 getrandom = { version = "0.2", features = ["js"] }
 anyhow = "1.0"
 
+serde = {version = "1.0", features = ["derive"]}
 rmp-serde = "0.15"
 
 # password and email check
