@@ -6,7 +6,7 @@ use crate::db::Db;
 
 #[derive(Debug, Clone)]
 pub struct State {
-    pub opaque_kp: Arc<<common::crypto::OpaqueConf as CipherSuite>::KeyFormat>,
+    pub opaque_kp: <common::crypto::OpaqueConf as CipherSuite>::KeyFormat,
     pub db: Db,
 }
 
@@ -16,15 +16,10 @@ impl State {
         let mut sk = Vec::new();
         f.read_to_end(&mut sk).await?;
 
-        // FIXME this is a mess, see https://github.com/novifinancial/opaque-ke/issues/109
-        let sk = generic_array::GenericArray::from_slice(&sk);
-        let sk = <<<common::crypto::OpaqueConf as CipherSuite>::KeyFormat as KeyPair>::Repr as SizedBytes>::from_arr(sk)
-            .map_err(|e| anyhow::anyhow!(e))?;
-        let pk = <<common::crypto::OpaqueConf as CipherSuite>::KeyFormat as KeyPair>::public_from_private(&sk);
-        let kp = <<common::crypto::OpaqueConf as CipherSuite>::KeyFormat as KeyPair>::new(pk, sk)?;
+        let kp = <<common::crypto::OpaqueConf as CipherSuite>::KeyFormat as KeyPair>::from_private_key_slice(&sk)?;
 
         Ok(Self {
-            opaque_kp: Arc::new(kp),
+            opaque_kp: kp,
             db: Db::new().await?
         })
     }
