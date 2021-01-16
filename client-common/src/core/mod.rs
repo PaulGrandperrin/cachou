@@ -38,6 +38,9 @@ impl Client {
 impl LoggedClient {
     pub async fn signup(client: Client, email: impl Into<String>, password: &str) -> anyhow::Result<Self> { // FIXME don't loose client on failure
         let mut rng = rand_core::OsRng;
+
+        // start OPAQUE
+
         let opaque_reg_start = ClientRegistration::<OpaqueConf>::start(
             &mut rng,
             password.as_bytes(),
@@ -51,6 +54,8 @@ impl LoggedClient {
 
         trace!("user_id: {:X?}", &user_id);
         
+        // finish OPAQUE
+
         let opaque_reg_finish = opaque_reg_start
         .state
         .finish(
@@ -59,10 +64,20 @@ impl LoggedClient {
             opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let opaque_msg = opaque_reg_finish.message.serialize();
+        
+        client.rpc_client.call(
+            common::api::SignupFinish {
+                user_id: user_id.clone(),
+                opaque_msg,
+            }
+        ).await?;
 
-        // Instanciate our local private data
+        // instanciate and save user's private data
+
+        let pdk = opaque_reg_finish.export_key.to_vec();
         let masterkey = rand::random::<[u8; 32]>();
         let secret_id = sha2::Sha256::digest(&masterkey).to_vec();
+        let sealed_masterkey = Sealed::seal(&pdk, masterkey.as_ref(), Vec::new())?;
 
         let private_data = PrivateData {
             ident_keypair: Keypair::generate(&mut rand::thread_rng())
@@ -70,16 +85,14 @@ impl LoggedClient {
         let sealed_private_data = Sealed::seal(&masterkey, &private_data, Vec::new())?;
         
         client.rpc_client.call(
-            common::api::SignupFinish {
+            common::api::SignupSave {
                 user_id,
                 email: email.into(),
-                opaque_msg,
                 secret_id,
+                sealed_masterkey,
                 sealed_private_data,
             }
         ).await?;
-
-        let pdk = opaque_reg_finish.export_key.to_vec();
 
         Ok( Self {
             client,
@@ -117,7 +130,5 @@ impl LoggedClient {
         Ok(opaque_log_finish.export_key.to_vec())
     }
 
-    fn save_private_data(&self) {
 
-    }
 }

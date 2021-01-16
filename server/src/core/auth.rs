@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use anyhow::anyhow;
 use chrono::Duration;
-use common::api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupStart};
+use common::api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupSave, SignupStart};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
@@ -34,6 +34,19 @@ pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) 
 
 #[tracing::instrument]
 pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish) -> anyhow::Result<<SignupFinish as Rpc>::Ret> {
+    let opaque_state = req.state().db.restore_opaque_state(&args.user_id).await?;
+    let opaque_state = ServerRegistration::<OpaqueConf>::try_from(&opaque_state[..])?;
+
+    let opaque_password = opaque_state
+        .finish(RegistrationUpload::deserialize(&args.opaque_msg)?)?;
+
+    req.state().db.insert_user(&args.user_id, &args.email, &opaque_password.to_bytes()).await?;
+
+    Ok(())
+}
+
+#[tracing::instrument]
+pub async fn signup_save(req: Request<crate::state::State>, args: SignupSave) -> anyhow::Result<<SignupSave as Rpc>::Ret> {
     let opaque_state = req.state().db.restore_opaque_state(&args.user_id).await?;
     let opaque_state = ServerRegistration::<OpaqueConf>::try_from(&opaque_state[..])?;
 

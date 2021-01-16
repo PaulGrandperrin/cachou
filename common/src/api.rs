@@ -7,6 +7,7 @@ use crate::crypto::{PrivateData, Sealed}; // TODO remove
 pub enum Call {
     SignupStart(SignupStart),
     SignupFinish(SignupFinish),
+    SignupSave(SignupSave),
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
 }
@@ -30,14 +31,25 @@ impl Rpc for SignupStart {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SignupFinish {
     pub user_id: Vec<u8>,
-    pub email: String,
     pub opaque_msg: Vec<u8>,
-    pub secret_id: Vec<u8>, // NOTE: this is the Sha256 of the masterkey, used as a last resort way of login in without user_id and skipping OPAQUE auth
-    pub sealed_private_data: Sealed<PrivateData>,
 }
 impl Rpc for SignupFinish {
     type Ret = ();
     fn into_call(self) -> Call { Call::SignupFinish(self) }
+}
+
+// SignupSave
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SignupSave {
+    pub user_id: Vec<u8>,
+    pub email: String,
+    pub secret_id: Vec<u8>, // NOTE: this is the Sha256 of the masterkey, used as a last resort way of login in without user_id and skipping OPAQUE auth
+    pub sealed_masterkey: Sealed<Vec<u8>>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
+    pub sealed_private_data: Sealed<PrivateData>, // sealed with masterkey
+}
+impl Rpc for SignupSave {
+    type Ret = ();
+    fn into_call(self) -> Call { Call::SignupSave(self) }
 }
 
 // LoginStart
