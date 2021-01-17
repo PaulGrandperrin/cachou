@@ -3971,7 +3971,7 @@ dependencies = [
 [[package]]
 name = "xchacha8blake3siv"
 version = "0.1.0"
-source = "git+https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git#c8f60e3283491fa36b0c41814fb5f0b9a06cfd28"
+source = "git+https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git#d276c2b2347670a8ec24c70e07157a195e403827"
 dependencies = [
  "aead",
  "blake3 0.3.7 (git+https://github.com/PaulGrandperrin/BLAKE3.git?branch=xor_and_crypto_mac_0.10)",

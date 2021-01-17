@@ -58,48 +58,56 @@ impl Db {
 
     async fn init(&self) -> anyhow::Result<()> {
         self.pool.execute("
-                create table if not exists `opaque_state` (
-                    `user_id` binary(32) not null,
-                    `ip` varbinary(16) not null,
-                    `expiration` timestamp not null,
-                    `state` varbinary(128) not null,
-                    primary key (user_id)
-                )
-            ").await?;
+            create table if not exists `tmp` (
+                `user_id` binary(32) not null,
+                `ip` varbinary(16) not null,
+                `expiration` timestamp not null,
+                `field` varchar(32) not null, 
+                `data` varbinary(1024) not null,
+                primary key (user_id)
+            )
+        ").await?;
 
         self.pool.execute("
             create table if not exists `user` (
                 `user_id` binary(32) not null,
                 `email` varchar(64) not null,
                 `opaque_password` varbinary(1024) not null,
+                `secret_id` binary(32) not null,
+                `sealed_masterkey` varbinary(256) not null,
+                `sealed_private_data` varbinary(1024) not null,
                 primary key (user_id),
-                unique index unique_email (email)
+                unique index unique_email (email),
+                index secret_id (secret_id)
             )
         ").await?;
 
         Ok(())
     }
 
-    pub async fn save_opaque_state(&self, user_id: &[u8], ip: &str, expiration: i64, state: &[u8]) -> anyhow::Result<()> {
-        sqlx::query("replace into `opaque_state` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?)")
+    pub async fn save_tmp(&self, user_id: &[u8], ip: &str, expiration: i64, field: &str, data: &[u8]) -> anyhow::Result<()> {
+        sqlx::query("replace into `tmp` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?, ?)")
         .bind(user_id)
         .bind(ip)
         .bind(expiration)
-        .bind(state)
+        .bind(field)
+        .bind(data)
         .execute(&self.pool).await?;
         Ok(())
     }
 
-    pub async fn restore_opaque_state(&self, user_id: &[u8]) -> anyhow::Result<Vec<u8>> {
+    pub async fn restore_tmp(&self, user_id: &[u8], field: &str) -> anyhow::Result<Vec<u8>> {
         let mut tx = self.pool.begin().await?;
         
-        let row: MySqlRow = sqlx::query("select `state` from `opaque_state` where `user_id` = ?")
+        let row: MySqlRow = sqlx::query("select `data` from `tmp` where `user_id` = ? and `field` = ?")
         .bind(user_id)
+        .bind(field)
         .fetch_one(&mut tx).await?;
         let state: Vec<u8> = row.try_get(0)?;
 
-        sqlx::query("delete from `opaque_state` where `user_id` = ?")
+        sqlx::query("delete from `tmp` where `user_id` = ? and `field` = ?")
         .bind(user_id)
+        .bind(field)
         .execute(&mut tx).await?;
 
         tx.commit().await?;
@@ -107,11 +115,14 @@ impl Db {
         Ok(state)
     }
 
-    pub async fn insert_user(&self, user_id: &[u8], email: &str, opaque_password: &[u8]) -> anyhow::Result<()> {
-        sqlx::query("insert into `user` values (?, ?, ?)")
+    pub async fn insert_user(&self, user_id: &[u8], email: &str, opaque_password: &[u8], secret_id: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8]) -> anyhow::Result<()> {
+        sqlx::query("insert into `user` values (?, ?, ?, ?, ?, ?)")
         .bind(user_id)
         .bind(email)
         .bind(opaque_password)
+        .bind(secret_id)
+        .bind(sealed_masterkey)
+        .bind(sealed_private_data)
         .execute(&self.pool).await?;
         Ok(())
     }
@@ -130,5 +141,13 @@ impl Db {
         .fetch_one(&self.pool).await?;
 
         Ok(row.try_get(0)?)
+    }
+
+    pub async fn get_user_data_from_user_id(&self, user_id: &[u8]) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
+        let row: MySqlRow = sqlx::query("select `sealed_masterkey`, `sealed_private_data` from `user` where `user_id` = ?")
+        .bind(user_id)
+        .fetch_one(&self.pool).await?;
+
+        Ok((row.try_get(0)?, row.try_get(1)?))
     }
 }

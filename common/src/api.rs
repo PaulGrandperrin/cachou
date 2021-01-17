@@ -44,8 +44,8 @@ pub struct SignupSave {
     pub user_id: Vec<u8>,
     pub email: String,
     pub secret_id: Vec<u8>, // NOTE: this is the Sha256 of the masterkey, used as a last resort way of login in without user_id and skipping OPAQUE auth
-    pub sealed_masterkey: Sealed<Vec<u8>>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
-    pub sealed_private_data: Sealed<PrivateData>, // sealed with masterkey
+    pub sealed_masterkey: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
+    pub sealed_private_data: Vec<u8>, // sealed with masterkey
 }
 impl Rpc for SignupSave {
     type Ret = ();
@@ -70,7 +70,7 @@ pub struct LoginFinish {
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for LoginFinish {
-    type Ret = ();
+    type Ret = (Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data
     fn into_call(self) -> Call { Call::LoginFinish(self) }
 }
 

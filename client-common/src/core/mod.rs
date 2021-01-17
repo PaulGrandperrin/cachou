@@ -1,3 +1,5 @@
+use std::{iter, todo};
+
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use rand::Rng;
 use sha2::Digest;
@@ -20,7 +22,7 @@ pub struct Client {
 pub struct LoggedClient {
     client: Client,
     pdk: Vec<u8>,
-    masterkey: [u8; 32],
+    masterkey: Vec<u8>,
     private_data: PrivateData,
 }
 
@@ -75,9 +77,9 @@ impl LoggedClient {
         // instanciate and save user's private data
 
         let pdk = opaque_reg_finish.export_key.to_vec();
-        let masterkey = rand::random::<[u8; 32]>();
+        let masterkey = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
         let secret_id = sha2::Sha256::digest(&masterkey).to_vec();
-        let sealed_masterkey = Sealed::seal(&pdk, masterkey.as_ref(), Vec::new())?;
+        let sealed_masterkey = Sealed::seal(&pdk, &masterkey, Vec::new())?;
 
         let private_data = PrivateData {
             ident_keypair: Keypair::generate(&mut rand::thread_rng())
@@ -102,8 +104,10 @@ impl LoggedClient {
         })
     }
 
-    pub async fn login(client: Client, email: impl Into<String>, password: &str) -> anyhow::Result<Vec<u8>> {
+    pub async fn login(client: Client, email: impl Into<String>, password: &str) -> anyhow::Result<Self> {
         let mut rng = rand_core::OsRng;
+
+        // start OPAQUE
 
         let opaque_log_start = ClientLogin::<OpaqueConf>::start (
             &mut rng,
@@ -117,17 +121,31 @@ impl LoggedClient {
             common::api::LoginStart{email: email.into(), opaque_msg: opaque_log_start.message.serialize()}
         ).await?;
 
+        // finish OPAQUE
+
         let opaque_log_finish = opaque_log_start.state.finish(
             CredentialResponse::deserialize(&opaque_msg)?, 
             ClientLoginFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let opaque_msg = opaque_log_finish.message.serialize();
 
-        client.rpc_client.call(
+        let user_data = client.rpc_client.call(
             common::api::LoginFinish{user_id, opaque_msg}
         ).await?;
 
-        Ok(opaque_log_finish.export_key.to_vec())
+        // recover user's private data
+
+        let pdk = opaque_log_finish.export_key.to_vec();
+        let (sealed_masterkey, sealed_private_data) = user_data;
+        let masterkey = Sealed::<Vec<u8>>::unseal(&pdk, &sealed_masterkey)?.0;
+        let private_data = Sealed::<PrivateData>::unseal(&masterkey, &sealed_private_data)?.0;
+
+        Ok( Self {
+            client,
+            pdk,
+            masterkey,
+            private_data,
+        })
     }
 
 
