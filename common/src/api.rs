@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use derive_more::Display;
 
-use crate::crypto::{PrivateData, Sealed}; // TODO remove
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {

@@ -15,6 +15,7 @@ derivative = "2.1"
 rand = "0.8"
 rand_core = "0.6"
 anyhow = "1"
+generic-array = "0.14"
 
 # logging / tracing
 tracing = "0.1"
@@ -27,6 +28,7 @@ xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Si
 ed25519-dalek = { git = "https://github.com/PaulGrandperrin/ed25519-dalek.git" }
 sha2 = "0.9"
 aead = "0.3"
+digest = "0.9"
 
 # key derivation
 #blake2b_simd = "0.5"

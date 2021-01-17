@@ -2,13 +2,12 @@ use std::convert::TryFrom;
 
 use anyhow::anyhow;
 use chrono::Duration;
-use common::api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupSave, SignupStart};
+use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupSave, SignupStart}, crypto::opaque::OpaqueConf};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
 use tide::Request;
 use tracing::{error, info, trace};
-use common::crypto::OpaqueConf;
 
 #[tracing::instrument]
 pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) -> anyhow::Result<<SignupStart as Rpc>::Ret> {

@@ -60,7 +60,6 @@ fn main() -> anyhow::Result<()>{
                                 error!("{:?}", e);
                             },
                         };
-                        
                     }
                     ["login", email, password] => {
                         let f = LoggedClient::login(client_common::core::Client::new(), email, password);

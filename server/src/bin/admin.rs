@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 
 use async_std::io::prelude::WriteExt;
+use common::crypto::opaque::OpaqueConf;
 use opaque_ke::{ciphersuite::CipherSuite, keypair::KeyPair};
 use server::*;
 use tracing::error;
@@ -25,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
     match opt.command {
         Command::CreateIdentity => {
-            let kp = <common::crypto::OpaqueConf as CipherSuite>::generate_random_keypair(&mut rng).unwrap();
+            let kp = <OpaqueConf as CipherSuite>::generate_random_keypair(&mut rng).unwrap();
             let mut f = async_std::fs::File::create(common::consts::OPAQUE_PRIVATE_KEY_PATH).await?;
             f.write_all(kp.private()).await?;
         }

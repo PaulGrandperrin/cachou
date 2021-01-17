@@ -1,15 +1,19 @@
 use std::{iter, todo};
 
+use common::crypto::{opaque::OpaqueConf, sealed::Sealed};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use rand::Rng;
 use sha2::Digest;
 use tracing::{info, trace};
-use common::crypto::{OpaqueConf, PrivateData, Sealed};
 use derivative::Derivative;
 use serde::{Deserialize, Serialize, Serializer, de::DeserializeOwned};
 use ed25519_dalek::Keypair;
 
 use crate::rpc;
+
+use self::private_data::PrivateData;
+
+mod private_data;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -25,9 +29,6 @@ pub struct LoggedClient {
     masterkey: Vec<u8>,
     private_data: PrivateData,
 }
-
-
-
 
 impl Client {
     pub fn new() -> Self {
