@@ -6,6 +6,7 @@ use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupSave,
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
+use sha2::Digest;
 use tide::Request;
 use tracing::{error, info, trace};
 
@@ -50,7 +51,10 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish
 pub async fn signup_save(req: Request<crate::state::State>, args: SignupSave) -> anyhow::Result<<SignupSave as Rpc>::Ret> {
     let opaque_password = req.state().db.restore_tmp(&args.user_id, "opaque_signup_finish").await?;
 
-    req.state().db.insert_user(&args.user_id, &args.email, &opaque_password, &args.secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
+    // we hash the secret_id once more so that if someone gains temporary read access to the DB, he'll not able able to access user account later
+    let hashed_secret_id = sha2::Sha256::digest(&args.secret_id).to_vec();
+
+    req.state().db.insert_user(&args.user_id, &args.email, &opaque_password, &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
 
     Ok(())
 }

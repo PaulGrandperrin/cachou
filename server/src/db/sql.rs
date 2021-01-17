@@ -73,12 +73,12 @@ impl Db {
                 `user_id` binary(32) not null,
                 `email` varchar(64) not null,
                 `opaque_password` varbinary(1024) not null,
-                `secret_id` binary(32) not null,
+                `hashed_secret_id` binary(32) not null,
                 `sealed_masterkey` varbinary(256) not null,
                 `sealed_private_data` varbinary(1024) not null,
                 primary key (user_id),
                 unique index unique_email (email),
-                index secret_id (secret_id)
+                index hashed_secret_id (hashed_secret_id)
             )
         ").await?;
 
@@ -115,12 +115,12 @@ impl Db {
         Ok(state)
     }
 
-    pub async fn insert_user(&self, user_id: &[u8], email: &str, opaque_password: &[u8], secret_id: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8]) -> anyhow::Result<()> {
+    pub async fn insert_user(&self, user_id: &[u8], email: &str, opaque_password: &[u8], hashed_secret_id: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8]) -> anyhow::Result<()> {
         sqlx::query("insert into `user` values (?, ?, ?, ?, ?, ?)")
         .bind(user_id)
         .bind(email)
         .bind(opaque_password)
-        .bind(secret_id)
+        .bind(hashed_secret_id)
         .bind(sealed_masterkey)
         .bind(sealed_private_data)
         .execute(&self.pool).await?;

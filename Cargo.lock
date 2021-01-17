@@ -2888,6 +2888,7 @@ dependencies = [
  "rand_core 0.6.1",
  "rmp-serde",
  "serde",
+ "sha2",
  "sqlx",
  "structopt",
  "tide",
