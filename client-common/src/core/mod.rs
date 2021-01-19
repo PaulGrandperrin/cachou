@@ -47,8 +47,6 @@ impl LoggedClient {
         let opaque_reg_start = ClientRegistration::<OpaqueConf>::start(
             &mut rng,
             password.as_bytes(),
-            #[cfg(test)] // only way to get rust-analyzer not complaining
-            std::convert::identity, // whatever, this is not used
         )?;
 
         let (user_id, opaque_msg) = client.rpc_client.call(
@@ -114,8 +112,6 @@ impl LoggedClient {
             &mut rng,
             password.as_bytes(),
             ClientLoginStartParameters::default(),
-            #[cfg(test)] // only way to get rust-analyzer not complaining
-            std::convert::identity, // whatever, this is not used
         )?;
 
         let (user_id, opaque_msg) = client.rpc_client.call(
