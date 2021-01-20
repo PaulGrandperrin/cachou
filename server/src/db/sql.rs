@@ -57,7 +57,13 @@ impl Db {
     }
 
     async fn init(&self) -> anyhow::Result<()> {
-        self.pool.execute("
+
+        let mut conn = self.pool.acquire().await?;
+
+        // https://docs.pingcap.com/tidb/dev/clustered-indexes
+        conn.execute("set session tidb_enable_clustered_index = 1").await?;
+
+        conn.execute("
             create table if not exists `tmp` (
                 `user_id` binary(32) not null,
                 `ip` varbinary(16) not null,
@@ -68,7 +74,7 @@ impl Db {
             )
         ").await?;
 
-        self.pool.execute("
+        conn.execute("
             create table if not exists `user` (
                 `user_id` binary(32) not null,
                 `email` varchar(64) not null,
