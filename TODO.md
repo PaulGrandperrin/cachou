@@ -1,3 +1,7 @@
 - improve error handling, mostly around RPC logic
 - better logging/tracing
 - session handling
+- stop using email as login
+- allow changing login
+- allow changing password
+- refactor DB abstraction
