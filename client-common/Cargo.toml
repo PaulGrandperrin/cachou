@@ -19,7 +19,7 @@ serde = {version = "1.0", features = ["derive"]}
 rmp-serde = "0.15"
 
 # password and email check
-zxcvbn = {git = "https://github.com/1Password/zxcvbn-rs.git", branch = "master"} # includes a patch to work in wasm
+zxcvbn = "2"
 pwned = "0.4"
 validator = { version = "0.12", default-features = false }
 

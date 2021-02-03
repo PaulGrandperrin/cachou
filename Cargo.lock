@@ -1104,9 +1104,9 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
 name = "fancy-regex"
-version = "0.3.5"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae91abf6555234338687bb47913978d275539235fcb77ba9863b779090b42b14"
+checksum = "36996e5f56f32ca51a937f325094fa450b32df871af1a89be331b7145b931bfc"
 dependencies = [
  "bit-set",
  "regex",
@@ -4125,8 +4125,9 @@ dependencies = [
 
 [[package]]
 name = "zxcvbn"
-version = "2.0.1"
-source = "git+https://github.com/1Password/zxcvbn-rs.git?branch=master#c69d7df067f94a395cea067d69e4343bd335998c"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5f9db3a05b2ee81dcda4602487314ab654eca316f517be2e2e64175658f0dd0"
 dependencies = [
  "chrono",
  "derive_builder",
