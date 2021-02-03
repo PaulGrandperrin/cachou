@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
     match opt.command {
         Command::CreateIdentity => {
-            let kp = <OpaqueConf as CipherSuite>::generate_random_keypair(&mut rng).unwrap();
+            let kp = <OpaqueConf as CipherSuite>::generate_random_keypair(&mut rng);
             let mut f = async_std::fs::File::create(common::consts::OPAQUE_PRIVATE_KEY_PATH).await?;
             f.write_all(kp.private()).await?;
         }

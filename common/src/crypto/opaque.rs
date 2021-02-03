@@ -31,9 +31,8 @@ impl<D: opaque_ke::hash::Hash> SlowHash<D> for SlowHashArgon {
 pub struct OpaqueConf;
 impl CipherSuite for OpaqueConf {
     type Group = curve25519_dalek_ng::ristretto::RistrettoPoint;
-    type KeyFormat = opaque_ke::keypair::X25519KeyPair;
     type KeyExchange = opaque_ke::key_exchange::tripledh::TripleDH;
-    type Hash = sha2::Sha256;
+    type Hash = sha2::Sha512;
     type SlowHash = SlowHashArgon;
     //type SlowHash = opaque_ke::slow_hash::NoOpHash;
 }

@@ -7,7 +7,7 @@ use crate::db::Db;
 
 #[derive(Debug, Clone)]
 pub struct State {
-    pub opaque_kp: <OpaqueConf as CipherSuite>::KeyFormat,
+    pub opaque_kp: KeyPair::<<OpaqueConf as CipherSuite>::Group>,
     pub db: Db,
 }
 
@@ -17,7 +17,7 @@ impl State {
         let mut sk = Vec::new();
         f.read_to_end(&mut sk).await?;
 
-        let kp = <<OpaqueConf as CipherSuite>::KeyFormat as KeyPair>::from_private_key_slice(&sk)?;
+        let kp = KeyPair::from_private_key_slice(&sk)?;
 
         Ok(Self {
             opaque_kp: kp,

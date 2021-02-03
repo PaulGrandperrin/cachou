@@ -9,20 +9,16 @@ members = [
 ]
 
 [patch.crates-io]
-#rand = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.8
-#rand_core = { git = "https://github.com/rust-random/rand.git" } # waiting for version 0.6
 
-x25519-dalek = { git = "https://github.com/PaulGrandperrin/x25519-dalek.git", branch="patch-1" }
-#proptest = { git = "https://github.com/PaulGrandperrin/proptest.git", branch="master" }
 
 [profile.release]
 # less code to include into binary
-panic = 'abort' 
+panic = 'abort'
 # optimization over all codebase ( better optimization, slower build )
 codegen-units = 1
 # optimization for size ( more aggressive )
-opt-level = 3 
-# optimization for size 
-# opt-level = 's' 
+opt-level = 3
+# optimization for size
+# opt-level = 's'
 # link time optimization using using whole-program analysis
 lto = true
