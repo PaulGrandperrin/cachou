@@ -23,7 +23,7 @@ impl<T> Sealed<T> {
     pub fn seal(key: &[u8], plaindata: &T, associated_data: Vec<u8>) -> anyhow::Result<Vec<u8>>
     where T: Serialize,
     Aead: NewAead + AeadInPlace {
-        let cipher = Aead::new(Key::<Aead>::from_slice(key));
+        let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
         //let nonce = Nonce::from(rand::random::<[u8; <<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE]>()); // FIXME when const_generic are stable
         let nonce = iter::repeat_with(|| rand::random()).take(<<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
         let nonce = Nonce::from_slice(&nonce);
@@ -45,7 +45,7 @@ impl<T> Sealed<T> {
     where T: DeserializeOwned,
           Aead: NewAead + AeadInPlace {
         let mut me = rmp_serde::decode::from_slice::<Self>(this)?;
-        let cipher = Aead::new(Key::<Aead>::from_slice(key));
+        let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
         let tag = Tag::from_slice(&me.tag);
         let nonce = Nonce::from_slice(&me.nonce);
 

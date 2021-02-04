@@ -20,21 +20,21 @@ pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) 
     )?;
     let opaque_state = opaque.state.to_bytes();
 
-    let user_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
+    let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
+    let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?; // TODO remove, only write to logs
     let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
     
-    req.state().db.save_tmp(&user_id, ip, expiration, "opaque_signup_start", &opaque_state).await?;
+    req.state().db.save_tmp(&session_id, ip, expiration, "opaque_signup_start", &opaque_state).await?;
 
     Ok((
-        user_id.to_vec(),
-        opaque.message.serialize()
+        session_id.to_vec(),
+        opaque.message.serialize(),
     ))
 }
 
 #[tracing::instrument]
 pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish) -> anyhow::Result<<SignupFinish as Rpc>::Ret> {
-    let opaque_state = req.state().db.restore_tmp(&args.user_id, "opaque_signup_start").await?;
+    let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_signup_start").await?;
     let opaque_state = ServerRegistration::<OpaqueConf>::try_from(&opaque_state[..])?;
 
     let opaque_password = opaque_state
@@ -42,19 +42,20 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish
 
     let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
     let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
-    req.state().db.save_tmp(&args.user_id, ip, expiration, "opaque_signup_finish", &opaque_password.to_bytes()).await?;
+    req.state().db.save_tmp(&args.session_id, ip, expiration, "opaque_signup_finish", &opaque_password.to_bytes()).await?;
 
     Ok(())
 }
 
 #[tracing::instrument]
 pub async fn signup_save(req: Request<crate::state::State>, args: SignupSave) -> anyhow::Result<<SignupSave as Rpc>::Ret> {
-    let opaque_password = req.state().db.restore_tmp(&args.user_id, "opaque_signup_finish").await?;
+    let opaque_password = req.state().db.restore_tmp(&args.session_id, "opaque_signup_finish").await?;
 
     // we hash the secret_id once more so that if someone gains temporary read access to the DB, he'll not able able to access user account later
     let hashed_secret_id = sha2::Sha256::digest(&args.secret_id).to_vec();
 
-    req.state().db.insert_user(&args.user_id, &args.email, &opaque_password, &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
+    let user_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
+    req.state().db.insert_user(&user_id, &args.username, &opaque_password, &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
 
     Ok(())
 }
@@ -64,39 +65,44 @@ pub async fn signup_save(req: Request<crate::state::State>, args: SignupSave) ->
 pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) -> anyhow::Result<<LoginStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
 
-    let user_id = req.state().db.get_user_id_from_email(&args.email).await?;                // TODO merge 
-    let opaque_password = req.state().db.get_opaque_password_from_user_id(&user_id).await?; // with this
-    
+    let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
+    println!("1");
+    let opaque_password = req.state().db.get_opaque_password_from_username(&args.username).await?; // with this
+    println!("2");
     let opaque_password = ServerRegistration::<OpaqueConf>::try_from(&opaque_password[..])?;
     let opaque = ServerLogin::start(
         &mut rng,
         opaque_password,
         req.state().opaque_kp.private(),
         CredentialRequest::deserialize(&args.opaque_msg)?,
-        ServerLoginStartParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+        ServerLoginStartParameters::WithIdentifiers(args.username.clone().into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
     )?;
 
     let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
     let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
-    req.state().db.save_tmp(&user_id, ip, expiration, "opaque_login_start", &opaque.state.to_bytes()).await?;
+    req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_state", &opaque.state.to_bytes()).await?;
+    req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_username", args.username.as_bytes()).await?;
     
     let opaque_msg = opaque.message.serialize();
-
-    Ok((user_id, opaque_msg))
+    println!("3");
+    Ok((session_id.to_vec(), opaque_msg))
 }
 
 
 #[tracing::instrument]
 pub async fn login_finish(req: Request<crate::state::State>, args: LoginFinish) -> anyhow::Result<<LoginFinish as Rpc>::Ret> {
-    let opaque_state = req.state().db.restore_tmp(&args.user_id, "opaque_login_start").await?;
+    println!("4");
+    let username = String::from_utf8(req.state().db.restore_tmp(&args.session_id, "opaque_login_start_username").await?)?;
+    println!("5");
+    let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_login_start_state").await?;
     let opaque_state = ServerLogin::<OpaqueConf>::try_from(&opaque_state[..])?;
     let _opaque_log_finish_result =opaque_state.finish(CredentialFinalization::deserialize(&args.opaque_msg)?)?;
-
+    println!("6");
     // client is logged in
 
     //opaque_log_finish_result.shared_secret
 
-    let user_data = req.state().db.get_user_data_from_user_id(&args.user_id).await?;
+    let user_data = req.state().db.get_user_data_from_username(&username).await?;
 
     Ok(user_data)
 }

@@ -39,8 +39,9 @@ impl Client {
 }
 
 impl LoggedClient {
-    pub async fn signup(client: Client, email: impl Into<String>, password: &str) -> anyhow::Result<Self> { // FIXME don't loose client on failure
+    pub async fn signup(client: Client, username: impl Into<String>, password: &str) -> anyhow::Result<Self> { // FIXME don't loose client on failure
         let mut rng = rand_core::OsRng;
+        let username = username.into();
 
         // start OPAQUE
 
@@ -49,11 +50,9 @@ impl LoggedClient {
             password.as_bytes(),
         )?;
 
-        let (user_id, opaque_msg) = client.rpc_client.call(
+        let (session_id, opaque_msg) = client.rpc_client.call(
             common::api::SignupStart{opaque_msg: opaque_reg_start.message.serialize()}
         ).await?;
-
-        trace!("user_id: {:X?}", &user_id);
         
         // finish OPAQUE
 
@@ -62,13 +61,13 @@ impl LoggedClient {
         .finish(
             &mut rng,
             RegistrationResponse::deserialize(&opaque_msg)?,
-            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(username.clone().into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let opaque_msg = opaque_reg_finish.message.serialize();
         
         client.rpc_client.call(
             common::api::SignupFinish {
-                user_id: user_id.clone(),
+                session_id: session_id.clone(),
                 opaque_msg,
             }
         ).await?;
@@ -87,8 +86,8 @@ impl LoggedClient {
         
         client.rpc_client.call(
             common::api::SignupSave {
-                user_id,
-                email: email.into(),
+                session_id,
+                username,
                 secret_id,
                 sealed_masterkey,
                 sealed_private_data,
@@ -103,8 +102,9 @@ impl LoggedClient {
         })
     }
 
-    pub async fn login(client: Client, email: impl Into<String>, password: &str) -> anyhow::Result<Self> {
+    pub async fn login(client: Client, username: impl Into<String>, password: &str) -> anyhow::Result<Self> {
         let mut rng = rand_core::OsRng;
+        let username = username.into();
 
         // start OPAQUE
 
@@ -114,20 +114,20 @@ impl LoggedClient {
             ClientLoginStartParameters::default(),
         )?;
 
-        let (user_id, opaque_msg) = client.rpc_client.call(
-            common::api::LoginStart{email: email.into(), opaque_msg: opaque_log_start.message.serialize()}
+        let (session_id, opaque_msg) = client.rpc_client.call(
+            common::api::LoginStart{username: username.clone(), opaque_msg: opaque_log_start.message.serialize()}
         ).await?;
 
         // finish OPAQUE
 
         let opaque_log_finish = opaque_log_start.state.finish(
             CredentialResponse::deserialize(&opaque_msg)?, 
-            ClientLoginFinishParameters::WithIdentifiers(user_id.clone(), common::consts::OPAQUE_ID_S.to_vec()),
+            ClientLoginFinishParameters::WithIdentifiers(username.into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
         )?;
         let opaque_msg = opaque_log_finish.message.serialize();
 
         let user_data = client.rpc_client.call(
-            common::api::LoginFinish{user_id, opaque_msg}
+            common::api::LoginFinish{session_id, opaque_msg}
         ).await?;
 
         // recover user's private data

@@ -22,14 +22,14 @@ pub struct SignupStart {
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for SignupStart {
-    type Ret = (Vec<u8>, Vec<u8>); // user_id, opaque_msg
+    type Ret = (Vec<u8>, Vec<u8>); // session_id, opaque_msg
     fn into_call(self) -> Call { Call::SignupStart(self) }
 }
 
 // SignupFinish
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SignupFinish {
-    pub user_id: Vec<u8>,
+    pub session_id: Vec<u8>,
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for SignupFinish {
@@ -40,8 +40,8 @@ impl Rpc for SignupFinish {
 // SignupSave
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SignupSave {
-    pub user_id: Vec<u8>,
-    pub email: String,
+    pub session_id: Vec<u8>,
+    pub username: String,
     pub secret_id: Vec<u8>, // NOTE: this is the Sha256 of the masterkey, used as a last resort way of login in without user_id and skipping OPAQUE auth
     pub sealed_masterkey: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     pub sealed_private_data: Vec<u8>, // sealed with masterkey
@@ -54,18 +54,18 @@ impl Rpc for SignupSave {
 // LoginStart
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginStart {
-    pub email: String,
+    pub username: String,
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for LoginStart {
-    type Ret = (Vec<u8>, Vec<u8>); // user_id, opaque_msg
+    type Ret = (Vec<u8>, Vec<u8>); // session_id, opaque_msg
     fn into_call(self) -> Call { Call::LoginStart(self) }
 }
 
 // LoginFinish
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinish {
-    pub user_id: Vec<u8>,
+    pub session_id: Vec<u8>,
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for LoginFinish {

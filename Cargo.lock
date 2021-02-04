@@ -1089,9 +1089,9 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "encoding_rs"
-version = "0.8.26"
+version = "0.8.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "801bbab217d7f79c0062f4f7205b5d4427c6d1a7bd7aafdd1475f7c59d62b283"
+checksum = "b4dc76421b40af2cd5c644c55206e78a4961c693c8facdde2ae34c3bb8428efa"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -2133,7 +2133,7 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 [[package]]
 name = "opaque-ke"
 version = "0.3.0-pre.1"
-source = "git+https://github.com/PaulGrandperrin/opaque-ke.git?branch=master#12b454a9a1a13d6f83de6fcfc2c092dec96e8866"
+source = "git+https://github.com/PaulGrandperrin/opaque-ke.git?branch=master#b421fabee82693e3a1a5f40fca9979bf9da767e2"
 dependencies = [
  "curve25519-dalek-ng",
  "digest",
