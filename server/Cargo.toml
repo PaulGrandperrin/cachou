@@ -28,4 +28,4 @@ serde = "1.0"
 #async-trait = "0.1"
 sha2 = "0.9"
 
-opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
+opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}

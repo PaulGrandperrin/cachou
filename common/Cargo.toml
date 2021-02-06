@@ -22,8 +22,9 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 
 # crypto
-opaque-ke = { git = "https://github.com/PaulGrandperrin/opaque-ke.git", branch = "master" }
-curve25519-dalek-ng = "4"
+opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}
+#curve25519-dalek-ng = "4"
+curve25519-dalek = "3"
 xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git" }
 ed25519-dalek = { git = "https://github.com/PaulGrandperrin/ed25519-dalek.git" }
 sha2 = "0.9"
