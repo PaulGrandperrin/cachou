@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use anyhow::anyhow;
 use chrono::Duration;
-use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupSave, SignupStart}, crypto::opaque::OpaqueConf};
+use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupSave, SignupStart}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
@@ -21,20 +21,23 @@ pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) 
     let opaque_state = opaque.state.to_bytes();
 
     let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?; // TODO remove, only write to logs
-    let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
+    //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?; // TODO remove, only write to logs
+    //let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
     
-    req.state().db.save_tmp(&session_id, ip, expiration, "opaque_signup_start", &opaque_state).await?;
+    //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_signup_start", &opaque_state).await?;
+
+    let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque_state, vec![])?; // TODO add TTL
 
     Ok((
-        session_id.to_vec(),
+        server_sealed_state,
         opaque.message.serialize(),
     ))
 }
 
 #[tracing::instrument]
 pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish) -> anyhow::Result<<SignupFinish as Rpc>::Ret> {
-    let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_signup_start").await?;
+    let opaque_state = crypto::sealed::Sealed::<Vec<u8>>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
+    //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_signup_start").await?;
     let opaque_state = ServerRegistration::<OpaqueConf>::try_from(&opaque_state[..])?;
 
     let opaque_password = opaque_state
@@ -42,20 +45,23 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish
 
     let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
     let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
-    req.state().db.save_tmp(&args.session_id, ip, expiration, "opaque_signup_finish", &opaque_password.to_bytes()).await?;
+    
+    //req.state().db.save_tmp(&args.session_id, ip, expiration, "opaque_signup_finish", &opaque_password.to_bytes()).await?;
+    let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque_password.to_bytes(), vec![])?; // TODO add TTL
 
-    Ok(())
+    Ok(server_sealed_state)
 }
 
 #[tracing::instrument]
 pub async fn signup_save(req: Request<crate::state::State>, args: SignupSave) -> anyhow::Result<<SignupSave as Rpc>::Ret> {
-    let opaque_password = req.state().db.restore_tmp(&args.session_id, "opaque_signup_finish").await?;
+    let opaque_state = crypto::sealed::Sealed::<Vec<u8>>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
+    //let opaque_password = req.state().db.restore_tmp(&args.session_id, "opaque_signup_finish").await?;
 
     // we hash the secret_id once more so that if someone gains temporary read access to the DB, he'll not able able to access user account later
     let hashed_secret_id = sha2::Sha256::digest(&args.secret_id).to_vec();
 
     let user_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    req.state().db.insert_user(&user_id, &args.username, &opaque_password, &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
+    req.state().db.insert_user(&user_id, &args.username, &opaque_state, &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
 
     Ok(())
 }
@@ -66,9 +72,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) ->
     let mut rng = rand_core::OsRng;
 
     let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    println!("1");
     let opaque_password = req.state().db.get_opaque_password_from_username(&args.username).await?; // with this
-    println!("2");
     let opaque_password = ServerRegistration::<OpaqueConf>::try_from(&opaque_password[..])?;
     let opaque = ServerLogin::start(
         &mut rng,
@@ -84,20 +88,16 @@ pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) ->
     req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_username", args.username.as_bytes()).await?;
     
     let opaque_msg = opaque.message.serialize();
-    println!("3");
     Ok((session_id.to_vec(), opaque_msg))
 }
 
 
 #[tracing::instrument]
 pub async fn login_finish(req: Request<crate::state::State>, args: LoginFinish) -> anyhow::Result<<LoginFinish as Rpc>::Ret> {
-    println!("4");
     let username = String::from_utf8(req.state().db.restore_tmp(&args.session_id, "opaque_login_start_username").await?)?;
-    println!("5");
     let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_login_start_state").await?;
     let opaque_state = ServerLogin::<OpaqueConf>::try_from(&opaque_state[..])?;
     let _opaque_log_finish_result =opaque_state.finish(CredentialFinalization::deserialize(&args.opaque_msg)?)?;
-    println!("6");
     // client is logged in
 
     //opaque_log_finish_result.shared_secret

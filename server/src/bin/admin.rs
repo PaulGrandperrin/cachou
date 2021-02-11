@@ -3,6 +3,7 @@
 use async_std::io::prelude::WriteExt;
 use common::crypto::opaque::OpaqueConf;
 use opaque_ke::{ciphersuite::CipherSuite, keypair::KeyPair};
+use rand::Rng;
 use server::*;
 use tracing::error;
 use std::path::PathBuf;
@@ -16,7 +17,8 @@ struct Opt {
 }
 #[derive(Debug, StructOpt)]
 enum Command {
-    CreateIdentity,
+    CreateIdentityKey,
+    CreateSecretKey,
     DropDatabase,
 }
 
@@ -25,10 +27,15 @@ async fn main() -> anyhow::Result<()> {
     let mut rng = rand_core::OsRng;
     let opt = Opt::from_args();
     match opt.command {
-        Command::CreateIdentity => {
+        Command::CreateIdentityKey => {
             let kp = <OpaqueConf as CipherSuite>::generate_random_keypair(&mut rng);
             let mut f = async_std::fs::File::create(common::consts::OPAQUE_PRIVATE_KEY_PATH).await?;
             f.write_all(kp.private()).await?;
+        }
+        Command::CreateSecretKey => {
+            let secret_key: [u8; 32] = rand::thread_rng().gen(); // 256bits
+            let mut f = async_std::fs::File::create(common::consts::SECRET_KEY_PATH).await?;
+            f.write_all(&secret_key).await?;
         }
         Command::DropDatabase => {
             let db = server::db::Db::new().await?;

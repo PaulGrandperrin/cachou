@@ -8,19 +8,27 @@ use crate::db::Db;
 #[derive(Debug, Clone)]
 pub struct State {
     pub opaque_kp: KeyPair::<<OpaqueConf as CipherSuite>::Group>,
+    pub secret_key: [u8; 32],
     pub db: Db,
 }
 
 impl State {
     pub async fn new() -> anyhow::Result<Self> {
+        // load opaque private key
         let mut f = File::open(common::consts::OPAQUE_PRIVATE_KEY_PATH).await?;
-        let mut sk = Vec::new();
-        f.read_to_end(&mut sk).await?;
+        let mut pk = Vec::new();
+        f.read_to_end(&mut pk).await?;
+        let opaque_kp = KeyPair::from_private_key_slice(&pk)?;
 
-        let kp = KeyPair::from_private_key_slice(&sk)?;
+        // load secret key
+        let mut f = File::open(common::consts::SECRET_KEY_PATH).await?;
+        let mut secret_key = [0u8; 32];
+        let size = f.read(&mut secret_key).await?;
+        anyhow::ensure!(size == secret_key.len(), "failed to read secret_key");
 
         Ok(Self {
-            opaque_kp: kp,
+            opaque_kp,
+            secret_key,
             db: Db::new().await?
         })
     }

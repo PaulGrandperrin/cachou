@@ -50,7 +50,7 @@ impl LoggedClient {
             password.as_bytes(),
         )?;
 
-        let (session_id, opaque_msg) = client.rpc_client.call(
+        let (server_sealed_state, opaque_msg) = client.rpc_client.call(
             common::api::SignupStart{opaque_msg: opaque_reg_start.message.serialize()}
         ).await?;
         
@@ -65,9 +65,9 @@ impl LoggedClient {
         )?;
         let opaque_msg = opaque_reg_finish.message.serialize();
         
-        client.rpc_client.call(
+        let server_sealed_state = client.rpc_client.call(
             common::api::SignupFinish {
-                session_id: session_id.clone(),
+                server_sealed_state: server_sealed_state.clone(),
                 opaque_msg,
             }
         ).await?;
@@ -86,7 +86,7 @@ impl LoggedClient {
         
         client.rpc_client.call(
             common::api::SignupSave {
-                session_id,
+                server_sealed_state,
                 username,
                 secret_id,
                 sealed_masterkey,
