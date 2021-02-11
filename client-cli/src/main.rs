@@ -2,7 +2,7 @@
 
 use anyhow::Context;
 
-use client_common::core::LoggedClient;
+use client_common::core::client::{Client, LoggedClient};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()>{
                 rl.add_history_entry(line.as_str());
                 match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", email, password] => {
-                        let f = LoggedClient::signup(client_common::core::Client::new(), email, password);
+                        let f = LoggedClient::signup(Client::new(), email, password);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
@@ -62,7 +62,7 @@ fn main() -> anyhow::Result<()>{
                         };
                     }
                     ["login", email, password] => {
-                        let f = LoggedClient::login(client_common::core::Client::new(), email, password);
+                        let f = LoggedClient::login(Client::new(), email, password);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
