@@ -6,7 +6,6 @@ use derive_more::Display;
 pub enum Call {
     SignupStart(SignupStart),
     SignupFinish(SignupFinish),
-    SignupSave(SignupSave),
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
 }
@@ -31,24 +30,14 @@ impl Rpc for SignupStart {
 pub struct SignupFinish {
     pub server_sealed_state: Vec<u8>,
     pub opaque_msg: Vec<u8>,
-}
-impl Rpc for SignupFinish {
-    type Ret = Vec<u8>; // server_sealed_state
-    fn into_call(self) -> Call { Call::SignupFinish(self) }
-}
-
-// SignupSave
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SignupSave {
-    pub server_sealed_state: Vec<u8>,
     pub username: String,
     pub secret_id: Vec<u8>, // NOTE: this is the Sha256 of the masterkey, used as a last resort way of login in without user_id and skipping OPAQUE auth
     pub sealed_masterkey: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     pub sealed_private_data: Vec<u8>, // sealed with masterkey
 }
-impl Rpc for SignupSave {
+impl Rpc for SignupFinish {
     type Ret = ();
-    fn into_call(self) -> Call { Call::SignupSave(self) }
+    fn into_call(self) -> Call { Call::SignupFinish(self) }
 }
 
 // LoginStart

@@ -38,12 +38,6 @@ impl LoggedClient {
         )?;
         let opaque_msg = opaque_reg_finish.message.serialize();
         
-        let server_sealed_state = client.rpc_client.call(
-            common::api::SignupFinish {
-                server_sealed_state: server_sealed_state.clone(),
-                opaque_msg,
-            }
-        ).await?;
 
         // instanciate and save user's private data
 
@@ -56,10 +50,11 @@ impl LoggedClient {
             ident_keypair: Keypair::generate(&mut rand::thread_rng())
         };
         let sealed_private_data = Sealed::seal(&masterkey, &private_data, Vec::new())?;
-        
+
         client.rpc_client.call(
-            common::api::SignupSave {
-                server_sealed_state,
+            common::api::SignupFinish {
+                server_sealed_state: server_sealed_state.clone(),
+                opaque_msg,
                 username,
                 secret_id,
                 sealed_masterkey,

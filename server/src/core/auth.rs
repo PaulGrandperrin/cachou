@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use anyhow::anyhow;
 use chrono::Duration;
-use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupSave, SignupStart}, crypto::{self, opaque::OpaqueConf}};
+use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupStart}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
@@ -43,29 +43,14 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish
     let opaque_password = opaque_state
         .finish(RegistrationUpload::deserialize(&args.opaque_msg)?)?;
 
-    let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
-    let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
-    
-    //req.state().db.save_tmp(&args.session_id, ip, expiration, "opaque_signup_finish", &opaque_password.to_bytes()).await?;
-    let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque_password.to_bytes(), vec![])?; // TODO add TTL
-
-    Ok(server_sealed_state)
-}
-
-#[tracing::instrument]
-pub async fn signup_save(req: Request<crate::state::State>, args: SignupSave) -> anyhow::Result<<SignupSave as Rpc>::Ret> {
-    let opaque_state = crypto::sealed::Sealed::<Vec<u8>>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
-    //let opaque_password = req.state().db.restore_tmp(&args.session_id, "opaque_signup_finish").await?;
-
     // we hash the secret_id once more so that if someone gains temporary read access to the DB, he'll not able able to access user account later
     let hashed_secret_id = sha2::Sha256::digest(&args.secret_id).to_vec();
-
+    
     let user_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    req.state().db.insert_user(&user_id, &args.username, &opaque_state, &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
+    req.state().db.insert_user(&user_id, &args.username, &opaque_password.to_bytes(), &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
 
     Ok(())
 }
-
 
 #[tracing::instrument]
 pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) -> anyhow::Result<<LoginStart as Rpc>::Ret> {
