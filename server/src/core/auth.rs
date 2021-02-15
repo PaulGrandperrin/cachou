@@ -53,7 +53,7 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish
 pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) -> anyhow::Result<<LoginStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
 
-    let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
+    //let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
     let opaque_password = req.state().db.get_opaque_password_from_username(&args.username).await?; // with this
     let opaque_password = ServerRegistration::<OpaqueConf>::try_from(&opaque_password[..])?;
     let opaque = ServerLogin::start(
@@ -64,19 +64,23 @@ pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) ->
         ServerLoginStartParameters::WithIdentifiers(args.username.clone().into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
     )?;
 
-    let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
-    let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
-    req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_state", &opaque.state.to_bytes()).await?;
-    req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_username", args.username.as_bytes()).await?;
+    //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
+    //let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
+    
+    let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque.state.to_bytes(), args.username.as_bytes().into())?; // TODO add TTL
+
+    //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_state", &opaque.state.to_bytes()).await?;
+    //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_username", args.username.as_bytes()).await?;
     
     let opaque_msg = opaque.message.serialize();
-    Ok((session_id.to_vec(), opaque_msg))
+    Ok((server_sealed_state.to_vec(), opaque_msg))
 }
 
 
 pub async fn login_finish(req: Request<crate::state::State>, args: LoginFinish) -> anyhow::Result<<LoginFinish as Rpc>::Ret> {
-    let username = String::from_utf8(req.state().db.restore_tmp(&args.session_id, "opaque_login_start_username").await?)?;
-    let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_login_start_state").await?;
+    let (opaque_state, username) = crypto::sealed::Sealed::<Vec<u8>>::unseal(&req.state().secret_key, &args.server_sealed_state)?;
+    
+    let username = String::from_utf8(username)?;
     let opaque_state = ServerLogin::<OpaqueConf>::try_from(&opaque_state[..])?;
     let _opaque_log_finish_result =opaque_state.finish(CredentialFinalization::deserialize(&args.opaque_msg)?)?;
     // client is logged in

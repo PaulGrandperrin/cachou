@@ -82,7 +82,7 @@ impl LoggedClient {
             ClientLoginStartParameters::default(),
         )?;
 
-        let (session_id, opaque_msg) = client.rpc_client.call(
+        let (server_sealed_state, opaque_msg) = client.rpc_client.call(
             common::api::LoginStart{username: username.clone(), opaque_msg: opaque_log_start.message.serialize()}
         ).await?;
 
@@ -94,7 +94,7 @@ impl LoggedClient {
         let opaque_msg = opaque_log_finish.message.serialize();
 
         let user_data = client.rpc_client.call(
-            common::api::LoginFinish{session_id, opaque_msg}
+            common::api::LoginFinish{server_sealed_state, opaque_msg}
         ).await?;
 
         // recover user's private data

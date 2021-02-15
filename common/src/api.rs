@@ -47,14 +47,14 @@ pub struct LoginStart {
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for LoginStart {
-    type Ret = (Vec<u8>, Vec<u8>); // session_id, opaque_msg
+    type Ret = (Vec<u8>, Vec<u8>); // server_sealed_state, opaque_msg
     fn into_call(self) -> Call { Call::LoginStart(self) }
 }
 
 // LoginFinish
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinish {
-    pub session_id: Vec<u8>,
+    pub server_sealed_state: Vec<u8>,
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for LoginFinish {
