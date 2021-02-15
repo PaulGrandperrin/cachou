@@ -67,5 +67,5 @@ impl Rpc for LoginFinish {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionToken {
     pub user_id: Vec<u8>,
-    pub valid_until: u64, // unix timestamp in seconds
+    pub valid_until: i64, // unix timestamp in seconds
 }

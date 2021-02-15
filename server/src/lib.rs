@@ -4,6 +4,7 @@ pub mod rpc;
 pub mod core;
 pub mod state;
 pub mod db;
+pub mod config;
 
 use anyhow::Context;
 use tracing::metadata::LevelFilter;

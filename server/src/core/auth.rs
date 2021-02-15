@@ -91,7 +91,7 @@ pub async fn login_finish(req: Request<crate::state::State>, args: LoginFinish) 
 
     let session_token = SessionToken {
         user_id,
-        valid_until: (chrono::Utc::now() + Duration::minutes(2)).timestamp() as u64, // TODO make duration configurable
+        valid_until: (chrono::Utc::now() + Duration::minutes(req.state().config.session_duration_sec)).timestamp(),
     };
 
     let sealed_session_token = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &(), &session_token)?;

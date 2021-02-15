@@ -4,11 +4,13 @@ use common::crypto::opaque::OpaqueConf;
 use generic_bytes::SizedBytes;
 use opaque_ke::{ciphersuite::CipherSuite, keypair::{Key, KeyPair}};
 use crate::db::Db;
+use crate::config::Config;
 
 #[derive(Debug, Clone)]
 pub struct State {
     pub opaque_kp: KeyPair::<<OpaqueConf as CipherSuite>::Group>,
     pub secret_key: [u8; 32],
+    pub config: Config,
     pub db: Db,
 }
 
@@ -26,10 +28,17 @@ impl State {
         let size = f.read(&mut secret_key).await?;
         anyhow::ensure!(size == secret_key.len(), "failed to read secret_key");
 
+        // load config
+        let config = Config::load().await?;
+
+        // connect to DB
+        let db = Db::new().await?;
+
         Ok(Self {
             opaque_kp,
             secret_key,
-            db: Db::new().await?
+            config,
+            db,
         })
     }
 }
