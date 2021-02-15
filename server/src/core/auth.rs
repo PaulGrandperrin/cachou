@@ -10,7 +10,6 @@ use sha2::Digest;
 use tide::Request;
 use tracing::{error, info, trace};
 
-#[tracing::instrument]
 pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) -> anyhow::Result<<SignupStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
     let opaque = ServerRegistration::<OpaqueConf>::start(
@@ -34,7 +33,6 @@ pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) 
     ))
 }
 
-#[tracing::instrument]
 pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish) -> anyhow::Result<<SignupFinish as Rpc>::Ret> {
     let opaque_state = crypto::sealed::Sealed::<Vec<u8>>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
     //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_signup_start").await?;
@@ -52,7 +50,6 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish
     Ok(())
 }
 
-#[tracing::instrument]
 pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) -> anyhow::Result<<LoginStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
 
@@ -77,7 +74,6 @@ pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) ->
 }
 
 
-#[tracing::instrument]
 pub async fn login_finish(req: Request<crate::state::State>, args: LoginFinish) -> anyhow::Result<<LoginFinish as Rpc>::Ret> {
     let username = String::from_utf8(req.state().db.restore_tmp(&args.session_id, "opaque_login_start_username").await?)?;
     let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_login_start_state").await?;
