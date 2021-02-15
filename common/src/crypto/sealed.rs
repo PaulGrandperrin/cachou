@@ -8,27 +8,29 @@ use xchacha8blake3siv::XChaCha8Blake3Siv;
 
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug)]
-pub struct Sealed<T> {
+pub struct Sealed<C, A> {
     ciphertext: Vec<u8>,
     associated_data: Vec<u8>,
     tag: Vec<u8>,
     nonce: Vec<u8>,
     #[derivative(Debug="ignore")]
-    _phantom: PhantomData<T>,
+    _phantom: PhantomData<(C, A)>,
 }
 
 type Aead = XChaCha8Blake3Siv;
 
-impl<T> Sealed<T> {
-    pub fn seal(key: &[u8], plaindata: &T, associated_data: Vec<u8>) -> anyhow::Result<Vec<u8>>
-    where T: Serialize,
-    Aead: NewAead + AeadInPlace {
+impl<C, A> Sealed<C, A> {
+    pub fn seal(key: &[u8], plaindata: &C, associated_data: &A) -> anyhow::Result<Vec<u8>>
+    where C: Serialize, A: Serialize,
+        Aead: NewAead + AeadInPlace {
         let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
         //let nonce = Nonce::from(rand::random::<[u8; <<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE]>()); // FIXME when const_generic are stable
         let nonce = iter::repeat_with(|| rand::random()).take(<<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
         let nonce = Nonce::from_slice(&nonce);
 
         let mut plaintext = rmp_serde::encode::to_vec_named(plaindata)?;
+        let associated_data = rmp_serde::encode::to_vec_named(associated_data)?;
+
         let tag = cipher.encrypt_in_place_detached(&nonce, &associated_data, &mut plaintext)
             .map_err(|e| anyhow::anyhow!(e))?;
 
@@ -41,8 +43,8 @@ impl<T> Sealed<T> {
         })?)
     }
 
-    pub fn unseal(key: &[u8], this: &[u8]) -> anyhow::Result<(T, Vec<u8>)> // plaindata, associated_data
-    where T: DeserializeOwned,
+    pub fn unseal(key: &[u8], this: &[u8]) -> anyhow::Result<(C, A)> // plaindata, associated_data
+    where C: DeserializeOwned, A: DeserializeOwned,
           Aead: NewAead + AeadInPlace {
         let mut me = rmp_serde::decode::from_slice::<Self>(this)?;
         let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
@@ -51,9 +53,10 @@ impl<T> Sealed<T> {
 
         cipher.decrypt_in_place_detached(nonce, &me.associated_data, &mut me.ciphertext, tag).map_err(|e| anyhow::anyhow!(e))?;
 
-        let plaindata: T = rmp_serde::decode::from_slice(&me.ciphertext)?;
+        let plaindata: C = rmp_serde::decode::from_slice(&me.ciphertext)?;
+        let associated_data: A = rmp_serde::decode::from_slice(&me.associated_data)?;
 
-        Ok((plaindata, me.associated_data))
+        Ok((plaindata, associated_data))
     }
 }
 

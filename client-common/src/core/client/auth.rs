@@ -9,8 +9,6 @@ use crate::core::private_data::PrivateData;
 
 use super::{Client, LoggedClient};
 
-
-
 impl LoggedClient {
     pub async fn signup(client: Client, username: impl Into<String>, password: &str) -> anyhow::Result<Self> { // FIXME don't loose client on failure
         let mut rng = rand_core::OsRng;
@@ -44,12 +42,12 @@ impl LoggedClient {
         let pdk = opaque_reg_finish.export_key.to_vec();
         let masterkey = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
         let secret_id = sha2::Sha256::digest(&masterkey).to_vec();
-        let sealed_masterkey = Sealed::seal(&pdk, &masterkey, Vec::new())?;
+        let sealed_masterkey = Sealed::seal(&pdk, &masterkey, &())?;
 
         let private_data = PrivateData {
             ident_keypair: Keypair::generate(&mut rand::thread_rng())
         };
-        let sealed_private_data = Sealed::seal(&masterkey, &private_data, Vec::new())?;
+        let sealed_private_data = Sealed::seal(&masterkey, &private_data, &())?;
 
         client.rpc_client.call(
             common::api::SignupFinish {
@@ -99,9 +97,9 @@ impl LoggedClient {
 
         // recover user's private data
         let pdk = opaque_log_finish.export_key.to_vec();
-        let (sealed_masterkey, sealed_private_data) = user_data;
-        let masterkey = Sealed::<Vec<u8>>::unseal(&pdk, &sealed_masterkey)?.0;
-        let private_data = Sealed::<PrivateData>::unseal(&masterkey, &sealed_private_data)?.0;
+        let (sealed_masterkey, sealed_private_data, _sealed_session_token) = user_data;
+        let masterkey = Sealed::<Vec<u8>, ()>::unseal(&pdk, &sealed_masterkey)?.0;
+        let private_data = Sealed::<PrivateData, ()>::unseal(&masterkey, &sealed_private_data)?.0;
 
         Ok( Self {
             client,

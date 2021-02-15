@@ -1,5 +1,5 @@
 - improve error handling, mostly around RPC logic
-- session handling
+- make session duration configurable
 - refactor DB abstraction
 
 - stop using email as login

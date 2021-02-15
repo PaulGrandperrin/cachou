@@ -137,12 +137,12 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_opaque_password_from_username(&self, username: &str) -> anyhow::Result<Vec<u8>> {
-        let row: MySqlRow = sqlx::query("select `opaque_password` from `user` where `username` = ?")
+    pub async fn get_userid_and_opaque_password_from_username(&self, username: &str) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
+        let row: MySqlRow = sqlx::query("select `user_id`, `opaque_password` from `user` where `username` = ?")
         .bind(username)
         .fetch_one(&self.pool).await?;
 
-        Ok(row.try_get(0)?)
+        Ok((row.try_get(0)?, row.try_get(1)?))
     }
 
     #[tracing::instrument]
@@ -155,9 +155,9 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_user_data_from_username(&self, username: &str) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
-        let row: MySqlRow = sqlx::query("select `sealed_masterkey`, `sealed_private_data` from `user` where `username` = ?")
-        .bind(username)
+    pub async fn get_user_data_from_userid(&self, user_id: &[u8]) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
+        let row: MySqlRow = sqlx::query("select `sealed_masterkey`, `sealed_private_data` from `user` where `user_id` = ?")
+        .bind(user_id)
         .fetch_one(&self.pool).await?;
 
         Ok((row.try_get(0)?, row.try_get(1)?))

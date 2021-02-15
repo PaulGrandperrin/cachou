@@ -58,6 +58,14 @@ pub struct LoginFinish {
     pub opaque_msg: Vec<u8>,
 }
 impl Rpc for LoginFinish {
-    type Ret = (Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data
+    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data, sealed_session_token
     fn into_call(self) -> Call { Call::LoginFinish(self) }
+}
+
+
+// ----
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SessionToken {
+    pub user_id: Vec<u8>,
+    pub valid_until: u64, // unix timestamp in seconds
 }
