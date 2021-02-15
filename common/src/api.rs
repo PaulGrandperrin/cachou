@@ -61,8 +61,3 @@ impl Rpc for LoginFinish {
     type Ret = (Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data
     fn into_call(self) -> Call { Call::LoginFinish(self) }
 }
-
-
-
-
-

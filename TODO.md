@@ -1,5 +1,4 @@
 - improve error handling, mostly around RPC logic
-- better logging/tracing
 - session handling
 - refactor DB abstraction
 
