@@ -20,7 +20,7 @@ pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) 
     )?;
     let opaque_state = opaque.state.to_bytes();
 
-    let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
+    //let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
     //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?; // TODO remove, only write to logs
     //let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
     
