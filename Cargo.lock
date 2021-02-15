@@ -2886,6 +2886,7 @@ dependencies = [
  "async-std",
  "chrono",
  "common",
+ "futures",
  "generic-array",
  "generic-bytes",
  "opaque-ke",

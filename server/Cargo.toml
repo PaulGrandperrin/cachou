@@ -27,5 +27,6 @@ generic-array = "0.14"
 serde = "1.0"
 #async-trait = "0.1"
 sha2 = "0.9"
+futures = "0.3"
 
 opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}

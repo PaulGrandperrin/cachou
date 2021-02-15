@@ -17,7 +17,7 @@ async fn main() -> tide::Result<()> {
 
     let mut app = tide::with_state(state::State::new().await?);
 
-    //app.with(tide_tracing::TraceMiddleware::new());
+    // app.with(tide_tracing::TraceMiddleware::new()); // we don't really use http semantics, so not very useful
 
     app.with(cors);
     app.at("/api").post(rpc::rpc);
