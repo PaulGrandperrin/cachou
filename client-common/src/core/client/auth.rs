@@ -23,7 +23,7 @@ impl LoggedClient {
 
         let (server_sealed_state, opaque_msg) = client.rpc_client.call(
             common::api::SignupStart{opaque_msg: opaque_reg_start.message.serialize()}
-        ).await?;
+        ).await??; // FIXME
         
         // finish OPAQUE
 
@@ -58,7 +58,7 @@ impl LoggedClient {
                 sealed_masterkey,
                 sealed_private_data,
             }
-        ).await?;
+        ).await??; // FIXME
 
         Ok( Self {
             client,
@@ -82,7 +82,7 @@ impl LoggedClient {
 
         let (server_sealed_state, opaque_msg) = client.rpc_client.call(
             common::api::LoginStart{username: username.clone(), opaque_msg: opaque_log_start.message.serialize()}
-        ).await?;
+        ).await??; // FIXME
 
         // finish OPAQUE
         let opaque_log_finish = opaque_log_start.state.finish(
@@ -93,7 +93,7 @@ impl LoggedClient {
 
         let user_data = client.rpc_client.call(
             common::api::LoginFinish{server_sealed_state, opaque_msg}
-        ).await?;
+        ).await??; // FIXME
 
         // recover user's private data
         let pdk = opaque_log_finish.export_key.to_vec();

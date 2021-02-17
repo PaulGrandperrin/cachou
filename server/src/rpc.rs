@@ -17,27 +17,23 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
 
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
      let resp = match c {
-        Call::SignupStart(args) => auth::signup_start(req, args)
+        Call::SignupStart(args) => rmp_serde::encode::to_vec_named(&auth::signup_start(req, args)
             .inspect_err(|e| {error!("error: {}", e)})
             .instrument(error_span!("SignupStart", addr = address.as_str()))
-            .await
-            .map(|i| rmp_serde::encode::to_vec_named(&i)),
-        Call::SignupFinish(args) => auth::signup_finish(req, args)
+            .await),
+        Call::SignupFinish(args) => rmp_serde::encode::to_vec_named(&auth::signup_finish(req, args)
             .inspect_err(|e| {error!("error: {}", e)})
             .instrument(error_span!("SignupFinish", addr = address.as_str()))
-            .await
-            .map(|i| rmp_serde::encode::to_vec_named(&i)),
-        Call::LoginStart(args) => auth::login_start(req, args)
+            .await),
+        Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, args)
             .inspect_err(|e| {error!("error: {}", e)})
             .instrument(error_span!("LoginStart", addr = address.as_str()))
-            .await
-            .map(|i| rmp_serde::encode::to_vec_named(&i)),
-        Call::LoginFinish(args) => auth::login_finish(req, args)
+            .await),
+        Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, args)
             .inspect_err(|e| {error!("error: {}", e)})
             .instrument(error_span!("LoginFinish", addr = address.as_str()))
-            .await
-            .map(|i| rmp_serde::encode::to_vec_named(&i)),
-    }.map_err(|e| tide::Error::from_str(200, format!("{}", e)))?; // FIXME
+            .await),
+    };
 
     /*
     let resp = match c {
