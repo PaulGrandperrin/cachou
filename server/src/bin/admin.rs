@@ -23,7 +23,7 @@ enum Command {
 }
 
 #[async_std::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> eyre::Result<()> {
     let mut rng = rand_core::OsRng;
     let opt = Opt::from_args();
     match opt.command {

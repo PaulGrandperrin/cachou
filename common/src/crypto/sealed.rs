@@ -20,7 +20,7 @@ pub struct Sealed<C, A> {
 type Aead = XChaCha8Blake3Siv;
 
 impl<C, A> Sealed<C, A> {
-    pub fn seal(key: &[u8], plaindata: &C, associated_data: &A) -> anyhow::Result<Vec<u8>>
+    pub fn seal(key: &[u8], plaindata: &C, associated_data: &A) -> eyre::Result<Vec<u8>>
     where C: Serialize, A: Serialize,
         Aead: NewAead + AeadInPlace {
         let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
@@ -32,7 +32,7 @@ impl<C, A> Sealed<C, A> {
         let associated_data = rmp_serde::encode::to_vec_named(associated_data)?;
 
         let tag = cipher.encrypt_in_place_detached(&nonce, &associated_data, &mut plaintext)
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| eyre::eyre!(e))?;
 
         Ok( rmp_serde::encode::to_vec_named(&Self {
             ciphertext: plaintext,
@@ -43,7 +43,7 @@ impl<C, A> Sealed<C, A> {
         })?)
     }
 
-    pub fn unseal(key: &[u8], this: &[u8]) -> anyhow::Result<(C, A)> // plaindata, associated_data
+    pub fn unseal(key: &[u8], this: &[u8]) -> eyre::Result<(C, A)> // plaindata, associated_data
     where C: DeserializeOwned, A: DeserializeOwned,
           Aead: NewAead + AeadInPlace {
         let mut me = rmp_serde::decode::from_slice::<Self>(this)?;
@@ -51,7 +51,7 @@ impl<C, A> Sealed<C, A> {
         let tag = Tag::from_slice(&me.tag);
         let nonce = Nonce::from_slice(&me.nonce);
 
-        cipher.decrypt_in_place_detached(nonce, &me.associated_data, &mut me.ciphertext, tag).map_err(|e| anyhow::anyhow!(e))?;
+        cipher.decrypt_in_place_detached(nonce, &me.associated_data, &mut me.ciphertext, tag).map_err(|e| eyre::eyre!(e))?;
 
         let plaindata: C = rmp_serde::decode::from_slice(&me.ciphertext)?;
         let associated_data: A = rmp_serde::decode::from_slice(&me.associated_data)?;

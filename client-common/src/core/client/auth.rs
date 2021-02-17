@@ -10,7 +10,7 @@ use crate::core::private_data::PrivateData;
 use super::{Client, LoggedClient};
 
 impl LoggedClient {
-    pub async fn signup(client: Client, username: impl Into<String>, password: &str) -> anyhow::Result<Self> { // FIXME don't loose client on failure
+    pub async fn signup(client: Client, username: impl Into<String>, password: &str) -> eyre::Result<Self> { // FIXME don't loose client on failure
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -68,7 +68,7 @@ impl LoggedClient {
         })
     }
 
-    pub async fn login(client: Client, username: impl Into<String>, password: &str) -> anyhow::Result<Self> {
+    pub async fn login(client: Client, username: impl Into<String>, password: &str) -> eyre::Result<Self> {
         let mut rng = rand_core::OsRng;
         let username = username.into();
 

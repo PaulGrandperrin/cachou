@@ -1,8 +1,8 @@
 #![allow(unused_imports)]
 
-use anyhow::Context;
 
 use client_common::core::client::{Client, LoggedClient};
+use eyre::Context;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
@@ -10,7 +10,7 @@ use tracing::{error, metadata::LevelFilter, trace};
 use tracing_subscriber::EnvFilter; // could be async_compat::CompatExt
 
 
-fn setup_logger() -> anyhow::Result<()> {
+fn setup_logger() -> eyre::Result<()> {
 
     let filter = EnvFilter::from_default_env()
         // Set the base level when not matched by other directives to WARN.
@@ -29,12 +29,12 @@ fn setup_logger() -> anyhow::Result<()> {
     .finish();
 
     tracing::subscriber::set_global_default(subscriber)
-        .context("setting default subscriber failed")?;
+        .wrap_err("setting default subscriber failed")?;
 
     Ok(())
 }
 
-fn main() -> anyhow::Result<()>{
+fn main() -> eyre::Result<()>{
     setup_logger()?;
 
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;    

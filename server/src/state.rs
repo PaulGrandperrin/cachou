@@ -15,7 +15,7 @@ pub struct State {
 }
 
 impl State {
-    pub async fn new() -> anyhow::Result<Self> {
+    pub async fn new() -> eyre::Result<Self> {
         // load opaque private key
         let mut f = File::open(common::consts::OPAQUE_PRIVATE_KEY_PATH).await?;
         let mut pk = Vec::new();
@@ -26,7 +26,7 @@ impl State {
         let mut f = File::open(common::consts::SECRET_KEY_PATH).await?;
         let mut secret_key = [0u8; 32];
         let size = f.read(&mut secret_key).await?;
-        anyhow::ensure!(size == secret_key.len(), "failed to read secret_key");
+        eyre::ensure!(size == secret_key.len(), "failed to read secret_key");
 
         // load config
         let config = Config::load().await?;

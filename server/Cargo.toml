@@ -18,7 +18,7 @@ tide-tracing = "0.0"
 rmp-serde = "0.15"
 rand = "0.8"
 rand_core = "0.6"
-anyhow = "1.0"
+eyre = "0.6"
 sqlx = { version = "0.5", default-features = false, features = [ "mysql","runtime-async-std-rustls" ] }
 chrono = "0.4"
 structopt = "0.3"

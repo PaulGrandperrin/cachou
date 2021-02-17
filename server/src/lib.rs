@@ -6,11 +6,11 @@ pub mod state;
 pub mod db;
 pub mod config;
 
-use anyhow::Context;
+use eyre::Context;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
-pub fn setup_logger() -> anyhow::Result<()> {
+pub fn setup_logger() -> eyre::Result<()> {
 
     let filter = EnvFilter::from_default_env()
         // Set the base level when not matched by other directives to WARN.
@@ -28,7 +28,7 @@ pub fn setup_logger() -> anyhow::Result<()> {
     .finish();
 
     tracing::subscriber::set_global_default(subscriber)
-        .context("setting default subscriber failed")?;
+        .wrap_err("setting default subscriber failed")?;
 
     Ok(())
 }

@@ -634,8 +634,8 @@ dependencies = [
 name = "client-cli"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "client-common",
+ "eyre",
  "futures",
  "rustyline",
  "tokio 1.2.0",
@@ -647,10 +647,10 @@ dependencies = [
 name = "client-common"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "common",
  "derivative",
  "ed25519-dalek",
+ "eyre",
  "getrandom 0.2.2",
  "opaque-ke",
  "pwned",
@@ -669,9 +669,9 @@ dependencies = [
 name = "client-web"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "cfg-if 1.0.0",
  "client-common",
+ "eyre",
  "tracing",
  "tracing-wasm",
  "yew",
@@ -684,12 +684,12 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "aead",
- "anyhow",
  "curve25519-dalek",
  "derivative",
  "derive_more",
  "digest",
  "ed25519-dalek",
+ "eyre",
  "generic-array",
  "hex-literal",
  "opaque-ke",
@@ -1078,6 +1078,16 @@ name = "event-listener"
 version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
+
+[[package]]
+name = "eyre"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "221239d1d5ea86bf5d6f91c9d6bc3646ffe471b08ff9b0f91c44f115ac969d2b"
+dependencies = [
+ "indenter",
+ "once_cell",
+]
 
 [[package]]
 name = "fancy-regex"
@@ -1693,6 +1703,12 @@ dependencies = [
  "unicode-bidi",
  "unicode-normalization",
 ]
+
+[[package]]
+name = "indenter"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4d5eb2e114fec2b7fe0fadc22888ad2658789bb7acac4dbee9cf8389f971ec8"
 
 [[package]]
 name = "indexmap"
@@ -2839,10 +2855,10 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-std",
  "chrono",
  "common",
+ "eyre",
  "futures",
  "generic-array",
  "generic-bytes",

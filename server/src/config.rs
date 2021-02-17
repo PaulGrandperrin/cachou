@@ -1,4 +1,4 @@
-use anyhow::Context;
+
 use async_std::fs::File;
 use futures::AsyncReadExt;
 use toml;
@@ -9,7 +9,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub async fn load() -> anyhow::Result<Self> {
+    pub async fn load() -> eyre::Result<Self> {
         let mut buf = String::new();
         File::open(common::consts::CONFIG_PATH).await?.read_to_string(&mut buf).await?;
         

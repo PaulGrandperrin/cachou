@@ -16,7 +16,7 @@ impl Client {
         }
     }
 
-    pub async fn call<T: Rpc>(&self, c: T) -> anyhow::Result<T::Ret> {
+    pub async fn call<T: Rpc>(&self, c: T) -> eyre::Result<T::Ret> {
         let c = c.into_call();
         let body = rmp_serde::encode::to_vec_named(&c)?;
 

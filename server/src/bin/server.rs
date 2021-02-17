@@ -1,17 +1,16 @@
 #![allow(unused_imports)]
-use anyhow::Context;
 use tide::{http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
-
+use eyre::Context;
 use server::*;
 
 #[async_std::main]
-async fn main() -> tide::Result<()> {
+async fn main() -> eyre::Result<()> {
     setup_logger()?;
 
     //let pool = sqlx::MySqlPool::connect("mysql://root@127.0.0.1:3306/test").await?;
 
     let cors = CorsMiddleware::new() // FIXME used for dev, probably remove later
-        .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>()?)
+        .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().map_err(|e| eyre::eyre!(e))?)
         .allow_origin(Origin::from("*"))
         .allow_credentials(false);
 

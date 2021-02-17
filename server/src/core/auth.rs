@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use anyhow::anyhow;
+use eyre::eyre;
 use api::SessionToken;
 use chrono::Duration;
 use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupStart}, crypto::{self, opaque::OpaqueConf}};
@@ -11,7 +11,7 @@ use sha2::Digest;
 use tide::Request;
 use tracing::{error, info, trace};
 
-pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) -> anyhow::Result<<SignupStart as Rpc>::Ret> {
+pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) -> eyre::Result<<SignupStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
     let opaque = ServerRegistration::<OpaqueConf>::start(
         &mut rng,
@@ -21,7 +21,7 @@ pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) 
     let opaque_state = opaque.state.to_bytes();
 
     //let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?; // TODO remove, only write to logs
+    //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{eyre!("failed to determine client ip")})?; // TODO remove, only write to logs
     //let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
     
     //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_signup_start", &opaque_state).await?;
@@ -34,7 +34,7 @@ pub async fn signup_start(req: Request<crate::state::State>, args: SignupStart) 
     ))
 }
 
-pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish) -> anyhow::Result<<SignupFinish as Rpc>::Ret> {
+pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish) -> eyre::Result<<SignupFinish as Rpc>::Ret> {
     let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
     //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_signup_start").await?;
     let opaque_state = ServerRegistration::<OpaqueConf>::try_from(&opaque_state[..])?;
@@ -51,7 +51,7 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: SignupFinish
     Ok(())
 }
 
-pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) -> anyhow::Result<<LoginStart as Rpc>::Ret> {
+pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) -> eyre::Result<<LoginStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
 
     //let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
@@ -65,7 +65,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) ->
         ServerLoginStartParameters::WithIdentifiers(args.username.clone().into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
     )?;
 
-    //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{anyhow!("failed to determine client ip")})?;
+    //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{eyre!("failed to determine client ip")})?;
     //let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
     
     let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque.state.to_bytes(), &user_id)?; // TODO add TTL
@@ -78,7 +78,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: LoginStart) ->
 }
 
 
-pub async fn login_finish(req: Request<crate::state::State>, args: LoginFinish) -> anyhow::Result<<LoginFinish as Rpc>::Ret> {
+pub async fn login_finish(req: Request<crate::state::State>, args: LoginFinish) -> eyre::Result<<LoginFinish as Rpc>::Ret> {
     let (opaque_state, user_id) = crypto::sealed::Sealed::<Vec<u8>, Vec<u8>>::unseal(&req.state().secret_key, &args.server_sealed_state)?;
     
     let opaque_state = ServerLogin::<OpaqueConf>::try_from(&opaque_state[..])?;

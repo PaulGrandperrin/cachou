@@ -10,7 +10,7 @@ pub struct Db {
 }
 
 impl Db {
-    pub async fn new() -> anyhow::Result<Self> {
+    pub async fn new() -> eyre::Result<Self> {
         
         let options = MySqlConnectOptions::new()
         .host("localhost")
@@ -41,22 +41,22 @@ impl Db {
         Ok(db)
     }
 
-    pub async fn drop_database(&self) -> anyhow::Result<()> {
+    pub async fn drop_database(&self) -> eyre::Result<()> {
         self.pool.execute(&*format!("drop database `{}`", common::consts::DATABASE_NAME)).await?;
         Ok(())
     }
 
-    pub async fn test(&self) -> anyhow::Result<()> {
+    pub async fn test(&self) -> eyre::Result<()> {
         // Make a simple query to return the given parameter
         let row: (i64,) = sqlx::query_as("SELECT 1+?")
         .bind(150_i64)
         .fetch_one(&self.pool).await?;
 
-        anyhow::ensure!(row.0 == 151, "sql test failed");
+        eyre::ensure!(row.0 == 151, "sql test failed");
         Ok(())
     }
 
-    async fn init(&self) -> anyhow::Result<()> {
+    async fn init(&self) -> eyre::Result<()> {
 
         let mut conn = self.pool.acquire().await?;
 
@@ -92,7 +92,7 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn save_tmp(&self, session_id: &[u8], ip: &str, expiration: i64, field: &str, data: &[u8]) -> anyhow::Result<()> {
+    pub async fn save_tmp(&self, session_id: &[u8], ip: &str, expiration: i64, field: &str, data: &[u8]) -> eyre::Result<()> {
         sqlx::query("replace into `tmp` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?, ?)")
         .bind(session_id)
         .bind(ip)
@@ -104,7 +104,7 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn restore_tmp(&self, session_id: &[u8], field: &str) -> anyhow::Result<Vec<u8>> {
+    pub async fn restore_tmp(&self, session_id: &[u8], field: &str) -> eyre::Result<Vec<u8>> {
         let mut tx = self.pool.begin().await?;
         
         let row: MySqlRow = sqlx::query("select `data` from `tmp` where `session_id` = ? and `field` = ?")
@@ -124,7 +124,7 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn insert_user(&self, user_id: &[u8], username: &str, opaque_password: &[u8], hashed_secret_id: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8]) -> anyhow::Result<()> {
+    pub async fn insert_user(&self, user_id: &[u8], username: &str, opaque_password: &[u8], hashed_secret_id: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8]) -> eyre::Result<()> {
         sqlx::query("insert into `user` values (?, ?, ?, ?, ?, ?)")
         .bind(user_id)
         .bind(username)
@@ -137,7 +137,7 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_userid_and_opaque_password_from_username(&self, username: &str) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
+    pub async fn get_userid_and_opaque_password_from_username(&self, username: &str) -> eyre::Result<(Vec<u8>, Vec<u8>)> {
         let row: MySqlRow = sqlx::query("select `user_id`, `opaque_password` from `user` where `username` = ?")
         .bind(username)
         .fetch_one(&self.pool).await?;
@@ -146,7 +146,7 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_user_id_from_email(&self, email: &str) -> anyhow::Result<Vec<u8>> {
+    pub async fn get_user_id_from_email(&self, email: &str) -> eyre::Result<Vec<u8>> {
         let row: MySqlRow = sqlx::query("select `user_id` from `user` where `email` = ?")
         .bind(email)
         .fetch_one(&self.pool).await?;
@@ -155,7 +155,7 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_user_data_from_userid(&self, user_id: &[u8]) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
+    pub async fn get_user_data_from_userid(&self, user_id: &[u8]) -> eyre::Result<(Vec<u8>, Vec<u8>)> {
         let row: MySqlRow = sqlx::query("select `sealed_masterkey`, `sealed_private_data` from `user` where `user_id` = ?")
         .bind(user_id)
         .fetch_one(&self.pool).await?;
