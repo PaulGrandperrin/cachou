@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use derive_more::Display;
 
-//mod error;
-
-//pub use error::{Error, Result};
+mod error;
+pub use error::{Error, Result};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
