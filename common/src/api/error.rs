@@ -31,6 +31,9 @@ pub enum Error {
         #[serde(skip, default = "default_client_side_error")]
         eyre::Report
     ),
+
+    #[error("Invalid password")]
+    InvalidPassword,
 }
 
 fn default_server_side_error() -> eyre::Report {

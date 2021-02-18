@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::crypto::{opaque::OpaqueConf, sealed::Sealed};
+use common::{api, crypto::{opaque::OpaqueConf, sealed::Sealed}};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, CredentialResponse, RegistrationResponse};
 use sha2::Digest;
 use ed25519_dalek::Keypair;
@@ -88,7 +88,7 @@ impl LoggedClient {
         let opaque_log_finish = opaque_log_start.state.finish(
             CredentialResponse::deserialize(&opaque_msg)?, 
             ClientLoginFinishParameters::WithIdentifiers(username.into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
-        )?;
+        ).map_err(|_| api::Error::InvalidPassword)?;
         let opaque_msg = opaque_log_finish.message.serialize();
 
         let user_data = client.rpc_client.call(
