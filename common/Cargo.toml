@@ -35,3 +35,7 @@ digest = "0.9"
 # key derivation
 #blake2b_simd = "0.5"
 rust-argon2 = "0.8"
+
+[features]
+client = []
+server = []

@@ -138,7 +138,7 @@ impl Db {
                         sqlx::Error::Database(e)
                             if e.as_error().downcast_ref::<MySqlDatabaseError>().map(|e| e.number()) == Some(1062)
                             => api::Error::UsernameConflict,
-                        _ => api::Error::ExecutionError(e.into()),
+                        _ => api::Error::ServerSideError(e.into()),
                     }
                 })?;
 
@@ -152,7 +152,7 @@ impl Db {
         .fetch_one(&self.pool).await.map_err(|e| {
             match e {
                 sqlx::Error::RowNotFound => api::Error::UsernameNotFound,
-                _ => api::Error::ExecutionError(e.into()),
+                _ => api::Error::ServerSideError(e.into()),
             }
         })?;
 

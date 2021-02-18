@@ -17,12 +17,28 @@ pub enum Error {
        as to not leak potential information. Also hides the actual error at serialization.
        Client is just expected to report the error to the user as a server-related error.
        Similar to http 500 code. */
+    #[cfg_attr(all(feature = "server"), error(transparent))]
+    #[cfg_attr(all(feature = "client", not(feature = "server")), error("Server-side error"))] // the negative condition is only there to not confuse rust-analyzer which enable all features at once
+    ServerSideError( // FIXME at serialization, encrypt the error or replace it with its location in the logs
+        #[cfg_attr(all(feature = "server"), from)]
+        #[serde(skip, default = "default_server_side_error")]
+        eyre::Report
+    ),
+
     #[error(transparent)]
-    ExecutionError(#[from] #[serde(skip, default = "default_error")] eyre::Report), // FIXME at serialization, encrypt the error or replace it with its location in the logs
+    ClientSideError(
+        #[cfg_attr(all(feature = "client", not(feature = "server")), from)] // the negative condition is only there to not confuse rust-analyzer which enable all features at once
+        #[serde(skip, default = "default_client_side_error")]
+        eyre::Report
+    ),
 }
 
-fn default_error() -> eyre::Report {
-    eyre::eyre!("An execution error happened server-side")
+fn default_server_side_error() -> eyre::Report {
+    eyre::eyre!("An error happened server-side")
+}
+
+fn default_client_side_error() -> eyre::Report {
+    unreachable!("A client-side error has been deserialized")
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

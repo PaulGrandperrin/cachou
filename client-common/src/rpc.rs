@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
-use common::api::{self, Rpc};
+use common::api::{self, Call, Rpc};
+use eyre::Context;
 
 
 pub struct Client {
@@ -16,16 +17,17 @@ impl Client {
         }
     }
 
-    pub async fn call<T: Rpc>(&self, c: T) -> eyre::Result<api::Result<T::Ret>> {
+    pub async fn call<T: Rpc>(&self, c: T) -> api::Result<T::Ret> {
         let c = c.into_call();
-        let body = rmp_serde::encode::to_vec_named(&c)?;
+        let body = rmp_serde::encode::to_vec_named(&c).wrap_err("Serialization error")?;
 
         let res = self.reqwest_client.post(&self.url) 
             .body(body)
             .send()
-            .await?;
+            .await.wrap_err("Reqwest error")?;
 
-        Ok(rmp_serde::decode::from_slice(&res.bytes().await?)?)
+        let body = res.bytes().await.wrap_err("Body error")?;
+        rmp_serde::decode::from_slice(&body).wrap_err("Deserialization error")?
     }
 
 }
