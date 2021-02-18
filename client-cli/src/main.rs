@@ -35,6 +35,7 @@ fn setup_logger() -> eyre::Result<()> {
 }
 
 fn main() -> eyre::Result<()>{
+    color_eyre::install()?;
     setup_logger()?;
 
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;    
