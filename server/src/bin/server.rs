@@ -5,6 +5,7 @@ use server::*;
 
 #[async_std::main]
 async fn main() -> eyre::Result<()> {
+    color_eyre::install()?;
     setup_logger()?;
 
     //let pool = sqlx::MySqlPool::connect("mysql://root@127.0.0.1:3306/test").await?;

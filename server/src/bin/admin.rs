@@ -24,6 +24,7 @@ enum Command {
 
 #[async_std::main]
 async fn main() -> eyre::Result<()> {
+    color_eyre::install()?;
     let mut rng = rand_core::OsRng;
     let opt = Opt::from_args();
     match opt.command {

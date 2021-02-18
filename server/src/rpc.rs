@@ -16,24 +16,24 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
     let address = req.peer_addr().unwrap_or("0.0.0.0:0").to_owned(); // the default is there to not make downstream parsing fail
 
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
-     let resp = match c {
-        Call::SignupStart(args) => rmp_serde::encode::to_vec_named(&auth::signup_start(req, args)
+    let resp = async { match c {
+        Call::SignupStart(args) => rmp_serde::encode::to_vec_named(&auth::signup_start(req, &args)
             .inspect_err(|e| {error!("error: {}", e)})
-            .instrument(error_span!("SignupStart", addr = address.as_str()))
+            .instrument(error_span!("SignupStart"))
             .await),
-        Call::SignupFinish(args) => rmp_serde::encode::to_vec_named(&auth::signup_finish(req, args)
+        Call::SignupFinish(args) => rmp_serde::encode::to_vec_named(&auth::signup_finish(req, &args)
             .inspect_err(|e| {error!("error: {}", e)})
-            .instrument(error_span!("SignupFinish", addr = address.as_str()))
+            .instrument(error_span!("SignupFinish", username = %args.username))
             .await),
-        Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, args)
+        Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, &args)
             .inspect_err(|e| {error!("error: {}", e)})
-            .instrument(error_span!("LoginStart", addr = address.as_str()))
+            .instrument(error_span!("LoginStart", username = %args.username))
             .await),
-        Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, args)
+        Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, &args)
             .inspect_err(|e| {error!("error: {}", e)})
-            .instrument(error_span!("LoginFinish", addr = address.as_str()))
+            .instrument(error_span!("LoginFinish"))
             .await),
-    };
+    }}.instrument(error_span!("rpc", src = %address)).await;
 
     /*
     let resp = match c {

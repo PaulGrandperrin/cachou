@@ -7,10 +7,10 @@ pub enum Error {
 
     #[error("Invalid session token")]
     InvalidSessionToken,
-    #[error("Username conflict")]
-    UsernameConflict,
-    #[error("Username not found")]
-    UsernameNotFound,
+    #[error("Username conflict {0:?}")]
+    UsernameConflict(#[serde(skip)] String),
+    #[error("Username not found {0:?}")]
+    UsernameNotFound(#[serde(skip)] String),
 
     /* Execution errors which interrupted request processing but falls outside normal operation.
        Intentionnaly doesn't specify if expected or not, nor if client-side or server-side

@@ -547,6 +547,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfa8873f51c92e232f9bac4065cddef41b714152812bfc5f7672ba16d6ef8cd9"
 
 [[package]]
+name = "bs58"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
+
+[[package]]
 name = "bumpalo"
 version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2928,7 +2934,9 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "bs58",
  "chrono",
+ "color-eyre",
  "common",
  "eyre",
  "futures",
@@ -2946,7 +2954,6 @@ dependencies = [
  "tide-tracing",
  "toml",
  "tracing",
- "tracing-futures",
  "tracing-subscriber",
 ]
 
