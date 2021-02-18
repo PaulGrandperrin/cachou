@@ -2,7 +2,7 @@
 
 
 use client_common::core::client::{Client, LoggedClient};
-use eyre::Context;
+use eyre::WrapErr;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 

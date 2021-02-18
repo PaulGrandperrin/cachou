@@ -1,4 +1,3 @@
-- improve error handling, mostly around RPC logic
 - factorise sealed stuff in API
 
 - refactor DB abstraction

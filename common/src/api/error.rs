@@ -42,4 +42,3 @@ fn default_client_side_error() -> eyre::Report {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-

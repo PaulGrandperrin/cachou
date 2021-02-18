@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 use tide::{http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
-use eyre::Context;
+use eyre::WrapErr;
 use server::*;
 
 #[async_std::main]

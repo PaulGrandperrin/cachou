@@ -6,7 +6,7 @@ pub mod state;
 pub mod db;
 pub mod config;
 
-use eyre::Context;
+use eyre::WrapErr;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::EnvFilter;
 

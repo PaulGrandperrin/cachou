@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use common::api::{self, Call, Rpc};
-use eyre::Context;
+use eyre::WrapErr;
 
 
 pub struct Client {
