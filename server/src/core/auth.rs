@@ -89,7 +89,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
         
         info!("ok");
         Ok((server_sealed_state.to_vec(), opaque_msg))
-    }.instrument(error_span!("id", username = %args.username, user_id = %bs58::encode(&user_id).into_string())).await
+    }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
 
