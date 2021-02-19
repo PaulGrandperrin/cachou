@@ -1,12 +1,11 @@
 use std::{iter, marker::PhantomData};
 
 use aead::{AeadInPlace, Key, NewAead, Nonce, Tag};
-use derivative::Derivative;
 use generic_array::typenum::Unsigned;
 use serde::{Deserialize, Serialize, Serializer, de::DeserializeOwned};
 use xchacha8blake3siv::XChaCha8Blake3Siv;
 
-#[derive(Serialize, Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, derivative::Derivative)]
 #[derivative(Debug)]
 pub struct Sealed<C, A> {
     ciphertext: Vec<u8>,

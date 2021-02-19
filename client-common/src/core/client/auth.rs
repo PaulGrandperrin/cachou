@@ -3,7 +3,6 @@ use std::iter;
 use common::{api, crypto::{opaque::OpaqueConf, sealed::Sealed}};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, CredentialResponse, RegistrationResponse};
 use sha2::Digest;
-use ed25519_dalek::Keypair;
 
 use crate::core::private_data::PrivateData;
 
@@ -45,7 +44,7 @@ impl LoggedClient {
         let sealed_masterkey = Sealed::seal(&pdk, &masterkey, &())?;
 
         let private_data = PrivateData {
-            ident_keypair: Keypair::generate(&mut rand::thread_rng())
+            ident_keypair: ed25519_dalek::Keypair::generate(&mut rand::thread_rng())
         };
         let sealed_private_data = Sealed::seal(&masterkey, &private_data, &())?;
 

@@ -1,14 +1,10 @@
-
-
-use derivative::Derivative;
-
 use crate::rpc;
 
 use super::private_data::PrivateData;
 
 mod auth;
 
-#[derive(Derivative)]
+#[derive(derivative::Derivative)]
 #[derivative(Debug)]
 pub struct Client {
     #[derivative(Debug="ignore")]
