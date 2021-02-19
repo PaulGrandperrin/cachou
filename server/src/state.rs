@@ -1,6 +1,7 @@
 use std::{convert::{TryFrom, TryInto}, sync::Arc};
 use async_std::{fs::File, io::prelude::ReadExt};
 use common::crypto::opaque::OpaqueConf;
+use eyre::WrapErr;
 use generic_bytes::SizedBytes;
 use opaque_ke::{ciphersuite::CipherSuite, keypair::{Key, KeyPair}};
 use crate::db::Db;
@@ -32,7 +33,7 @@ impl State {
         let config = Config::load().await?;
 
         // connect to DB
-        let db = Db::new().await?;
+        let db = Db::new().await.wrap_err("failed to connect and initialize DB")?;
 
         Ok(Self {
             opaque_kp,
