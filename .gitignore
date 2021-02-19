@@ -1,0 +1,9 @@
+Cargo.lock
+/target/
+*/debug/
+*/target/
+**/*.rs.bk
+
+server/opaque_private_key.bin
+server/secret_key.bin
+client-cli/history.txt
