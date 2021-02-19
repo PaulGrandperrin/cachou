@@ -3,7 +3,6 @@ use std::{convert::TryFrom};
 use color_eyre::Section;
 use eyre::eyre;
 use api::SessionToken;
-use chrono::Duration;
 use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupStart}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
@@ -99,12 +98,8 @@ pub async fn login_finish(req: Request<crate::state::State>, args: &LoginFinish)
 
         let (sealed_masterkey, sealed_private_data) = req.state().db.get_user_data_from_userid(&user_id).await?;
 
-        let session_token = SessionToken {
-            user_id: user_id.clone(),
-            valid_until: (chrono::Utc::now() + Duration::minutes(req.state().config.session_duration_sec)).timestamp(),
-        };
-
-        let sealed_session_token = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &(), &session_token)?;
+        let sealed_session_token = SessionToken::new(user_id.clone(), req.state().config.session_duration_sec)
+            .seal(&req.state().secret_key[..])?;
 
         info!("ok");
         Ok((sealed_masterkey, sealed_private_data, sealed_session_token))

@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use derive_more::Display;
 
 mod error;
+mod session_token;
 pub use error::{Error, Result};
+pub use session_token::SessionToken;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -62,12 +64,4 @@ pub struct LoginFinish {
 impl Rpc for LoginFinish {
     type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data, sealed_session_token
     fn into_call(self) -> Call { Call::LoginFinish(self) }
-}
-
-
-// ----
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SessionToken {
-    pub user_id: Vec<u8>,
-    pub valid_until: i64, // unix timestamp in seconds
 }
