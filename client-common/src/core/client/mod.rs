@@ -26,7 +26,7 @@ pub struct LoggedClient {
 impl Client {
     pub fn new() -> Self {
         Self {
-            rpc_client: rpc::Client::new("http://127.0.0.1:8081/api"),
+            rpc_client: rpc::Client::new("http://[::1]:8081/api"),
         }
     }
 }

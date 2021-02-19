@@ -21,10 +21,6 @@ pub async fn signup_start(req: Request<crate::state::State>, args: &SignupStart)
         req.state().opaque_kp.public(),
     ).wrap_err("failed to start opaque registration")?;
     let opaque_state = opaque.state.serialize();
-
-    //let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{eyre!("failed to determine client ip")})?; // TODO remove, only write to logs
-    //let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
     
     //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_signup_start", &opaque_state).await?;
 
@@ -61,7 +57,6 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: &SignupFinis
 pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -> api::Result<<LoginStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
 
-    //let session_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
     let (user_id, opaque_password) = req.state().db.get_userid_and_opaque_password_from_username(&args.username)
         .instrument(error_span!("id", username = args.username.as_str())).await?;
     
@@ -76,9 +71,6 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
                 .wrap_err("failed to deserialize opaque_msg")?,
             ServerLoginStartParameters::WithIdentifiers(args.username.clone().into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
         ).wrap_err("failed to start opaque login")?;
-
-        //let ip = req.peer_addr().map(|a|{a.split(':').next()}).flatten().ok_or_else(||{eyre!("failed to determine client ip")})?;
-        //let expiration = (chrono::Utc::now() + Duration::minutes(1)).timestamp();
         
         let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque.state.serialize(), &user_id)?; // TODO add TTL
 

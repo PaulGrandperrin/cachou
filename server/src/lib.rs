@@ -30,5 +30,7 @@ pub fn setup_logger() -> eyre::Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .wrap_err("setting default subscriber failed")?;
 
+    // TODO setup panic handler to trace panics. see https://github.com/tokio-rs/tracing/issues/587
+
     Ok(())
 }

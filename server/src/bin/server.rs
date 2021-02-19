@@ -21,7 +21,7 @@ async fn main() -> eyre::Result<()> {
 
     app.with(cors);
     app.at("/api").post(rpc::rpc);
-    app.listen("127.0.0.1:8081").await?;
+    app.listen(vec!["127.0.0.1:8081", "[::1]:8081"]).await?;
     Ok(())
 }
 

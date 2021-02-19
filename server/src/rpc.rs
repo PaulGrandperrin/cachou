@@ -1,19 +1,24 @@
-use std::{convert::TryInto, fmt::Display, pin::Pin};
+use std::{convert::TryInto, fmt::Display, net::SocketAddr, pin::Pin};
 
-use eyre::Report;
+use eyre::{eyre, ContextCompat, Report};
 use api::Rpc;
 use common::api::{self, Call, SignupStart};
 use futures::{Future, FutureExt, TryFutureExt};
 use serde::Serialize;
 use tide::{Body, Request};
-use tracing::{Instrument, error, error_span};
+use tracing::{Instrument, error, error_span, info};
 
 use crate::core::auth;
 
 pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
     let body = req.body_bytes().await?;
     let c: api::Call = rmp_serde::from_slice(&body)?;
-    let address = req.peer_addr().unwrap_or("0.0.0.0:0").to_owned(); // the default is there to not make downstream parsing fail
+
+    let (ip, port) = req.peer_addr()
+        .map(|s| s.parse::<SocketAddr>().ok())
+        .flatten()
+        .map(|sa| {(sa.ip(), sa.port())})
+        .ok_or(tide::Error::from_str(500, "incoming RPC does't have a peer_addr()"))?;
 
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
     let resp = async { match c {
@@ -33,7 +38,7 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
             .inspect_err(|e| {error!("error: {}", e)})
             .instrument(error_span!("LoginFinish"))
             .await),
-    }}.instrument(error_span!("rpc", src = %address)).await;
+    }}.instrument(error_span!("rpc", %ip, port)).await;
 
     /*
     let resp = match c {
