@@ -330,7 +330,7 @@ dependencies = [
  "async-io",
  "async-lock",
  "async-process",
- "crossbeam-utils 0.8.1",
+ "crossbeam-utils 0.8.2",
  "futures-channel",
  "futures-core",
  "futures-io",
@@ -603,9 +603,9 @@ checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
 
 [[package]]
 name = "cc"
-version = "1.0.66"
+version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c0496836a84f8d0495758516b8621a622beb77c0fed418570e50764093ced48"
+checksum = "e3c69b077ad434294d3ce9f1f6143a2a4b89a8a2d54ef813d85003a4fd1137fd"
 
 [[package]]
 name = "cfg-if"
@@ -852,7 +852,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dca26ee1f8d361640700bde38b2c37d8c22b3ce2d360e1fc1c74ea4b0aa7d775"
 dependencies = [
  "cfg-if 1.0.0",
- "crossbeam-utils 0.8.1",
+ "crossbeam-utils 0.8.2",
 ]
 
 [[package]]
@@ -873,7 +873,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f6cb3c7f5b8e51bc3ebb73a2327ad4abdbd119dc13223f14f961d2f38486756"
 dependencies = [
  "cfg-if 1.0.0",
- "crossbeam-utils 0.8.1",
+ "crossbeam-utils 0.8.2",
 ]
 
 [[package]]
@@ -889,13 +889,14 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02d96d1e189ef58269ebe5b97953da3274d83a93af647c2ddd6f9dab28cedb8d"
+checksum = "bae8f328835f8f5a6ceb6a7842a7f2d0c03692adb5c889347235d59194731fe3"
 dependencies = [
  "autocfg 1.0.1",
  "cfg-if 1.0.0",
  "lazy_static",
+ "loom",
 ]
 
 [[package]]
@@ -1360,6 +1361,19 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro-nested",
  "slab",
+]
+
+[[package]]
+name = "generator"
+version = "0.6.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9fed24fd1e18827652b4d55652899a1e9da8e54d91624dc3437a5bc3a9f9a9c"
+dependencies = [
+ "cc",
+ "libc",
+ "log",
+ "rustversion",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -1918,6 +1932,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d44c73b4636e497b4917eb21c33539efa3816741a2d3ff26c6316f1b529481a4"
+dependencies = [
+ "cfg-if 1.0.0",
+ "generator",
+ "scoped-tls",
+]
+
+[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2215,8 +2240,8 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "opaque-ke"
-version = "0.3.1"
-source = "git+https://github.com/novifinancial/opaque-ke.git#782eeb70900eaee3220f67b0f99967d60702b212"
+version = "0.4.0-pre.1"
+source = "git+https://github.com/novifinancial/opaque-ke.git#4da6bbce0ce1fa95e7c8a1a6a63a6f0afbd2d372"
 dependencies = [
  "curve25519-dalek",
  "digest",
@@ -2753,7 +2778,7 @@ dependencies = [
  "base64 0.13.0",
  "blake2b_simd",
  "constant_time_eq",
- "crossbeam-utils 0.8.1",
+ "crossbeam-utils 0.8.2",
 ]
 
 [[package]]
@@ -2783,6 +2808,12 @@ dependencies = [
  "sct",
  "webpki",
 ]
+
+[[package]]
+name = "rustversion"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb5d2a036dc6d2d8fd16fde3498b04306e29bd193bf306a57427019b823d5acd"
 
 [[package]]
 name = "rustyline"
@@ -2820,6 +2851,12 @@ dependencies = [
  "lazy_static",
  "winapi 0.3.9",
 ]
+
+[[package]]
+name = "scoped-tls"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
 
 [[package]]
 name = "scopeguard"
@@ -3000,9 +3037,9 @@ dependencies = [
 
 [[package]]
 name = "signal-hook"
-version = "0.3.4"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "780f5e3fe0c66f67197236097d89de1e86216f1f6fdeaf47c442f854ab46c240"
+checksum = "8a7f3f92a1da3d6b1d32245d0cbcbbab0cfc45996d8df619c42bccfa6d2bbb5f"
 dependencies = [
  "libc",
  "signal-hook-registry",
@@ -3109,7 +3146,7 @@ dependencies = [
  "bytes 1.0.1",
  "crossbeam-channel",
  "crossbeam-queue 0.3.1",
- "crossbeam-utils 0.8.1",
+ "crossbeam-utils 0.8.2",
  "digest",
  "either",
  "futures-channel",
@@ -3626,9 +3663,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-log"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e0f8c7178e13481ff6765bd169b33e8d554c5d2bbede5e32c356194be02b9b9"
+checksum = "a6923477a48e41c1951f1999ef8bb5a3023eb723ceadafe78ffb65dc366761e3"
 dependencies = [
  "lazy_static",
  "log",
@@ -3647,9 +3684,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.15"
+version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1fa8f0c8f4c594e4fc9debc1990deab13238077271ba84dd853d54902ee3401"
+checksum = "8ab8966ac3ca27126141f7999361cc97dd6fb4b71da04c02044fa9045d98bb96"
 dependencies = [
  "ansi_term 0.12.1",
  "chrono",
