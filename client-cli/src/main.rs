@@ -81,7 +81,7 @@ fn main() -> eyre::Result<()>{
                     }
                     ["change_creds", username, password] => {
                         logged_client = if let Some(logged_client) = logged_client.take() {
-                            let f = LoggedClient::change_credentials(logged_client, username, password);
+                            let f = LoggedClient::update_credentials(logged_client, username, password);
                             match rt.block_on(f) {
                                 Ok(res) => {
                                     trace!("got : {:?}", res);

@@ -21,7 +21,7 @@ impl LoggedClient {
         )?;
 
         let (server_sealed_state, opaque_msg) = client.rpc_client.call(
-            common::api::SignupStart{opaque_msg: opaque_reg_start.message.serialize()}
+            common::api::NewCredentials{opaque_msg: opaque_reg_start.message.serialize()}
         ).await?;
         
         // finish OPAQUE
@@ -49,7 +49,7 @@ impl LoggedClient {
         let sealed_private_data = Sealed::seal(&masterkey, &private_data, &())?;
 
         let sealed_session_token = client.rpc_client.call(
-            common::api::SignupFinish {
+            common::api::Signup {
                 server_sealed_state: server_sealed_state.clone(),
                 opaque_msg,
                 username: username.clone(),
@@ -111,7 +111,7 @@ impl LoggedClient {
         })
     }
 
-    pub async fn change_credentials(self, username: impl Into<String>, password: &str) -> eyre::Result<Self> {
+    pub async fn update_credentials(self, username: impl Into<String>, password: &str) -> eyre::Result<Self> {
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -123,7 +123,7 @@ impl LoggedClient {
         )?;
 
         let (server_sealed_state, opaque_msg) = self.client.rpc_client.call(
-            common::api::SignupStart{opaque_msg: opaque_reg_start.message.serialize()}
+            common::api::NewCredentials{opaque_msg: opaque_reg_start.message.serialize()}
         ).await?;
         
         // finish OPAQUE
@@ -144,7 +144,7 @@ impl LoggedClient {
         let sealed_masterkey = Sealed::seal(&pdk, &self.masterkey, &())?;
 
         self.client.rpc_client.call(
-            common::api::ChangeCredentials {
+            common::api::UpdateCredentials {
                 server_sealed_state: server_sealed_state.clone(),
                 opaque_msg,
                 username: username.clone(),
