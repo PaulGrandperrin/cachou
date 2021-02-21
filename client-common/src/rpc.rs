@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use common::api::{self, Call, Rpc};
 use eyre::WrapErr;
+use tracing::warn;
 
 
 pub struct Client {
@@ -21,10 +22,19 @@ impl Client {
         let c = c.into_call();
         let body = rmp_serde::encode::to_vec_named(&c).wrap_err("Serialization error")?;
 
-        let res = self.reqwest_client.post(&self.url) 
-            .body(body)
-            .send()
-            .await.wrap_err("Reqwest error")?;
+        let mut retries = 1;
+        let res = loop {
+            match self.reqwest_client.post(&self.url) 
+                .body(body.clone())
+                .send()
+                .await {
+                    Err(e) if e.is_request() && retries != 0 => {
+                        warn!("request failed: {:#}", e);
+                        retries -= 1;
+                    },
+                    e @ _ => break e,
+                }
+        }.wrap_err("Reqwest error")?;
 
         let body = res.bytes().await.wrap_err("Body error")?;
         rmp_serde::decode::from_slice(&body).wrap_err("Deserialization error")?
