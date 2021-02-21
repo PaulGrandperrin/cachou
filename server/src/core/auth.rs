@@ -2,8 +2,7 @@ use std::{convert::TryFrom};
 
 use color_eyre::Section;
 use eyre::eyre;
-use api::SessionToken;
-use common::{api::{self, LoginFinish, LoginStart, Rpc, SignupFinish, SignupStart}, crypto::{self, opaque::OpaqueConf}};
+use common::{api::{self, ChangeCredentials, LoginFinish, LoginStart, Rpc, SessionToken, SignupFinish, SignupStart}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
@@ -49,8 +48,11 @@ pub async fn signup_finish(req: Request<crate::state::State>, args: &SignupFinis
     let user_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
     req.state().db.insert_user(&user_id, &args.username, &opaque_password.serialize(), &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
     
+    let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec)
+        .seal(&req.state().secret_key[..])?;
+
     info!("ok");
-    Ok(())
+    Ok(sealed_session_token)
 }
 
 pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -> api::Result<<LoginStart as Rpc>::Ret> {
@@ -75,9 +77,9 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
 
         //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_state", &opaque.state.to_bytes()).await?;
         //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_username", args.username.as_bytes()).await?;
-        
+
         let opaque_msg = opaque.message.serialize();
-        
+
         info!("ok");
         Ok((server_sealed_state.to_vec(), opaque_msg))
     }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
@@ -86,7 +88,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
 
 pub async fn login_finish(req: Request<crate::state::State>, args: &LoginFinish) -> api::Result<<LoginFinish as Rpc>::Ret> {
     let (opaque_state, user_id) = crypto::sealed::Sealed::<Vec<u8>, Vec<u8>>::unseal(&req.state().secret_key, &args.server_sealed_state)?;
-    
+
     async {
         let opaque_state = ServerLogin::<OpaqueConf>::deserialize(&opaque_state[..])
             .wrap_err("failed to deserialize opaque_state")?;
@@ -106,6 +108,23 @@ pub async fn login_finish(req: Request<crate::state::State>, args: &LoginFinish)
     }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
+pub async fn change_credentials(req: Request<crate::state::State>, args: &ChangeCredentials) -> api::Result<<ChangeCredentials as Rpc>::Ret> {
+    let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
+    //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_signup_start").await?;
+    let opaque_state = ServerRegistration::<OpaqueConf>::deserialize(&opaque_state[..])
+        .wrap_err("failed to deserialize opaque_state")?;
 
+    let opaque_password = opaque_state
+        .finish(RegistrationUpload::deserialize(&args.opaque_msg)
+        .wrap_err("failed to deserialize opaque_msg")?)
+        .wrap_err("failed to finish opaque registration")?;
+
+    let session_token = SessionToken::unseal(&req.state().secret_key[..], &args.sealed_session_token)?;
+
+    req.state().db.change_user_creds(&session_token.user_id, &args.username, &opaque_password.serialize(), &args.sealed_masterkey).await?;
+
+    info!("ok");
+    Ok(())
+}
 
 

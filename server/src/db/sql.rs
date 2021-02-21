@@ -3,6 +3,7 @@ use std::{time::Duration};
 use common::api;
 use sqlx::{Executor, Row, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}};
 use tracing::{error, trace};
+use eyre::WrapErr;
 
 // making things generic doesn't seem very useful at this point
 #[derive(Debug, Clone)]
@@ -141,6 +142,18 @@ impl Db {
                         _ => api::Error::ServerSideError(e.into()),
                     }
                 })?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument]
+    pub async fn change_user_creds(&self, user_id: &[u8], username: &str, opaque_password: &[u8], sealed_masterkey: &[u8]) -> api::Result<()> {
+        sqlx::query("update `user` set `username` = ?, `opaque_password` = ?, `sealed_masterkey` = ? where `user_id` = ?")
+                .bind(username)
+                .bind(opaque_password)
+                .bind(sealed_masterkey)
+                .bind(user_id)
+                .execute(&self.pool).await.wrap_err("failed to update user credentials in DB")?; // TODO distingish different kind of errors
 
         Ok(())
     }

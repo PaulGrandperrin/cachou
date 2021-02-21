@@ -17,4 +17,9 @@ impl SessionToken {
     pub fn seal(&self, key: &[u8]) -> eyre::Result<Vec<u8>> {
         crate::crypto::sealed::Sealed::seal(key, &(), &self)
     }
+
+    pub fn unseal(key: &[u8], sealed_session_token: &[u8]) -> eyre::Result<Self> {
+        let (_, this) = crate::crypto::sealed::Sealed::<(), _>::unseal(key, sealed_session_token)?;
+        Ok(this)
+    }
 }

@@ -1,11 +1,15 @@
+
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
     SignupStart(SignupStart),
     SignupFinish(SignupFinish),
+
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
+
+    ChangeCredentials(ChangeCredentials),
 }
 
 pub trait Rpc: Serialize {
@@ -34,7 +38,7 @@ pub struct SignupFinish {
     pub sealed_private_data: Vec<u8>, // sealed with masterkey
 }
 impl Rpc for SignupFinish {
-    type Ret = ();
+    type Ret = Vec<u8>; // sealed_session_token
     fn into_call(self) -> Call { Call::SignupFinish(self) }
 }
 
@@ -58,4 +62,18 @@ pub struct LoginFinish {
 impl Rpc for LoginFinish {
     type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data, sealed_session_token
     fn into_call(self) -> Call { Call::LoginFinish(self) }
+}
+
+// ChangeCredentials
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ChangeCredentials {
+    pub server_sealed_state: Vec<u8>,
+    pub opaque_msg: Vec<u8>,
+    pub username: String,
+    pub sealed_masterkey: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
+    pub sealed_session_token: Vec<u8>,
+}
+impl Rpc for ChangeCredentials {
+    type Ret = ();
+    fn into_call(self) -> Call { Call::ChangeCredentials(self) }
 }

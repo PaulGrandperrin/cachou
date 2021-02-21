@@ -38,40 +38,64 @@ fn main() -> eyre::Result<()>{
     color_eyre::install()?;
     setup_logger()?;
 
-    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;    
+    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
     
+    let mut logged_client = None::<LoggedClient>;
+
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
     if rl.load_history("history.txt").is_err() {
         println!("No previous history.");
     }
     loop {
-        let readline = rl.readline(">> ");
+        let readline = rl.readline(&format!("{}>> ", logged_client.as_ref().map_or("", |lc| &lc.username)));
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
                 match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
-                    ["signup", email, password] => {
-                        let f = LoggedClient::signup(Client::new(), email, password);
-                        match rt.block_on(f) {
+                    ["signup", username, password] => {
+                        let f = LoggedClient::signup(Client::new(), username, password);
+                        logged_client = match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
+                                Some(res)
                             },
                             Err(e) => {
                                 error!("{:?}", e);
+                                None
                             },
                         };
                     }
-                    ["login", email, password] => {
-                        let f = LoggedClient::login(Client::new(), email, password);
-                        match rt.block_on(f) {
+                    ["login", username, password] => {
+                        let f = LoggedClient::login(Client::new(), username, password);
+                        logged_client = match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
+                                Some(res)
                             },
                             Err(e) => {
                                 error!("{:?}", e);
+                                None
                             },
                         };
+                    }
+                    ["change_creds", username, password] => {
+                        logged_client = if let Some(logged_client) = logged_client.take() {
+                            let f = LoggedClient::change_credentials(logged_client, username, password);
+                            match rt.block_on(f) {
+                                Ok(res) => {
+                                    trace!("got : {:?}", res);
+                                    Some(res)
+                                },
+                                Err(e) => {
+                                    error!("{:?}", e);
+                                    None
+                                },
+                            }
+                        } else {
+                            error!("user must be logged in");
+                            None
+                        }
                         
                     }
                     _ => {
