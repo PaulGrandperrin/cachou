@@ -153,7 +153,14 @@ impl Db {
                 .bind(opaque_password)
                 .bind(sealed_masterkey)
                 .bind(user_id)
-                .execute(&self.pool).await.wrap_err("failed to update user credentials in DB")?; // TODO distingish different kind of errors
+                .execute(&self.pool).await.map_err(|e| {
+                    match e {
+                        sqlx::Error::Database(e)
+                            if e.as_error().downcast_ref::<MySqlDatabaseError>().map(|e| e.number()) == Some(1062)
+                            => api::Error::UsernameConflict,
+                        _ => api::Error::ServerSideError(e.into()),
+                    }
+                })?;
 
         Ok(())
     }
