@@ -2,7 +2,7 @@ use std::{convert::TryFrom};
 
 use color_eyre::Section;
 use eyre::eyre;
-use common::{api::{self, UpdateCredentials, LoginFinish, LoginStart, Rpc, SessionToken, Signup, NewCredentials}, crypto::{self, opaque::OpaqueConf}};
+use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentials, Rpc, SessionToken, Signup, UpdateCredentials}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
@@ -127,4 +127,13 @@ pub async fn update_credentials(req: Request<crate::state::State>, args: &Update
     Ok(())
 }
 
+
+pub async fn get_username(req: Request<crate::state::State>, args: &GetUsername) -> api::Result<<GetUsername as Rpc>::Ret> {
+    let session_token = SessionToken::unseal(&req.state().secret_key[..], &args.sealed_session_token)?;
+
+    let username = req.state().db.get_username_from_userid(&session_token.user_id).await?;
+
+    info!("ok");
+    Ok(username)
+}
 

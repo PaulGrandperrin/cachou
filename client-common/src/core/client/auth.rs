@@ -162,4 +162,13 @@ impl LoggedClient {
             sealed_session_token: self.sealed_session_token,
         })
     }
+
+    pub async fn get_username(&self) -> eyre::Result<String> {
+
+        let username = self.client.rpc_client.call(
+            common::api::GetUsername{ sealed_session_token: self.sealed_session_token.clone() }
+        ).await?;
+
+        Ok(username)
+    }
 }

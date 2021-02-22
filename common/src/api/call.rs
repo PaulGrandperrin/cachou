@@ -14,6 +14,8 @@ pub enum Call {
 
     /// Finishes OPAQUE's registration procedure and updates user's credentials. Precedeed by NewCredentials.
     UpdateCredentials(UpdateCredentials),
+
+    GetUsername(GetUsername),
 }
 
 pub trait Rpc: Serialize {
@@ -80,4 +82,14 @@ pub struct UpdateCredentials {
 impl Rpc for UpdateCredentials {
     type Ret = ();
     fn into_call(self) -> Call { Call::UpdateCredentials(self) }
+}
+
+// GetUsername
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetUsername {
+    pub sealed_session_token: Vec<u8>,
+}
+impl Rpc for GetUsername {
+    type Ret = String;
+    fn into_call(self) -> Call { Call::GetUsername(self) }
 }

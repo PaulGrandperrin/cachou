@@ -194,5 +194,16 @@ impl Db {
         ))
     }
 
+    #[tracing::instrument]
+    pub async fn get_username_from_userid(&self, user_id: &[u8]) -> api::Result<String> {
+        let row: MySqlRow = sqlx::query("select `username` from `user` where `user_id` = ?")
+        .bind(user_id)
+        .fetch_one(&self.pool).await.map_err(|e| eyre::eyre!(e))?; // do not leak in returned error if the user_id exists or not
+
+        Ok(
+            row.try_get(0).map_err(|e| eyre::eyre!(e))?,
+        )
+    }
+
     
 }

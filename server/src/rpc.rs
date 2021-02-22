@@ -44,6 +44,11 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
             .inspect_err(|e| {error!("error: {:#}", e)})
             .instrument(error_span!("UpdateCredentials"))
             .await),
+
+        Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&auth::get_username(req, &args)
+            .inspect_err(|e| {error!("error: {:#}", e)})
+            .instrument(error_span!("GetUsername"))
+            .await),
     }}.instrument(error_span!("rpc", %ip, port)).await;
 
     /*

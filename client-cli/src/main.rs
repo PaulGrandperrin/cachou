@@ -98,6 +98,21 @@ fn main() -> eyre::Result<()>{
                         }
                         
                     }
+                    ["get_username"] => {
+                        if let Some(logged_client) = logged_client.as_ref().take() {
+                            let f = logged_client.get_username();
+                            match rt.block_on(f) {
+                                Ok(res) => {
+                                    trace!("got : {:?}", res);
+                                },
+                                Err(e) => {
+                                    error!("{:?}", e);
+                                },
+                            }
+                        } else {
+                            error!("user must be logged in");
+                        }
+                    }
                     _ => {
                         tracing::error!("unknown command");
                     }
