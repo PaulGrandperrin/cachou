@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 pub enum Error {
     /* expected and normal business logic related errors that must be handled by the client */
 
-    #[error("Invalid session token")]
+    #[error("InvalidSessionToken")]
     InvalidSessionToken,
-    #[error("Username conflict")]
+    #[error("UsernameConflict")]
     UsernameConflict,
-    #[error("Username not found")]
+    #[error("UsernameNotFound")]
     UsernameNotFound,
 
     /* Execution errors which interrupted request processing but falls outside normal operation.
@@ -17,22 +17,21 @@ pub enum Error {
        as to not leak potential information. Also hides the actual error at serialization.
        Client is just expected to report the error to the user as a server-related error.
        Similar to http 500 code. */
-    #[cfg_attr(all(feature = "server"), error(transparent))]
-    #[cfg_attr(all(feature = "client", not(feature = "server")), error("Server-side error"))] // the negative condition is only there to not confuse rust-analyzer which enable all features at once
+    #[error("ServerSideError({0:#?})")]
     ServerSideError( // FIXME at serialization, encrypt the error or replace it with its location in the logs
         #[cfg_attr(all(feature = "server"), from)]
         #[serde(skip, default = "default_server_side_error")]
         eyre::Report
     ),
 
-    #[error(transparent)]
+    #[error("ClientSideError({0:#?})")]
     ClientSideError(
         #[cfg_attr(all(feature = "client", not(feature = "server")), from)] // the negative condition is only there to not confuse rust-analyzer which enable all features at once
         #[serde(skip, default = "default_client_side_error")]
         eyre::Report
     ),
 
-    #[error("Invalid password")]
+    #[error("InvalidPassword")]
     InvalidPassword,
 }
 

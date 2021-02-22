@@ -1,4 +1,5 @@
 use std::{convert::TryInto, fmt::Display, net::SocketAddr, pin::Pin};
+use std::error::Error;
 
 use eyre::{eyre, ContextCompat, Report};
 use api::Rpc;
@@ -6,9 +7,11 @@ use common::api::{self, Call, NewCredentials};
 use futures::{Future, FutureExt, TryFutureExt};
 use serde::Serialize;
 use tide::{Body, Request};
-use tracing::{Instrument, error, error_span, info};
+use tracing::{Instrument, debug, error, error_span, info, trace, warn};
 
 use crate::core::auth;
+
+
 
 pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
     let body = req.body_bytes().await?;
@@ -20,33 +23,44 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
         .map(|sa| {(sa.ip(), sa.port())})
         .ok_or(tide::Error::from_str(500, "incoming RPC does't have a peer_addr()"))?;
 
+    let log_error = |e: &api::Error| {
+        match e {
+            api::Error::ServerSideError(_) => {
+                warn!("{}", e);
+                trace!("{:?}", e);
+            }
+            api::Error::ClientSideError(_) => error!("{0:#?}\n{0:?}", e), // never supposed to happen
+            _ => info!("{}", e)
+        }
+    };
+
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
     let resp = async { match c {
         Call::NewCredentials(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials(req, &args)
-            .inspect_err(|e| {error!("error: {:#}", e)})
+            .inspect_err(log_error)
             .instrument(error_span!("NewCredentials"))
             .await),
         Call::Signup(args) => rmp_serde::encode::to_vec_named(&auth::signup(req, &args)
-            .inspect_err(|e| {error!("error: {:#}", e)})
+            .inspect_err(log_error)
             .instrument(error_span!("Signup", username = %args.username))
             .await),
         
         Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, &args)
-            .inspect_err(|e| {error!("error: {:#}", e)})
+            .inspect_err(log_error)
             .instrument(error_span!("LoginStart", username = %args.username))
             .await),
         Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, &args)
-            .inspect_err(|e| {error!("error: {:#}", e)})
+            .inspect_err(log_error)
             .instrument(error_span!("LoginFinish"))
             .await),
 
         Call::UpdateCredentials(args) => rmp_serde::encode::to_vec_named(&auth::update_credentials(req, &args)
-            .inspect_err(|e| {error!("error: {:#}", e)})
+            .inspect_err(log_error)
             .instrument(error_span!("UpdateCredentials"))
             .await),
 
         Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&auth::get_username(req, &args)
-            .inspect_err(|e| {error!("error: {:#}", e)})
+            .inspect_err(log_error)
             .instrument(error_span!("GetUsername"))
             .await),
     }}.instrument(error_span!("rpc", %ip, port)).await;
