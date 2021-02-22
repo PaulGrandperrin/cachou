@@ -126,7 +126,15 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn insert_user(&self, user_id: &[u8], username: &str, opaque_password: &[u8], hashed_secret_id: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8]) -> api::Result<()> {
+    pub async fn insert_user(&self, user_id: &[u8], username: &str, opaque_password: &[u8], hashed_secret_id: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8], update: bool) -> api::Result<()> {
+        let mut tx = self.pool.begin().await.map_err(|e| eyre::eyre!(e))?;
+
+        if update {
+            sqlx::query("delete from `user` where `user_id` = ?")
+            .bind(user_id)
+            .execute(&mut tx).await.map_err(|e| eyre::eyre!(e))?;
+        }
+
         sqlx::query("insert into `user` values (?, ?, ?, ?, ?, ?)")
                 .bind(user_id)
                 .bind(username)
@@ -134,7 +142,7 @@ impl Db {
                 .bind(hashed_secret_id)
                 .bind(sealed_masterkey)
                 .bind(sealed_private_data)
-                .execute(&self.pool).await.map_err(|e| {
+                .execute(&mut tx).await.map_err(|e| {
                     match e {
                         sqlx::Error::Database(e)
                             if e.as_error().downcast_ref::<MySqlDatabaseError>().map(|e| e.number()) == Some(1062)
@@ -143,24 +151,7 @@ impl Db {
                     }
                 })?;
 
-        Ok(())
-    }
-
-    #[tracing::instrument]
-    pub async fn change_user_creds(&self, user_id: &[u8], username: &str, opaque_password: &[u8], sealed_masterkey: &[u8]) -> api::Result<()> {
-        sqlx::query("update `user` set `username` = ?, `opaque_password` = ?, `sealed_masterkey` = ? where `user_id` = ?")
-                .bind(username)
-                .bind(opaque_password)
-                .bind(sealed_masterkey)
-                .bind(user_id)
-                .execute(&self.pool).await.map_err(|e| {
-                    match e {
-                        sqlx::Error::Database(e)
-                            if e.as_error().downcast_ref::<MySqlDatabaseError>().map(|e| e.number()) == Some(1062)
-                            => api::Error::UsernameConflict,
-                        _ => api::Error::ServerSideError(e.into()),
-                    }
-                })?;
+        tx.commit().await.map_err(|e| eyre::eyre!(e))?;
 
         Ok(())
     }

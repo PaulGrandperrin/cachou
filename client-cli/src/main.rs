@@ -54,7 +54,7 @@ fn main() -> eyre::Result<()>{
                 rl.add_history_entry(line.as_str());
                 match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", username, password] => {
-                        let f = LoggedClient::signup(Client::new(), username, password);
+                        let f = LoggedClient::signup(Client::new(), username, password, None);
                         logged_client = match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);

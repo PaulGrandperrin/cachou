@@ -12,9 +12,6 @@ pub enum Call {
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
 
-    /// Finishes OPAQUE's registration procedure and updates user's credentials. Precedeed by NewCredentials.
-    UpdateCredentials(UpdateCredentials),
-
     GetUsername(GetUsername),
 }
 
@@ -42,6 +39,7 @@ pub struct Signup {
     pub secret_id: Vec<u8>, // NOTE: this is the Sha256 of the masterkey, used as a last resort way of login in without user_id and skipping OPAQUE auth
     pub sealed_masterkey: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     pub sealed_private_data: Vec<u8>, // sealed with masterkey
+    pub sealed_session_token: Option<Vec<u8>>, // if present and valid with uber rights, updates existing user's credentials
 }
 impl Rpc for Signup {
     type Ret = Vec<u8>; // sealed_session_token
@@ -69,20 +67,6 @@ pub struct LoginFinish {
 impl Rpc for LoginFinish {
     type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data, sealed_session_token
     fn into_call(self) -> Call { Call::LoginFinish(self) }
-}
-
-// UpdateCredentials
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateCredentials {
-    pub server_sealed_state: Vec<u8>,
-    pub opaque_msg: Vec<u8>,
-    pub username: String,
-    pub sealed_masterkey: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
-    pub sealed_session_token: Vec<u8>,
-}
-impl Rpc for UpdateCredentials {
-    type Ret = ();
-    fn into_call(self) -> Call { Call::UpdateCredentials(self) }
 }
 
 // GetUsername

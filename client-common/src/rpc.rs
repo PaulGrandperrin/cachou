@@ -4,7 +4,7 @@ use common::api::{self, Call, Rpc};
 use eyre::WrapErr;
 use tracing::warn;
 
-
+#[derive(Clone)]
 pub struct Client {
     reqwest_client: reqwest::Client,
     url: String // maybe use Url type directly

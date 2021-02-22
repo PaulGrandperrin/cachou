@@ -3,7 +3,7 @@ use std::error::Error;
 
 use eyre::{eyre, ContextCompat, Report};
 use api::Rpc;
-use common::api::{self, Call, NewCredentials};
+use common::api::{self, Call};
 use futures::{Future, FutureExt, TryFutureExt};
 use serde::Serialize;
 use tide::{Body, Request};
@@ -43,7 +43,7 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
         Call::Signup(args) => rmp_serde::encode::to_vec_named(&auth::signup(req, &args)
             .inspect_err(log_error)
             .instrument(error_span!("Signup", username = %args.username))
-            .await),
+            .await), // TODO trace if creation or update
         
         Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, &args)
             .inspect_err(log_error)
@@ -52,11 +52,6 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
         Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, &args)
             .inspect_err(log_error)
             .instrument(error_span!("LoginFinish"))
-            .await),
-
-        Call::UpdateCredentials(args) => rmp_serde::encode::to_vec_named(&auth::update_credentials(req, &args)
-            .inspect_err(log_error)
-            .instrument(error_span!("UpdateCredentials"))
             .await),
 
         Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&auth::get_username(req, &args)

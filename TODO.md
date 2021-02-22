@@ -2,6 +2,13 @@
 
 - validate token TTL, and also opaque_state
 
+- rename newcredentials and signup
+
+- when updating credentials, don't change masterkey
+- but allow just rotating masterkey too
+
+- fix overriding of tracing levels from env var
+
 - factorise sealed stuff in API
 
 - check that replay attack are not an issue with our stateless OPAQUE negociation

@@ -1,4 +1,4 @@
-use std::iter;
+use std::{iter, mem::swap};
 
 use common::{api, crypto::{opaque::OpaqueConf, sealed::Sealed}};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, CredentialResponse, RegistrationResponse};
@@ -9,7 +9,7 @@ use crate::core::private_data::PrivateData;
 use super::{Client, LoggedClient};
 
 impl LoggedClient {
-    pub async fn signup(client: Client, username: impl Into<String>, password: &str) -> eyre::Result<Self> { // FIXME don't loose client on failure
+    pub async fn signup(client: Client, username: impl Into<String>, password: &str, sealed_session_token: Option<Vec<u8>>) -> eyre::Result<Self> { // FIXME don't loose client on failure
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -56,6 +56,7 @@ impl LoggedClient {
                 secret_id,
                 sealed_masterkey,
                 sealed_private_data,
+                sealed_session_token,
             }
         ).await?;
 
@@ -110,49 +111,8 @@ impl LoggedClient {
     }
 
     pub async fn update_credentials(&mut self, username: impl Into<String>, password: &str) -> eyre::Result<()> {
-        let mut rng = rand_core::OsRng;
-        let username = username.into();
-
-        // start OPAQUE
-
-        let opaque_reg_start = ClientRegistration::<OpaqueConf>::start(
-            &mut rng,
-            password.as_bytes(),
-        )?;
-
-        let (server_sealed_state, opaque_msg) = self.client.rpc_client.call(
-            common::api::NewCredentials{opaque_msg: opaque_reg_start.message.serialize()}
-        ).await?;
-        
-        // finish OPAQUE
-
-        let opaque_reg_finish = opaque_reg_start
-        .state
-        .finish(
-            &mut rng,
-            RegistrationResponse::deserialize(&opaque_msg)?,
-            opaque_ke::ClientRegistrationFinishParameters::WithIdentifiers(username.clone().into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
-        )?;
-        let opaque_msg = opaque_reg_finish.message.serialize();
-        
-
-        // update credentials
-
-        let pdk = opaque_reg_finish.export_key.to_vec();
-        let sealed_masterkey = Sealed::seal(&pdk, &self.masterkey, &())?;
-
-        self.client.rpc_client.call(
-            common::api::UpdateCredentials {
-                server_sealed_state: server_sealed_state.clone(),
-                opaque_msg,
-                username: username.clone(),
-                sealed_masterkey,
-                sealed_session_token: self.sealed_session_token.clone(),
-            }
-        ).await?; // NOTE very rarely, this will fail client-side but be successful server-side.. Shouldn't be a big issue
-
-        self.username = username;
-
+        let mut this = Self::signup(self.client.clone(), username, password, Some(self.sealed_session_token.clone())).await?;
+        std::mem::swap(&mut this, self);
         Ok(())
     }
 

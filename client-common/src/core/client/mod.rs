@@ -5,7 +5,7 @@ use super::private_data::PrivateData;
 mod auth;
 
 #[derive(derivative::Derivative)]
-#[derivative(Debug)]
+#[derivative(Debug, Clone)]
 pub struct Client {
     #[derivative(Debug="ignore")]
     rpc_client: rpc::Client,
