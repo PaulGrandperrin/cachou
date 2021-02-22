@@ -64,6 +64,7 @@ impl Rpc for LoginStart {
 pub struct LoginFinish {
     pub server_sealed_state: Vec<u8>,
     pub opaque_msg: Vec<u8>,
+    pub uber_token: bool,
 }
 impl Rpc for LoginFinish {
     type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data, sealed_session_token

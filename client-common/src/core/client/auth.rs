@@ -68,7 +68,7 @@ impl LoggedClient {
         })
     }
 
-    pub async fn login(client: Client, username: impl Into<String>, password: &str) -> eyre::Result<Self> {
+    pub async fn login(client: Client, username: impl Into<String>, password: &str, uber_token: bool) -> eyre::Result<Self> {
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -92,7 +92,7 @@ impl LoggedClient {
         let opaque_msg = opaque_log_finish.message.serialize();
 
         let (sealed_masterkey, sealed_private_data, sealed_session_token) = client.rpc_client.call(
-            common::api::LoginFinish{server_sealed_state, opaque_msg}
+            common::api::LoginFinish{server_sealed_state, opaque_msg, uber_token}
         ).await?;
 
         // recover user's private data

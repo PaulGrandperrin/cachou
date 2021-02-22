@@ -67,7 +67,20 @@ fn main() -> eyre::Result<()>{
                         };
                     }
                     ["login", username, password] => {
-                        let f = LoggedClient::login(Client::new(), username, password);
+                        let f = LoggedClient::login(Client::new(), username, password, false);
+                        logged_client = match rt.block_on(f) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                                Some(res)
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                                None
+                            },
+                        };
+                    }
+                    ["login_uber", username, password] => {
+                        let f = LoggedClient::login(Client::new(), username, password, true);
                         logged_client = match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
