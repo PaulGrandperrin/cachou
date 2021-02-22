@@ -1,7 +1,7 @@
 mod error;
-mod token;
+mod session_token;
 mod call;
 
 pub use error::*;
 pub use call::*;
-pub use token::*;
+pub use session_token::*;

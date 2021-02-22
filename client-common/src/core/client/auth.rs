@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{api::{self, TokenKind}, crypto::{opaque::OpaqueConf, sealed::Sealed}};
+use common::{api, crypto::{opaque::OpaqueConf, sealed::Sealed}};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, CredentialResponse, RegistrationResponse};
 use sha2::Digest;
 
@@ -68,7 +68,7 @@ impl LoggedClient {
         })
     }
 
-    pub async fn login(client: Client, username: impl Into<String>, password: &str, token_kind: TokenKind) -> eyre::Result<Self> {
+    pub async fn login(client: Client, username: impl Into<String>, password: &str) -> eyre::Result<Self> {
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -92,7 +92,7 @@ impl LoggedClient {
         let opaque_msg = opaque_log_finish.message.serialize();
 
         let (sealed_masterkey, sealed_private_data, sealed_session_token) = client.rpc_client.call(
-            common::api::LoginFinish{server_sealed_state, opaque_msg, token_kind}
+            common::api::LoginFinish{server_sealed_state, opaque_msg}
         ).await?;
 
         // recover user's private data
@@ -109,27 +109,22 @@ impl LoggedClient {
         })
     }
 
-    pub async fn update_credentials(&mut self, new_username: impl Into<String>, old_password: &str, new_password: &str) -> eyre::Result<()> {
+    pub async fn update_credentials(&mut self, username: impl Into<String>, password: &str) -> eyre::Result<()> {
         let mut rng = rand_core::OsRng;
-        let new_username = new_username.into();
+        let username = username.into();
 
-        // update username to latest known
-        self.update_username().await?;
-
-        let this = Self::login(self.client.clone(), self.username, old_password, TokenKind::Uber).await?;
-
-        // start OPAQUE for registering new creds
+        // start OPAQUE
 
         let opaque_reg_start = ClientRegistration::<OpaqueConf>::start(
             &mut rng,
-            new_password.as_bytes(),
+            password.as_bytes(),
         )?;
 
         let (server_sealed_state, opaque_msg) = self.client.rpc_client.call(
             common::api::NewCredentials{opaque_msg: opaque_reg_start.message.serialize()}
         ).await?;
         
-        // finish OPAQUE for registering new creds
+        // finish OPAQUE
 
         let opaque_reg_finish = opaque_reg_start
         .state

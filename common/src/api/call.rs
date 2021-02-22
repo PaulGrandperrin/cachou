@@ -60,23 +60,13 @@ impl Rpc for LoginStart {
 }
 
 // LoginFinish
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-pub enum TokenKind {
-    /// a session allows normal operations but doesn't allow changing credentials and masterkey
-    Session,
-    /// an uber token allows changing credentials and masterkey but doesn't allow normal operations
-    Uber,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinish {
     pub server_sealed_state: Vec<u8>,
     pub opaque_msg: Vec<u8>,
-    pub token_kind: TokenKind,
 }
 impl Rpc for LoginFinish {
-    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data, sealed_token
+    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data, sealed_session_token
     fn into_call(self) -> Call { Call::LoginFinish(self) }
 }
 
