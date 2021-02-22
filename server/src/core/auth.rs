@@ -2,7 +2,7 @@ use std::{convert::TryFrom};
 
 use color_eyre::Section;
 use eyre::eyre;
-use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentials, Rpc, SessionToken, Signup, UpdateCredentials}, crypto::{self, opaque::OpaqueConf}};
+use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentials, Rpc, Signup, Token, UpdateCredentials}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
@@ -50,7 +50,7 @@ pub async fn signup(req: Request<crate::state::State>, args: &Signup) -> api::Re
     async {
         req.state().db.insert_user(&user_id, &args.username, &opaque_password.serialize(), &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
 
-        let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec)
+        let sealed_session_token = Token::new(user_id.to_vec(), req.state().config.session_duration_sec, api::TokenKind::Session)
             .seal(&req.state().secret_key[..])?;
 
         info!("ok");
@@ -103,11 +103,11 @@ pub async fn login_finish(req: Request<crate::state::State>, args: &LoginFinish)
 
         let (sealed_masterkey, sealed_private_data) = req.state().db.get_user_data_from_userid(&user_id).await?;
 
-        let sealed_session_token = SessionToken::new(user_id.clone(), req.state().config.session_duration_sec)
+        let sealed_token = Token::new(user_id.clone(), req.state().config.session_duration_sec, args.token_kind)
             .seal(&req.state().secret_key[..])?;
 
         info!("ok");
-        Ok((sealed_masterkey, sealed_private_data, sealed_session_token))
+        Ok((sealed_masterkey, sealed_private_data, sealed_token))
     }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
@@ -122,9 +122,9 @@ pub async fn update_credentials(req: Request<crate::state::State>, args: &Update
         .wrap_err("failed to deserialize opaque_msg")?)
         .wrap_err("failed to finish opaque registration")?;
 
-    let session_token = SessionToken::unseal(&req.state().secret_key[..], &args.sealed_session_token)?;
+    let uber_token = Token::unseal(&req.state().secret_key[..], &args.sealed_session_token, api::TokenKind::Uber)?;
 
-    req.state().db.change_user_creds(&session_token.user_id, &args.username, &opaque_password.serialize(), &args.sealed_masterkey).await?;
+    req.state().db.change_user_creds(&uber_token.get_user_id(), &args.username, &opaque_password.serialize(), &args.sealed_masterkey).await?;
 
     info!("ok");
     Ok(())
@@ -132,9 +132,9 @@ pub async fn update_credentials(req: Request<crate::state::State>, args: &Update
 
 
 pub async fn get_username(req: Request<crate::state::State>, args: &GetUsername) -> api::Result<<GetUsername as Rpc>::Ret> {
-    let session_token = SessionToken::unseal(&req.state().secret_key[..], &args.sealed_session_token)?;
+    let session_token = Token::unseal(&req.state().secret_key[..], &args.sealed_session_token, api::TokenKind::Session)?;
 
-    let username = req.state().db.get_username_from_userid(&session_token.user_id).await?;
+    let username = req.state().db.get_username_from_userid(&session_token.get_user_id()).await?;
 
     info!("ok");
     Ok(username)
