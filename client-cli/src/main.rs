@@ -80,27 +80,23 @@ fn main() -> eyre::Result<()>{
                         };
                     }
                     ["change_creds", username, password] => {
-                        logged_client = if let Some(logged_client) = logged_client.take() {
+                        if let Some(logged_client) = logged_client.as_mut().take() {
                             let f = LoggedClient::update_credentials(logged_client, username, password);
                             match rt.block_on(f) {
                                 Ok(res) => {
                                     trace!("got : {:?}", res);
-                                    Some(res)
                                 },
                                 Err(e) => {
                                     error!("{:?}", e);
-                                    None
                                 },
                             }
                         } else {
                             error!("user must be logged in");
-                            None
                         }
-                        
                     }
-                    ["get_username"] => {
-                        if let Some(logged_client) = logged_client.as_ref().take() {
-                            let f = logged_client.get_username();
+                    ["update_username"] => {
+                        if let Some(logged_client) = logged_client.as_mut().take() {
+                            let f = logged_client.update_username();
                             match rt.block_on(f) {
                                 Ok(res) => {
                                     trace!("got : {:?}", res);

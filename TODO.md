@@ -1,3 +1,5 @@
+- rewrite client-common: better modules, don't reify auth status in typestate, don't loose so easily connection and auth status
+
 - factorise sealed stuff in API
 
 - check that replay attack are not an issue with our stateless OPAQUE negociation

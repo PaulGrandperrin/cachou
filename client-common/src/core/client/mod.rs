@@ -15,7 +15,6 @@ pub struct Client {
 pub struct LoggedClient {
     client: Client,
     pub username: String,
-    pdk: Vec<u8>,
     masterkey: Vec<u8>,
     private_data: PrivateData,
     sealed_session_token: Vec<u8>,

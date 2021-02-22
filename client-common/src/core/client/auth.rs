@@ -62,7 +62,6 @@ impl LoggedClient {
         Ok( Self {
             client,
             username,
-            pdk,
             masterkey,
             private_data,
             sealed_session_token,
@@ -104,14 +103,13 @@ impl LoggedClient {
         Ok( Self {
             client,
             username,
-            pdk,
             masterkey,
             private_data,
             sealed_session_token,
         })
     }
 
-    pub async fn update_credentials(self, username: impl Into<String>, password: &str) -> eyre::Result<Self> {
+    pub async fn update_credentials(&mut self, username: impl Into<String>, password: &str) -> eyre::Result<()> {
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -138,7 +136,7 @@ impl LoggedClient {
         let opaque_msg = opaque_reg_finish.message.serialize();
         
 
-        // instanciate and save user's private data
+        // update credentials
 
         let pdk = opaque_reg_finish.export_key.to_vec();
         let sealed_masterkey = Sealed::seal(&pdk, &self.masterkey, &())?;
@@ -151,24 +149,21 @@ impl LoggedClient {
                 sealed_masterkey,
                 sealed_session_token: self.sealed_session_token.clone(),
             }
-        ).await?;
+        ).await?; // NOTE very rarely, this will fail client-side but be successful server-side.. Shouldn't be a big issue
 
-        Ok( Self {
-            client: self.client,
-            username,
-            pdk,
-            masterkey: self.masterkey,
-            private_data: self.private_data,
-            sealed_session_token: self.sealed_session_token,
-        })
+        self.username = username;
+
+        Ok(())
     }
 
-    pub async fn get_username(&self) -> eyre::Result<String> {
+    pub async fn update_username(&mut self) -> eyre::Result<()> {
 
         let username = self.client.rpc_client.call(
             common::api::GetUsername{ sealed_session_token: self.sealed_session_token.clone() }
         ).await?;
 
-        Ok(username)
+        self.username = username.clone();
+
+        Ok(())
     }
 }

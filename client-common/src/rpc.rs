@@ -24,7 +24,7 @@ impl Client {
 
         let mut retries = 1;
         let res = loop {
-            match self.reqwest_client.post(&self.url) 
+            match self.reqwest_client.post(&self.url)
                 .body(body.clone())
                 .send()
                 .await {
@@ -39,5 +39,4 @@ impl Client {
         let body = res.bytes().await.wrap_err("Body error")?;
         rmp_serde::decode::from_slice(&body).wrap_err("Deserialization error")?
     }
-
 }
