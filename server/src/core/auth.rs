@@ -44,15 +44,18 @@ pub async fn signup(req: Request<crate::state::State>, args: &Signup) -> api::Re
 
     // we hash the secret_id once more so that if someone gains temporary read access to the DB, he'll not able able to access user account later
     let hashed_secret_id = sha2::Sha256::digest(&args.secret_id).to_vec();
-    
-    let user_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
-    req.state().db.insert_user(&user_id, &args.username, &opaque_password.serialize(), &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
-    
-    let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec)
-        .seal(&req.state().secret_key[..])?;
 
-    info!("ok");
-    Ok(sealed_session_token)
+    let user_id: [u8; 32] = rand::thread_rng().gen(); // 256bits, so I don't even have to think about birthday attacks
+    
+    async {
+        req.state().db.insert_user(&user_id, &args.username, &opaque_password.serialize(), &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data).await?;
+
+        let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec)
+            .seal(&req.state().secret_key[..])?;
+
+        info!("ok");
+        Ok(sealed_session_token)
+    }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
 pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -> api::Result<<LoginStart as Rpc>::Ret> {
