@@ -1,6 +1,6 @@
 use std::{iter, mem::swap};
 
-use common::{api, consts::OPAQUE_SERVER_ID_RECOVERY, crypto::{opaque::OpaqueConf, sealed::Sealed}};
+use common::{api, consts::OPAQUE_SERVER_ID_RECOVERY, crypto::{opaque::{OpaqueConf, OpaqueConfRecovery}, sealed::Sealed}};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, CredentialResponse, RegistrationResponse};
 use sha2::Digest;
 use eyre::{eyre, WrapErr};
@@ -47,8 +47,8 @@ impl Client {
         let password_recovery = &masterkey;
 
         // start OPAQUE
-        let (opaque_state, opaque_msg) = opaque::registration_start(password.as_bytes())?;
-        let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start(password_recovery)?;
+        let (opaque_state, opaque_msg) = opaque::registration_start::<OpaqueConf>(password.as_bytes())?;
+        let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start::<OpaqueConfRecovery>(password_recovery)?;
 
         // send OPAQUE start message to server
         let (server_sealed_state, opaque_msg, opaque_msg_recovery) = self.rpc_client.call(
@@ -59,8 +59,8 @@ impl Client {
         ).await?;
         
         // finish OPAQUE
-        let (opaque_msg, pdk) = opaque::registration_finish(&opaque_state, &opaque_msg, username.as_bytes(), &common::consts::OPAQUE_SERVER_ID)?;
-        let (opaque_msg_recovery, _) = opaque::registration_finish(&opaque_state_recovery, &opaque_msg_recovery, &username_recovery, &common::consts::OPAQUE_SERVER_ID_RECOVERY)?;
+        let (opaque_msg, pdk) = opaque::registration_finish::<OpaqueConf>(&opaque_state, &opaque_msg, username.as_bytes(), &common::consts::OPAQUE_SERVER_ID)?;
+        let (opaque_msg_recovery, _) = opaque::registration_finish::<OpaqueConfRecovery>(&opaque_state_recovery, &opaque_msg_recovery, &username_recovery, &common::consts::OPAQUE_SERVER_ID_RECOVERY)?;
 
         // seal masterkey with pdk (opaque's export_key)
         let sealed_masterkey = Sealed::seal(&pdk, &masterkey, &())?;
@@ -91,14 +91,14 @@ impl Client {
 
     async fn login_impl(&mut self, username: &str, password: &str, uber_token: bool) -> eyre::Result<()> {
         // start OPAQUE
-        let (opaque_state, opaque_msg) = opaque::login_start(password.as_bytes())?;
+        let (opaque_state, opaque_msg) = opaque::login_start::<OpaqueConf>(password.as_bytes())?;
 
         let (server_sealed_state, opaque_msg) = self.rpc_client.call(
             common::api::LoginStart{username: username.to_owned(), opaque_msg}
         ).await?;
 
         // finish OPAQUE
-        let (opaque_msg, pdk) = opaque::login_finish(&opaque_state, &opaque_msg, username.as_bytes(), common::consts::OPAQUE_SERVER_ID.as_ref())?;
+        let (opaque_msg, pdk) = opaque::login_finish::<OpaqueConf>(&opaque_state, &opaque_msg, username.as_bytes(), common::consts::OPAQUE_SERVER_ID.as_ref())?;
 
         let (sealed_masterkey, sealed_private_data, sealed_session_token) = self.rpc_client.call(
             common::api::LoginFinish{server_sealed_state, opaque_msg, uber_token}

@@ -2,7 +2,7 @@ use std::{convert::TryFrom};
 
 use color_eyre::Section;
 use eyre::eyre;
-use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentialsStart, Rpc, SessionToken, NewCredentialsFinish}, crypto::{self, opaque::OpaqueConf}};
+use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentialsStart, Rpc, SessionToken, NewCredentialsFinish}, crypto::{self, opaque::{OpaqueConf, OpaqueConfRecovery}}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::{Key, KeyPair}};
 use rand::Rng;
 use serde::Serialize;
@@ -15,8 +15,8 @@ use crate::opaque;
 
 pub async fn new_credentials_start(req: Request<crate::state::State>, args: &NewCredentialsStart) -> api::Result<<NewCredentialsStart as Rpc>::Ret> {
 
-    let (opaque_state, opaque_msg) = opaque::registration_start(req.state().opaque_kp.public(), &args.opaque_msg)?;
-    let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start(req.state().opaque_kp.public(), &args.opaque_msg_recovery)?;
+    let (opaque_state, opaque_msg) = opaque::registration_start::<OpaqueConf>(req.state().opaque_kp.public(), &args.opaque_msg)?;
+    let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start::<OpaqueConfRecovery>(req.state().opaque_kp.public(), &args.opaque_msg_recovery)?;
 
     //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_new_credentials", &opaque_state).await?;
 
@@ -33,8 +33,8 @@ pub async fn new_credentials_finish(req: Request<crate::state::State>, args: &Ne
     let (opaque_state, opaque_state_recovery) = crypto::sealed::Sealed::<(Vec<u8>, Vec<u8>), ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
     //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
     
-    let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
-    let opaque_password_recovery = opaque::registration_finish(&opaque_state_recovery[..], &args.opaque_msg_recovery)?;
+    let opaque_password = opaque::registration_finish::<OpaqueConf>(&opaque_state[..], &args.opaque_msg)?;
+    let opaque_password_recovery = opaque::registration_finish::<OpaqueConfRecovery>(&opaque_state_recovery[..], &args.opaque_msg_recovery)?;
 
     let (user_id, update) = if let Some(sealed_session_token) = &args.sealed_session_token {
         (SessionToken::unseal(&req.state().secret_key[..], sealed_session_token, true)?.user_id, true)
@@ -59,7 +59,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
         .instrument(error_span!("id", username = args.username.as_str())).await?;
     
     async {
-        let (opaque_state, opaque_msg) = opaque::login_start(req.state().opaque_kp.private(), &args.opaque_msg, args.username.as_bytes(), &opaque_password, &common::consts::OPAQUE_SERVER_ID)?;
+        let (opaque_state, opaque_msg) = opaque::login_start::<OpaqueConf>(req.state().opaque_kp.private(), &args.opaque_msg, args.username.as_bytes(), &opaque_password, &common::consts::OPAQUE_SERVER_ID)?;
         
         let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque_state, &user_id)?; // TODO add TTL
 
@@ -77,7 +77,7 @@ pub async fn login_finish(req: Request<crate::state::State>, args: &LoginFinish)
 
     async {
         // check password
-        opaque::login_finish(&opaque_state, &args.opaque_msg)?;
+        opaque::login_finish::<OpaqueConf>(&opaque_state, &args.opaque_msg)?;
 
         let (sealed_masterkey, sealed_private_data) = req.state().db.get_user_data_from_userid(&user_id).await?;
 
