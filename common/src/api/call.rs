@@ -3,10 +3,8 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
-    /// Starts OPAQUE's registration procedure.
+    /// to create a new user, or update an existing one credentials (username, password, masterkey)
     NewCredentialsStart(NewCredentialsStart),
-    
-    /// Finishes OPAQUE's registration procedure. To create or update user.
     NewCredentialsFinish(NewCredentialsFinish),
 
     LoginStart(LoginStart),
@@ -20,7 +18,7 @@ pub trait Rpc: Serialize {
     fn into_call(self) -> Call;
 }
 
-// NewCredentials
+// NewCredentialsStart
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentialsStart {
     pub opaque_msg: Vec<u8>,
@@ -30,7 +28,7 @@ impl Rpc for NewCredentialsStart {
     fn into_call(self) -> Call { Call::NewCredentialsStart(self) }
 }
 
-// Signup
+// NewCredentialsFinish
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentialsFinish {
     pub server_sealed_state: Vec<u8>,
