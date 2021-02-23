@@ -4,6 +4,10 @@
 
 - rename newcredentials and signup
 
+- create client errors
+
+- server-side, log user errors differently
+
 - when updating credentials, don't change masterkey
 - but allow just rotating masterkey too
 

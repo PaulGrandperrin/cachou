@@ -2,7 +2,7 @@
 
 use pwned::api::*;
 
-mod rpc;
+mod rpc_client;
 pub mod core;
 
 pub fn check_email(email: &str) -> bool {

@@ -1,4 +1,4 @@
-use crate::rpc;
+use crate::rpc_client::RpcClient;
 
 use super::private_data::PrivateData;
 
@@ -8,7 +8,7 @@ mod auth;
 #[derivative(Debug)]
 pub struct Client {
     #[derivative(Debug="ignore")]
-    rpc_client: rpc::Client,
+    rpc_client: RpcClient,
     logged_user: Option<LoggedUser>,
 }
 
@@ -23,7 +23,7 @@ pub struct LoggedUser {
 impl Client {
     pub fn new() -> Self {
         Self {
-            rpc_client: rpc::Client::new("http://[::1]:8081/api"),
+            rpc_client: RpcClient::new("http://[::1]:8081/api"),
             logged_user: None,
         }
     }

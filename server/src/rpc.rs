@@ -12,7 +12,6 @@ use tracing::{Instrument, debug, error, error_span, info, trace, warn};
 use crate::core::auth;
 
 
-
 pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
     let body = req.body_bytes().await?;
     let c: api::Call = rmp_serde::from_slice(&body)?;

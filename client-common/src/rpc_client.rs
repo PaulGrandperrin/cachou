@@ -5,12 +5,12 @@ use eyre::WrapErr;
 use tracing::warn;
 
 #[derive(Clone)]
-pub struct Client {
+pub struct RpcClient {
     reqwest_client: reqwest::Client,
     url: String // maybe use Url type directly
 }
 
-impl Client {
+impl RpcClient {
     pub fn new(url: &str) -> Self {
         Self {
             reqwest_client: reqwest::Client::new(),
