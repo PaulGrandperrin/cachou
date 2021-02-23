@@ -35,14 +35,14 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
 
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
     let resp = async { match c {
-        Call::NewCredentialsStart(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials(req, &args)
+        Call::NewCredentialsStart(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials_start(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("NewCredentials"))
+            .instrument(error_span!("NewCredentialsStart"))
             .await),
-        Call::NewCredentialsFinish(args) => rmp_serde::encode::to_vec_named(&auth::signup(req, &args)
+        Call::NewCredentialsFinish(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials_finish(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("Signup", username = %args.username))
-            .await), // TODO trace if creation or update
+            .instrument(error_span!("NewCredentialsFinish", username = %args.username, update = args.sealed_session_token.is_some()))
+            .await),
         
         Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, &args)
             .inspect_err(log_error)
@@ -50,7 +50,7 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
             .await),
         Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("LoginFinish"))
+            .instrument(error_span!("LoginFinish", uber = args.uber_token))
             .await),
 
         Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&auth::get_username(req, &args)

@@ -11,7 +11,7 @@ use tide::Request;
 use tracing::{Instrument, error, error_span, info, trace};
 use eyre::WrapErr;
 
-pub async fn new_credentials(req: Request<crate::state::State>, args: &NewCredentialsStart) -> api::Result<<NewCredentialsStart as Rpc>::Ret> {
+pub async fn new_credentials_start(req: Request<crate::state::State>, args: &NewCredentialsStart) -> api::Result<<NewCredentialsStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
     let opaque = ServerRegistration::<OpaqueConf>::start(
         &mut rng,
@@ -31,7 +31,7 @@ pub async fn new_credentials(req: Request<crate::state::State>, args: &NewCreden
     ))
 }
 
-pub async fn signup(req: Request<crate::state::State>, args: &NewCredentialsFinish) -> api::Result<<NewCredentialsFinish as Rpc>::Ret> {
+pub async fn new_credentials_finish(req: Request<crate::state::State>, args: &NewCredentialsFinish) -> api::Result<<NewCredentialsFinish as Rpc>::Ret> {
     let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
     //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
     let opaque_state = ServerRegistration::<OpaqueConf>::deserialize(&opaque_state[..])
@@ -119,9 +119,11 @@ pub async fn login_finish(req: Request<crate::state::State>, args: &LoginFinish)
 pub async fn get_username(req: Request<crate::state::State>, args: &GetUsername) -> api::Result<<GetUsername as Rpc>::Ret> {
     let session_token = SessionToken::unseal(&req.state().secret_key[..], &args.sealed_session_token, false)?;
 
-    let username = req.state().db.get_username_from_userid(&session_token.user_id).await?;
+    async {
+        let username = req.state().db.get_username_from_userid(&session_token.user_id).await?;
 
-    info!("ok");
-    Ok(username)
+        info!("ok: {}", username);
+        Ok(username)
+    }.instrument(error_span!("id", user_id = %bs58::encode(&session_token.user_id).into_string())).await
 }
 
