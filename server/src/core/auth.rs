@@ -3,7 +3,7 @@ use std::{convert::TryFrom};
 use color_eyre::Section;
 use eyre::eyre;
 use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentialsStart, Rpc, SessionToken, NewCredentialsFinish}, crypto::{self, opaque::OpaqueConf}};
-use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
+use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::{Key, KeyPair}};
 use rand::Rng;
 use serde::Serialize;
 use sha2::Digest;
@@ -11,39 +11,51 @@ use tide::Request;
 use tracing::{Instrument, error, error_span, info, trace};
 use eyre::WrapErr;
 
-pub async fn new_credentials_start(req: Request<crate::state::State>, args: &NewCredentialsStart) -> api::Result<<NewCredentialsStart as Rpc>::Ret> {
+fn opaque_registration_start(opaque_pk: &Key, opaque_msg: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {
     let mut rng = rand_core::OsRng;
     let opaque = ServerRegistration::<OpaqueConf>::start(
         &mut rng,
-        RegistrationRequest::deserialize(&args.opaque_msg).wrap_err("failed to deserialize opaque_msg")?,
-        req.state().opaque_kp.public(),
+        RegistrationRequest::deserialize(opaque_msg).wrap_err("failed to deserialize opaque_msg")?,
+        opaque_pk,
     ).wrap_err("failed to start opaque registration")?;
-    let opaque_state = opaque.state.serialize();
     
+    Ok((opaque.state.serialize(), opaque.message.serialize()))
+}
+
+pub async fn new_credentials_start(req: Request<crate::state::State>, args: &NewCredentialsStart) -> api::Result<<NewCredentialsStart as Rpc>::Ret> {
+
+    let (opaque_state, opaque_msg) = opaque_registration_start(req.state().opaque_kp.public(), &args.opaque_msg)?;
+    let (opaque_state_recovery, opaque_msg_recovery) = opaque_registration_start(req.state().opaque_kp.public(), &args.opaque_msg_recovery)?;
+
     //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_new_credentials", &opaque_state).await?;
 
-    let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque_state, &())?; // TODO add TTL
+    let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &(opaque_state, opaque_state_recovery), &())?; // TODO add TTL
 
-    info!("ok");
     Ok((
         server_sealed_state,
-        opaque.message.serialize(),
+        opaque_msg,
+        opaque_msg_recovery
     ))
 }
 
-pub async fn new_credentials_finish(req: Request<crate::state::State>, args: &NewCredentialsFinish) -> api::Result<<NewCredentialsFinish as Rpc>::Ret> {
-    let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
-    //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
-    let opaque_state = ServerRegistration::<OpaqueConf>::deserialize(&opaque_state[..])
+fn opaque_registration_finish(opaque_state: &[u8], opaque_msg: &[u8]) -> api::Result<Vec<u8>> {
+    let opaque_state = ServerRegistration::<OpaqueConf>::deserialize(opaque_state)
         .wrap_err("failed to deserialize opaque_state")?;
 
     let opaque_password = opaque_state
-        .finish(RegistrationUpload::deserialize(&args.opaque_msg)
+        .finish(RegistrationUpload::deserialize(opaque_msg)
         .wrap_err("failed to deserialize opaque_msg")?)
         .wrap_err("failed to finish opaque registration")?;
 
-    // we hash the secret_id once more so that if someone gains temporary read access to the DB, he'll not able able to access user account later
-    let hashed_secret_id = sha2::Sha256::digest(&args.secret_id).to_vec();
+    Ok(opaque_password.serialize())
+}
+
+pub async fn new_credentials_finish(req: Request<crate::state::State>, args: &NewCredentialsFinish) -> api::Result<<NewCredentialsFinish as Rpc>::Ret> {
+    let (opaque_state, opaque_state_recovery) = crypto::sealed::Sealed::<(Vec<u8>, Vec<u8>), ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
+    //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
+    
+    let opaque_password = opaque_registration_finish(&opaque_state[..], &args.opaque_msg)?;
+    let opaque_password_recovery = opaque_registration_finish(&opaque_state_recovery[..], &args.opaque_msg_recovery)?;
 
     let (user_id, update) = if let Some(sealed_session_token) = &args.sealed_session_token {
         (SessionToken::unseal(&req.state().secret_key[..], sealed_session_token, true)?.user_id, true)
@@ -52,7 +64,7 @@ pub async fn new_credentials_finish(req: Request<crate::state::State>, args: &Ne
     };
     
     async {
-        req.state().db.insert_user(&user_id, &args.username, &opaque_password.serialize(), &hashed_secret_id, &args.sealed_masterkey,&args.sealed_private_data, update).await?;
+        req.state().db.insert_user(&user_id, &args.username, &opaque_password, &args.username_recovery ,&opaque_password_recovery, &args.sealed_masterkey, &args.sealed_private_data, update).await?;
 
         let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec, false)
             .seal(&req.state().secret_key[..])?;
@@ -78,7 +90,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
             req.state().opaque_kp.private(),
             CredentialRequest::deserialize(&args.opaque_msg)
                 .wrap_err("failed to deserialize opaque_msg")?,
-            ServerLoginStartParameters::WithIdentifiers(args.username.clone().into_bytes(), common::consts::OPAQUE_ID_S.to_vec()),
+            ServerLoginStartParameters::WithIdentifiers(args.username.clone().into_bytes(), common::consts::OPAQUE_SERVER_ID.to_vec()),
         ).wrap_err("failed to start opaque login")?;
         
         let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque.state.serialize(), &user_id)?; // TODO add TTL

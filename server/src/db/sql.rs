@@ -81,12 +81,13 @@ impl Db {
                 `user_id` binary(32) not null,
                 `username` varchar(64) not null,
                 `opaque_password` varbinary(1024) not null,
-                `hashed_secret_id` binary(32) not null,
+                `username_recovery` binary(32) not null,
+                `opaque_password_recovery` varbinary(1024) not null,
                 `sealed_masterkey` varbinary(256) not null,
                 `sealed_private_data` varbinary(1024) not null,
                 primary key (user_id),
                 unique index unique_username (username),
-                index hashed_secret_id (hashed_secret_id)
+                unique index unique_username_recovery (username_recovery)
             )
         ").await?;
 
@@ -126,7 +127,7 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn insert_user(&self, user_id: &[u8], username: &str, opaque_password: &[u8], hashed_secret_id: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8], update: bool) -> api::Result<()> {
+    pub async fn insert_user(&self, user_id: &[u8], username: &str, opaque_password: &[u8], username_recovery: &[u8], opaque_password_recovery: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8], update: bool) -> api::Result<()> {
         let mut tx = self.pool.begin().await.map_err(|e| eyre::eyre!(e))?;
 
         if update {
@@ -135,11 +136,12 @@ impl Db {
             .execute(&mut tx).await.map_err(|e| eyre::eyre!(e))?;
         }
 
-        sqlx::query("insert into `user` values (?, ?, ?, ?, ?, ?)")
+        sqlx::query("insert into `user` values (?, ?, ?, ?, ?, ?, ?)")
                 .bind(user_id)
                 .bind(username)
                 .bind(opaque_password)
-                .bind(hashed_secret_id)
+                .bind(username_recovery)
+                .bind(opaque_password_recovery)
                 .bind(sealed_masterkey)
                 .bind(sealed_private_data)
                 .execute(&mut tx).await.map_err(|e| {

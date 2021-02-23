@@ -34,5 +34,12 @@ impl CipherSuite for OpaqueConf {
     type KeyExchange = opaque_ke::key_exchange::tripledh::TripleDH;
     type Hash = sha2::Sha512;
     type SlowHash = SlowHashArgon;
-    //type SlowHash = opaque_ke::slow_hash::NoOpHash;
+}
+
+pub struct OpaqueConfRecovery;
+impl CipherSuite for OpaqueConfRecovery {
+    type Group = curve25519_dalek::ristretto::RistrettoPoint;
+    type KeyExchange = opaque_ke::key_exchange::tripledh::TripleDH;
+    type Hash = sha2::Sha512;
+    type SlowHash = opaque_ke::slow_hash::NoOpHash; // for recovery, the password is the 256 bit random masterkey, so there's no need for a memory hard function
 }
