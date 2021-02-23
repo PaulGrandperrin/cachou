@@ -5,6 +5,7 @@ pub mod core;
 pub mod state;
 pub mod db;
 pub mod config;
+mod opaque;
 
 use eyre::WrapErr;
 use tracing::metadata::LevelFilter;

@@ -4,6 +4,7 @@ use pwned::api::*;
 
 mod rpc_client;
 pub mod core;
+mod opaque;
 
 pub fn check_email(email: &str) -> bool {
     validator::validate_email(email)

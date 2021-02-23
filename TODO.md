@@ -1,5 +1,3 @@
-- finish extracting OPAQUE code 
-
 - prevent user enumeration: https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22
 
 - validate token TTL, and also opaque_state
