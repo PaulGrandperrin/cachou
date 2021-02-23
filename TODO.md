@@ -1,17 +1,10 @@
-- rewrite client-common: better modules, don't reify auth status in typestate, don't loose so easily connection and auth status
-
 - prevent user enumeration: https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22
 
 - validate token TTL, and also opaque_state
 
-- rename newcredentials and signup
-
 - create client errors
 
 - server-side, log user errors differently
-
-- when updating credentials, don't change masterkey
-- but allow just rotating masterkey too
 
 - fix overriding of tracing levels from env var
 
