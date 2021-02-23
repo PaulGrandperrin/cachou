@@ -1,4 +1,4 @@
-use std::{iter, mem::swap};
+use std::{ascii::AsciiExt, iter, mem::swap};
 
 use common::{api, crypto::{opaque::OpaqueConf, sealed::Sealed}};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, CredentialResponse, RegistrationResponse};
@@ -9,7 +9,7 @@ use crate::core::private_data::PrivateData;
 use super::{Client, LoggedUser};
 
 impl Client {
-    async fn new_credentials(&mut self, username: impl Into<String>, password: &str, update: bool) -> eyre::Result<()> {
+    async fn new_credentials(&mut self, username: impl Into<String>, password: &str, new_user: bool, new_masterkey: bool) -> eyre::Result<&[u8]> { 
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -35,16 +35,37 @@ impl Client {
         )?;
         let opaque_msg = opaque_reg_finish.message.serialize();
         
-
         // instanciate and save user's private data
 
         let pdk = opaque_reg_finish.export_key.to_vec();
-        let masterkey = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
+
+        // scavange previous logged_user fields in independantly owned bindings
+        let (masterkey, private_data, mut sealed_session_token) = if let Some(lu) = self.logged_user.take() {
+            (Some(lu.masterkey), Some(lu.private_data), Some(lu.sealed_session_token))
+        } else {
+            (None, None, None)
+        };
+
+        // if we want to create a new user, take out any potential session_token 
+        if new_user {
+            sealed_session_token.take();
+        }
+
+        let masterkey = if new_masterkey {
+            iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>()
+        } else {
+            masterkey.ok_or(eyre::eyre!("not logged in"))?
+        };
+
         let secret_id = sha2::Sha256::digest(&masterkey).to_vec();
         let sealed_masterkey = Sealed::seal(&pdk, &masterkey, &())?;
 
-        let private_data = PrivateData {
-            ident_keypair: ed25519_dalek::Keypair::generate(&mut rand::thread_rng())
+        let private_data = if new_user {
+            PrivateData {
+                ident_keypair: ed25519_dalek::Keypair::generate(&mut rand::thread_rng())
+            }
+        } else {
+            private_data.ok_or(eyre::eyre!("not logged in"))?
         };
         let sealed_private_data = Sealed::seal(&masterkey, &private_data, &())?;
 
@@ -56,11 +77,7 @@ impl Client {
                 secret_id,
                 sealed_masterkey,
                 sealed_private_data,
-                sealed_session_token: match (update, &self.logged_user) {
-                    (true, Some(lu)) => Some(lu.sealed_session_token.clone()),
-                    (true, None) => eyre::bail!("not logged in"), // TODO create specific error and check that the ticket has uber rights
-                    _ => None,
-                },
+                sealed_session_token,
             }
         ).await?;
 
@@ -71,7 +88,7 @@ impl Client {
             sealed_session_token,
         });
 
-        Ok(())
+        Ok(self.get_masterkey().unwrap())
     }
 
     async fn login_impl(&mut self, username: impl Into<String>, password: &str, uber_token: bool) -> eyre::Result<()> {
@@ -116,16 +133,25 @@ impl Client {
         Ok(())
     }
 
-    pub async fn signup(&mut self, username: impl Into<String>, password: &str) -> eyre::Result<()> {
-        self.new_credentials(username, password, false).await
+    pub async fn signup(&mut self, username: impl Into<String>, password: &str) -> eyre::Result<&[u8]> {
+        let masterkey = self.new_credentials(username, password, true, true).await?;
+        Ok(masterkey)
     }
 
-    pub async fn change_credentials(&mut self, new_username: impl Into<String>, old_password: &str, new_password: &str) -> eyre::Result<()> {
+    pub async fn change_credentials(&mut self, new_username: impl Into<String>, old_password: &str, new_password: &str) -> eyre::Result<&[u8]> {
         let username = self.update_username().await?.to_owned();
         self.login_impl(username, old_password, true).await?;
-        self.new_credentials(new_username, new_password, true).await?;
+        let masterkey = self.new_credentials(new_username, new_password, false, false).await?;
 
-        Ok(())
+        Ok(masterkey)
+    }
+
+    pub async fn rotate_masterkey(&mut self, password: &str) -> eyre::Result<&[u8]> {
+        let username = self.update_username().await?.to_owned();
+        self.login_impl(username.clone(), password, true).await?;
+        let masterkey = self.new_credentials(username, password, false, true).await?;
+
+        Ok(masterkey)
     }
 
     pub async fn login(&mut self, username: impl Into<String>, password: &str) -> eyre::Result<()> {
@@ -147,5 +173,14 @@ impl Client {
 
     pub fn logout(&mut self) {
         self.logged_user = None;
+    }
+
+    
+    pub fn get_username(&self) -> Option<&str> {
+        self.logged_user.as_ref().map(|lu| lu.username.as_str())
+    }
+
+    pub fn get_masterkey(&self) -> Option<&[u8]> {
+        self.logged_user.as_ref().map(|lu| lu.masterkey.as_slice())
     }
 }

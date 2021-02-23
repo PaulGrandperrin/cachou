@@ -86,6 +86,17 @@ fn main() -> eyre::Result<()>{
                             },
                         };
                     }
+                    ["rotate_masterkey", password] => {
+                        let f = client.rotate_masterkey(password);
+                        match rt.block_on(f) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                        };
+                    }
                     ["update_username"] => {
                         let f = client.update_username();
                         match rt.block_on(f) {
@@ -96,6 +107,9 @@ fn main() -> eyre::Result<()>{
                                 error!("{:?}", e);
                             },
                         };
+                    }
+                    ["get_masterkey"] => {
+                        trace!("got : {:?}", client.get_masterkey());
                     }
                     ["logout"] => {
                         client.logout();

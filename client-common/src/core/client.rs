@@ -28,8 +28,5 @@ impl Client {
         }
     }
 
-    pub fn get_username(&self) -> Option<&str> {
-        self.logged_user.as_ref().map(|lu| lu.username.as_str())
-    }
 }
 
