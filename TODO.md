@@ -1,5 +1,7 @@
 - rewrite client-common: better modules, don't reify auth status in typestate, don't loose so easily connection and auth status
 
+- prevent user enumeration: https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22
+
 - validate token TTL, and also opaque_state
 
 - rename newcredentials and signup

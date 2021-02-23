@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
-    /// Starts OPAQUE's registration procedure. Followed by either Signup or UpdateCredentials 
-    NewCredentials(NewCredentials),
+    /// Starts OPAQUE's registration procedure.
+    NewCredentialsStart(NewCredentialsStart),
     
-    /// Finishes OPAQUE's registration procedure and signs up user. Precedeed by NewCredentials.
-    Signup(Signup),
+    /// Finishes OPAQUE's registration procedure. To create or update user.
+    NewCredentialsFinish(NewCredentialsFinish),
 
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
@@ -22,17 +22,17 @@ pub trait Rpc: Serialize {
 
 // NewCredentials
 #[derive(Serialize, Deserialize, Debug)]
-pub struct NewCredentials {
+pub struct NewCredentialsStart {
     pub opaque_msg: Vec<u8>,
 }
-impl Rpc for NewCredentials {
+impl Rpc for NewCredentialsStart {
     type Ret = (Vec<u8>, Vec<u8>); // server_sealed_state, opaque_msg
-    fn into_call(self) -> Call { Call::NewCredentials(self) }
+    fn into_call(self) -> Call { Call::NewCredentialsStart(self) }
 }
 
 // Signup
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Signup {
+pub struct NewCredentialsFinish {
     pub server_sealed_state: Vec<u8>,
     pub opaque_msg: Vec<u8>,
     pub username: String,
@@ -41,9 +41,9 @@ pub struct Signup {
     pub sealed_private_data: Vec<u8>, // sealed with masterkey
     pub sealed_session_token: Option<Vec<u8>>, // if present and valid with uber rights, updates existing user's credentials
 }
-impl Rpc for Signup {
+impl Rpc for NewCredentialsFinish {
     type Ret = Vec<u8>; // sealed_session_token
-    fn into_call(self) -> Call { Call::Signup(self) }
+    fn into_call(self) -> Call { Call::NewCredentialsFinish(self) }
 }
 
 // LoginStart

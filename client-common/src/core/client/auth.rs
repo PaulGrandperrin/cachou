@@ -9,7 +9,7 @@ use crate::core::private_data::PrivateData;
 use super::{Client, LoggedUser};
 
 impl Client {
-    pub async fn signup(&mut self, username: impl Into<String>, password: &str, update: bool) -> eyre::Result<()> {
+    async fn new_credentials(&mut self, username: impl Into<String>, password: &str, update: bool) -> eyre::Result<()> {
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -21,7 +21,7 @@ impl Client {
         )?;
 
         let (server_sealed_state, opaque_msg) = self.rpc_client.call(
-            common::api::NewCredentials{opaque_msg: opaque_reg_start.message.serialize()}
+            common::api::NewCredentialsStart{opaque_msg: opaque_reg_start.message.serialize()}
         ).await?;
         
         // finish OPAQUE
@@ -49,7 +49,7 @@ impl Client {
         let sealed_private_data = Sealed::seal(&masterkey, &private_data, &())?;
 
         let sealed_session_token = self.rpc_client.call(
-            common::api::Signup {
+            common::api::NewCredentialsFinish {
                 server_sealed_state: server_sealed_state.clone(),
                 opaque_msg,
                 username: username.clone(),
@@ -74,7 +74,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn login(&mut self, username: impl Into<String>, password: &str, uber_token: bool) -> eyre::Result<()> {
+    async fn login_impl(&mut self, username: impl Into<String>, password: &str, uber_token: bool) -> eyre::Result<()> {
         let mut rng = rand_core::OsRng;
         let username = username.into();
 
@@ -116,14 +116,30 @@ impl Client {
         Ok(())
     }
 
-    pub async fn update_username(&mut self) -> eyre::Result<()> {
+    pub async fn signup(&mut self, username: impl Into<String>, password: &str) -> eyre::Result<()> {
+        self.new_credentials(username, password, false).await
+    }
+
+    pub async fn change_credentials(&mut self, new_username: impl Into<String>, old_password: &str, new_password: &str) -> eyre::Result<()> {
+        let username = self.update_username().await?.to_owned();
+        self.login_impl(username, old_password, true).await?;
+        self.new_credentials(new_username, new_password, true).await?;
+
+        Ok(())
+    }
+
+    pub async fn login(&mut self, username: impl Into<String>, password: &str) -> eyre::Result<()> {
+        self.login_impl(username, password, false).await
+    }
+
+    pub async fn update_username(&mut self) -> eyre::Result<&str> {
         if let Some(lu) = &mut self.logged_user {
             let username = self.rpc_client.call(
                 common::api::GetUsername{ sealed_session_token: lu.sealed_session_token.clone() }
             ).await?;
 
             lu.username = username;
-            Ok(())
+            Ok(&lu.username)
         } else {
             Err(eyre::eyre!("not logged in")) // TODO create specific error
         }

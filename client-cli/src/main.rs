@@ -54,7 +54,7 @@ fn main() -> eyre::Result<()>{
                 rl.add_history_entry(line.as_str());
                 match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", username, password] => {
-                        let f = client.signup(username, password, false);
+                        let f = client.signup(username, password);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
@@ -65,7 +65,7 @@ fn main() -> eyre::Result<()>{
                         };
                     }
                     ["login", username, password] => {
-                        let f = client.login(username, password, false);
+                        let f = client.login(username, password);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
@@ -75,19 +75,8 @@ fn main() -> eyre::Result<()>{
                             },
                         };
                     }
-                    ["login_uber", username, password] => {
-                        let f = client.login(username, password, true);
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["change_creds", username, password] => {
-                        let f = client.signup(username, password, true);
+                    ["change_creds", new_username, old_password, new_password] => {
+                        let f = client.change_credentials(new_username, old_password, new_password);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);

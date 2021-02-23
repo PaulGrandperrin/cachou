@@ -2,7 +2,7 @@ use std::{convert::TryFrom};
 
 use color_eyre::Section;
 use eyre::eyre;
-use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentials, Rpc, SessionToken, Signup}, crypto::{self, opaque::OpaqueConf}};
+use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentialsStart, Rpc, SessionToken, NewCredentialsFinish}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::KeyPair};
 use rand::Rng;
 use serde::Serialize;
@@ -11,7 +11,7 @@ use tide::Request;
 use tracing::{Instrument, error, error_span, info, trace};
 use eyre::WrapErr;
 
-pub async fn new_credentials(req: Request<crate::state::State>, args: &NewCredentials) -> api::Result<<NewCredentials as Rpc>::Ret> {
+pub async fn new_credentials(req: Request<crate::state::State>, args: &NewCredentialsStart) -> api::Result<<NewCredentialsStart as Rpc>::Ret> {
     let mut rng = rand_core::OsRng;
     let opaque = ServerRegistration::<OpaqueConf>::start(
         &mut rng,
@@ -31,7 +31,7 @@ pub async fn new_credentials(req: Request<crate::state::State>, args: &NewCreden
     ))
 }
 
-pub async fn signup(req: Request<crate::state::State>, args: &Signup) -> api::Result<<Signup as Rpc>::Ret> {
+pub async fn signup(req: Request<crate::state::State>, args: &NewCredentialsFinish) -> api::Result<<NewCredentialsFinish as Rpc>::Ret> {
     let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
     //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
     let opaque_state = ServerRegistration::<OpaqueConf>::deserialize(&opaque_state[..])
