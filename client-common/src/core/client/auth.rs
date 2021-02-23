@@ -1,4 +1,4 @@
-use std::{ascii::AsciiExt, iter, mem::swap};
+use std::{iter, mem::swap};
 
 use common::{api, crypto::{opaque::OpaqueConf, sealed::Sealed}};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, CredentialResponse, RegistrationResponse};
