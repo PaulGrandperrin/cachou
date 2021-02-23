@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 
 
-use client_common::core::client::{Client, LoggedClient};
+use client_common::core::client::Client;
 use eyre::WrapErr;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -40,7 +40,7 @@ fn main() -> eyre::Result<()>{
 
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
     
-    let mut logged_client = None::<LoggedClient>;
+    let mut client = Client::new();
 
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
@@ -48,79 +48,68 @@ fn main() -> eyre::Result<()>{
         println!("No previous history.");
     }
     loop {
-        let readline = rl.readline(&format!("{}>> ", logged_client.as_ref().map_or("", |lc| &lc.username)));
+        let readline = rl.readline(&format!("{}>> ", client.get_username().unwrap_or_default()));
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
                 match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", username, password] => {
-                        let f = LoggedClient::signup(Client::new(), username, password, None);
-                        logged_client = match rt.block_on(f) {
+                        let f = client.signup(username, password, false);
+                        match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
-                                Some(res)
                             },
                             Err(e) => {
                                 error!("{:?}", e);
-                                None
                             },
                         };
                     }
                     ["login", username, password] => {
-                        let f = LoggedClient::login(Client::new(), username, password, false);
-                        logged_client = match rt.block_on(f) {
+                        let f = client.login(username, password, false);
+                        match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
-                                Some(res)
                             },
                             Err(e) => {
                                 error!("{:?}", e);
-                                None
                             },
                         };
                     }
                     ["login_uber", username, password] => {
-                        let f = LoggedClient::login(Client::new(), username, password, true);
-                        logged_client = match rt.block_on(f) {
+                        let f = client.login(username, password, true);
+                        match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
-                                Some(res)
                             },
                             Err(e) => {
                                 error!("{:?}", e);
-                                None
                             },
                         };
                     }
                     ["change_creds", username, password] => {
-                        if let Some(logged_client) = logged_client.as_mut().take() {
-                            let f = LoggedClient::update_credentials(logged_client, username, password);
-                            match rt.block_on(f) {
-                                Ok(res) => {
-                                    trace!("got : {:?}", res);
-                                },
-                                Err(e) => {
-                                    error!("{:?}", e);
-                                },
-                            }
-                        } else {
-                            error!("user must be logged in");
-                        }
+                        let f = client.signup(username, password, true);
+                        match rt.block_on(f) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                        };
                     }
                     ["update_username"] => {
-                        if let Some(logged_client) = logged_client.as_mut().take() {
-                            let f = logged_client.update_username();
-                            match rt.block_on(f) {
-                                Ok(res) => {
-                                    trace!("got : {:?}", res);
-                                },
-                                Err(e) => {
-                                    error!("{:?}", e);
-                                },
-                            }
-                        } else {
-                            error!("user must be logged in");
-                        }
+                        let f = client.update_username();
+                        match rt.block_on(f) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                        };
+                    }
+                    ["logout"] => {
+                        client.logout();
                     }
                     _ => {
                         tracing::error!("unknown command");
