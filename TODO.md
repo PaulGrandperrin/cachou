@@ -1,5 +1,3 @@
-- factorize keys rotation
-
 - new server-side error: Recovery_key not found / Not valid
 
 - be careful to never save to disk uber token

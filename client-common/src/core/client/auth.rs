@@ -9,22 +9,20 @@ use crate::{core::private_data::PrivateData, opaque};
 
 use super::{Client, LoggedUser};
 
+fn gen_keys() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+    let recovery_key = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
+    let master_key = sha2::Sha256::digest(&recovery_key).to_vec(); // FIXME used keyed_hash ?
+    let username_recovery = sha2::Sha256::digest(&master_key).to_vec();
+    (recovery_key, master_key, username_recovery)
+}
+
 impl Client {
     async fn new_user(&mut self, username: &[u8], password: &[u8]) -> eyre::Result<Vec<u8>> {
-        // gen new recovery_key
-        let recovery_key = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
-        
-        // compute master_key from recovery_key
-        let master_key = sha2::Sha256::digest(&recovery_key).to_vec(); // FIXME used keyed_hash ?
-
-        // the recovery's username is the masterkey's sha256 // FIXME use keyed_hash from recovery_key
-        let username_recovery = sha2::Sha256::digest(&master_key).to_vec();
-
-        let password_recovery = &recovery_key;
+        let (recovery_key, master_key, username_recovery) = gen_keys();
 
         // start OPAQUE
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
-        let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start(password_recovery)?;
+        let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start(&recovery_key)?;
 
         // send OPAQUE start message to server
 
@@ -96,9 +94,7 @@ impl Client {
         // finish OPAQUE
         let (opaque_msg, pdk) = opaque::registration_finish(&opaque_state, &opaque_msg, username, if recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
 
-        if recovery {
-            logged_user.master_key = sha2::Sha256::digest(&password).to_vec();
-        } else {
+        if !recovery {
             logged_user.username = username.to_owned();
             // if we are changing the username/password, the pdk will change and we need to save it for when we want to rotate the keys while being logged with previous recovery key
             logged_user.private_data.pdk = pdk;
@@ -177,16 +173,9 @@ impl Client {
     }
 
     pub async fn rotate_keys(&mut self) -> eyre::Result<String> {
-        // gen new recovery_key
-        let recovery_key = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
-
-        // compute master_key from recovery_key
-        let master_key = sha2::Sha256::digest(&recovery_key).to_vec(); // FIXME used keyed_hash ?
-
-        // the recovery's username is the masterkey's sha256 // FIXME use keyed_hash from recovery_key
-        let username = sha2::Sha256::digest(&master_key).to_vec();
-
-        self.update_user_credentials(&username, &recovery_key, true).await?;
+        let (recovery_key, master_key, username_recovery) = gen_keys();
+        self.logged_user.as_mut().map(|lu| lu.master_key = master_key);
+        self.update_user_credentials(&username_recovery, &recovery_key, true).await?;
 
         Ok(bs58::encode( &recovery_key).into_string())
     }
