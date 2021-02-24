@@ -3,7 +3,7 @@ use std::{time::Duration};
 use common::api;
 use sqlx::{Executor, Row, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}};
 use tracing::{error, trace};
-use eyre::WrapErr;
+use eyre::{eyre, WrapErr};
 
 // making things generic doesn't seem very useful at this point
 #[derive(Debug, Clone)]
@@ -127,10 +127,10 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn insert_user(&self, user_id: &[u8], username: &str, opaque_password: &[u8], username_recovery: &[u8], opaque_password_recovery: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8], update: bool) -> api::Result<()> {
+    pub async fn insert_user(&self, user_id: &[u8], username: &str, opaque_password: &[u8], username_recovery: &[u8], opaque_password_recovery: &[u8], sealed_masterkey: &[u8], sealed_private_data: &[u8], new_user: bool) -> api::Result<()> {
         let mut tx = self.pool.begin().await.map_err(|e| eyre::eyre!(e))?;
 
-        if update {
+        if !new_user {
             sqlx::query("delete from `user` where `user_id` = ?")
             .bind(user_id)
             .execute(&mut tx).await.map_err(|e| eyre::eyre!(e))?;
@@ -159,10 +159,15 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_userid_and_opaque_password_from_username(&self, username: &str) -> api::Result<(Vec<u8>, Vec<u8>)> {
-        let row: MySqlRow = sqlx::query("select `user_id`, `opaque_password` from `user` where `username` = ?")
-        .bind(username)
-        .fetch_one(&self.pool).await.map_err(|e| {
+    pub async fn get_userid_and_opaque_password_from_username(&self, username: &[u8], recovery: bool) -> api::Result<(Vec<u8>, Vec<u8>)> {
+        let query = format!("select `user_id`, `opaque_password{0}` from `user` where `username{0}` = ?", if recovery {"_recovery"} else {""});
+        let query = sqlx::query(&query);
+
+        let row: MySqlRow = if recovery {
+            query.bind(username)
+        } else {
+            query.bind(String::from_utf8(username.to_owned()).map_err(|_| eyre!("client sent a non valid utf-8 username: {:?}", username))?)
+        }.fetch_one(&self.pool).await.map_err(|e| {
             match e {
                 sqlx::Error::RowNotFound => api::Error::UsernameNotFound,
                 _ => api::Error::ServerSideError(e.into()),
@@ -176,14 +181,15 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_user_data_from_userid(&self, user_id: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {
-        let row: MySqlRow = sqlx::query("select `sealed_masterkey`, `sealed_private_data` from `user` where `user_id` = ?")
+    pub async fn get_user_data_from_userid(&self, user_id: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>, String)> {
+        let row: MySqlRow = sqlx::query("select `sealed_masterkey`, `sealed_private_data`, `username` from `user` where `user_id` = ?")
         .bind(user_id)
         .fetch_one(&self.pool).await.map_err(|e| eyre::eyre!(e))?; // do not leak in returned error if the user_id exists or not
 
         Ok((
             row.try_get(0).map_err(|e| eyre::eyre!(e))?,
             row.try_get(1).map_err(|e| eyre::eyre!(e))?,
+            row.try_get(2).map_err(|e| eyre::eyre!(e))?,
         ))
     }
 

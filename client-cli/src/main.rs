@@ -75,8 +75,30 @@ fn main() -> eyre::Result<()>{
                             },
                         };
                     }
-                    ["change_creds", new_username, old_password, new_password] => {
-                        let f = client.change_credentials(new_username, old_password, new_password);
+                    ["login_recovery", masterkey] => {
+                        let f = client.login_recovery(masterkey);
+                        match rt.block_on(f) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                        };
+                    }
+                    ["change_creds", old_username, old_password, new_username, new_password] => {
+                        let f = client.change_credentials(old_username, old_password, new_username, new_password);
+                        match rt.block_on(f) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                        };
+                    }
+                    ["change_creds_recovery", masterkey, new_username, new_password] => {
+                        let f = client.change_credentials_recovery(masterkey, new_username, new_password);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);

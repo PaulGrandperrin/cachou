@@ -46,7 +46,7 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
         
         Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("LoginStart", username = %args.username))
+            .instrument(error_span!("LoginStart", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
             .await),
         Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, &args)
             .inspect_err(log_error)

@@ -683,6 +683,7 @@ dependencies = [
 name = "client-common"
 version = "0.1.0"
 dependencies = [
+ "bs58",
  "common",
  "derivative",
  "ed25519-dalek",

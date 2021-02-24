@@ -2,9 +2,9 @@ use common::{api, crypto::opaque::OpaqueConf};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, ciphersuite::CipherSuite, keypair::Key};
 use eyre::WrapErr;
 
-pub fn registration_start<CS: CipherSuite>(pk: &Key, msg: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {
+pub fn registration_start(pk: &Key, msg: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {
     let mut rng = rand_core::OsRng;
-    let opaque = ServerRegistration::<CS>::start(
+    let opaque = ServerRegistration::<OpaqueConf>::start(
         &mut rng,
         RegistrationRequest::deserialize(msg).wrap_err("failed to deserialize opaque msg")?,
         pk,
@@ -13,8 +13,8 @@ pub fn registration_start<CS: CipherSuite>(pk: &Key, msg: &[u8]) -> api::Result<
     Ok((opaque.state.serialize(), opaque.message.serialize()))
 }
 
-pub fn registration_finish<CS: CipherSuite>(state: &[u8], msg: &[u8]) -> api::Result<Vec<u8>> {
-    let state = ServerRegistration::<CS>::deserialize(state)
+pub fn registration_finish(state: &[u8], msg: &[u8]) -> api::Result<Vec<u8>> {
+    let state = ServerRegistration::<OpaqueConf>::deserialize(state)
         .wrap_err("failed to deserialize opaque state")?;
 
     let password = state
@@ -25,10 +25,10 @@ pub fn registration_finish<CS: CipherSuite>(state: &[u8], msg: &[u8]) -> api::Re
     Ok(password.serialize())
 }
 
-pub fn login_start<CS: CipherSuite>(sk: &Key, msg: &[u8], username: &[u8], password: &[u8], server_id: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {
+pub fn login_start(sk: &Key, msg: &[u8], username: &[u8], password: &[u8], server_id: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {
     let mut rng = rand_core::OsRng;
 
-    let password = ServerRegistration::<CS>::deserialize(&password[..])
+    let password = ServerRegistration::<OpaqueConf>::deserialize(&password[..])
             .wrap_err("failed to instantiate opaque password")?;
 
     let opaque = ServerLogin::start(
@@ -43,8 +43,8 @@ pub fn login_start<CS: CipherSuite>(sk: &Key, msg: &[u8], username: &[u8], passw
     Ok((opaque.state.serialize(), opaque.message.serialize()))
 }
 
-pub fn login_finish<CS: CipherSuite>(state: &[u8], msg: &[u8]) -> api::Result<()> {
-    let state = ServerLogin::<CS>::deserialize(state)
+pub fn login_finish(state: &[u8], msg: &[u8]) -> api::Result<()> {
+    let state = ServerLogin::<OpaqueConf>::deserialize(state)
             .wrap_err("failed to deserialize opaque state")?;
     let _log_finish_result = state.finish(CredentialFinalization::deserialize(msg)
         .wrap_err("failed to deserialize opaque msg")?)

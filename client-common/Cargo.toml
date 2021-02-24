@@ -17,6 +17,7 @@ sha2 = "0.9" # used to derive the secret_id from the masterkey
 
 serde = {version = "1.0", features = ["derive"]} 
 rmp-serde = "0.15"
+bs58 = "0.4"
 
 # password and email check
 zxcvbn = "2"

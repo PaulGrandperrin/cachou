@@ -49,8 +49,9 @@ impl Rpc for NewCredentialsFinish {
 // LoginStart
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginStart {
-    pub username: String, // could be passed in the plaintext info field of opaque
+    pub username: Vec<u8>, // could also be passed in the plaintext info field of opaque
     pub opaque_msg: Vec<u8>,
+    pub recovery: bool, // if true, means that username will be sha256(masterkey) and password will be masterkey
 }
 impl Rpc for LoginStart {
     type Ret = (Vec<u8>, Vec<u8>); // server_sealed_state, opaque_msg
@@ -65,7 +66,7 @@ pub struct LoginFinish {
     pub uber_token: bool,
 }
 impl Rpc for LoginFinish {
-    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // sealed_masterkey, sealed_private_data, sealed_session_token
+    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>, String); // sealed_masterkey, sealed_private_data, sealed_session_token, username (usefull when doing recovery)
     fn into_call(self) -> Call { Call::LoginFinish(self) }
 }
 
@@ -75,6 +76,6 @@ pub struct GetUsername {
     pub sealed_session_token: Vec<u8>,
 }
 impl Rpc for GetUsername {
-    type Ret = String;
+    type Ret = String; // username
     fn into_call(self) -> Call { Call::GetUsername(self) }
 }

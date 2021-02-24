@@ -1,3 +1,5 @@
+- remove change_credentials without masterkey?
+
 - prevent user enumeration: https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22
 
 - validate token TTL, and also opaque_state
@@ -19,3 +21,10 @@
 - implement web of trust
 
 - implement votes
+
+
+POST MVC
+
+- MFA: backup codes, TOTP, WebAuthn
+- add delay to recovery procedure
+- add alterting when recovery: email
