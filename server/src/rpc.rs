@@ -35,13 +35,17 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
 
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
     let resp = async { match c {
-        Call::NewCredentialsStart(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials_start(req, &args)
+        Call::NewCredentials(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("NewCredentialsStart"))
+            .instrument(error_span!("NewCredentials"))
             .await),
-        Call::NewCredentialsFinish(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials_finish(req, &args)
+        Call::NewUser(args) => rmp_serde::encode::to_vec_named(&auth::new_user(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("NewCredentialsFinish", username = %args.username, update = args.sealed_session_token.is_some()))
+            .instrument(error_span!("NewUser", username = %String::from_utf8_lossy(&args.username).into_owned()))
+            .await),
+        Call::UpdateUserCredentials(args) => rmp_serde::encode::to_vec_named(&auth::update_user_credentials(req, &args)
+            .inspect_err(log_error)
+            .instrument(error_span!("UpdateUserCredentials", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
             .await),
         
         Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, &args)
@@ -50,7 +54,7 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
             .await),
         Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("LoginFinish", uber = args.uber_token))
+            .instrument(error_span!("LoginFinish", uber = %args.uber_token)) // TODO check that true/false if correctly output
             .await),
 
         Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&auth::get_username(req, &args)

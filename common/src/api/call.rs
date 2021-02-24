@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
     /// to create a new user, or update an existing one credentials (username, password, masterkey)
-    NewCredentialsStart(NewCredentialsStart),
-    NewCredentialsFinish(NewCredentialsFinish),
+    NewCredentials(NewCredentials),
+    NewUser(NewUser),
+    UpdateUserCredentials(UpdateUserCredentials),
 
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
@@ -18,32 +19,47 @@ pub trait Rpc: Serialize {
     fn into_call(self) -> Call;
 }
 
-// NewCredentialsStart
+// NewCredentials
 #[derive(Serialize, Deserialize, Debug)]
-pub struct NewCredentialsStart {
+pub struct NewCredentials {
     pub opaque_msg: Vec<u8>,
-    pub opaque_msg_recovery: Vec<u8>,
 }
-impl Rpc for NewCredentialsStart {
-    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // server_sealed_state, opaque_msg, opaque_msg_recovery
-    fn into_call(self) -> Call { Call::NewCredentialsStart(self) }
+impl Rpc for NewCredentials {
+    type Ret = (Vec<u8>, Vec<u8>); // server_sealed_state, opaque_msg
+    fn into_call(self) -> Call { Call::NewCredentials(self) }
 }
 
-// NewCredentialsFinish
+// NewUser
 #[derive(Serialize, Deserialize, Debug)]
-pub struct NewCredentialsFinish {
+pub struct NewUser {
     pub server_sealed_state: Vec<u8>,
+    pub server_sealed_state_recovery: Vec<u8>,
     pub opaque_msg: Vec<u8>,
     pub opaque_msg_recovery: Vec<u8>,
-    pub username: String,
-    pub username_recovery: Vec<u8>, // NOTE: this is the Sha256 of the masterkey, used as a last resort way of loging in without username and password
-    pub sealed_masterkey: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
+    pub username: Vec<u8>,
+    pub username_recovery: Vec<u8>,
+    pub sealed_master_key: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     pub sealed_private_data: Vec<u8>, // sealed with masterkey
-    pub sealed_session_token: Option<Vec<u8>>, // if present and valid with uber rights, updates existing user's credentials
 }
-impl Rpc for NewCredentialsFinish {
+impl Rpc for NewUser {
     type Ret = Vec<u8>; // sealed_session_token
-    fn into_call(self) -> Call { Call::NewCredentialsFinish(self) }
+    fn into_call(self) -> Call { Call::NewUser(self) }
+}
+
+// UpdateUserCredentials
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateUserCredentials {
+    pub server_sealed_state: Vec<u8>,
+    pub opaque_msg: Vec<u8>,
+    pub username: Vec<u8>,
+    pub sealed_master_key: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
+    pub sealed_private_data: Vec<u8>, // sealed with masterkey. NOTE could be optional because not needed when changing username/password
+    pub sealed_session_token: Vec<u8>, // must have uber rights
+    pub recovery: bool, // update username/password or recovery_key/master_key ?
+}
+impl Rpc for UpdateUserCredentials {
+    type Ret = Vec<u8>; // sealed_session_token
+    fn into_call(self) -> Call { Call::UpdateUserCredentials(self) }
 }
 
 // LoginStart
@@ -66,7 +82,7 @@ pub struct LoginFinish {
     pub uber_token: bool,
 }
 impl Rpc for LoginFinish {
-    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>, String); // sealed_masterkey, sealed_private_data, sealed_session_token, username (usefull when doing recovery)
+    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>); // sealed_master_key, sealed_private_data, sealed_session_token, username (usefull when doing recovery)
     fn into_call(self) -> Call { Call::LoginFinish(self) }
 }
 
@@ -76,6 +92,6 @@ pub struct GetUsername {
     pub sealed_session_token: Vec<u8>,
 }
 impl Rpc for GetUsername {
-    type Ret = String; // username
+    type Ret = Vec<u8>; // username
     fn into_call(self) -> Call { Call::GetUsername(self) }
 }

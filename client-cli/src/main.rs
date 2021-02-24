@@ -48,7 +48,7 @@ fn main() -> eyre::Result<()>{
         println!("No previous history.");
     }
     loop {
-        let readline = rl.readline(&format!("{}>> ", client.get_username().unwrap_or_default()));
+        let readline = rl.readline(&format!("{}>> ", client.get_username()?.unwrap_or_default()));
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
@@ -65,7 +65,7 @@ fn main() -> eyre::Result<()>{
                         };
                     }
                     ["login", username, password] => {
-                        let f = client.login(username, password);
+                        let f = client.login(username, password, false);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
@@ -75,8 +75,8 @@ fn main() -> eyre::Result<()>{
                             },
                         };
                     }
-                    ["login_recovery", masterkey] => {
-                        let f = client.login_recovery(masterkey);
+                    ["login_uber", username, password] => {
+                        let f = client.login(username, password, true);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
@@ -86,8 +86,8 @@ fn main() -> eyre::Result<()>{
                             },
                         };
                     }
-                    ["change_creds", old_username, old_password, new_username, new_password] => {
-                        let f = client.change_credentials(old_username, old_password, new_username, new_password);
+                    ["login_recovery", recovery_key] => {
+                        let f = client.login_recovery(recovery_key, false);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
@@ -97,8 +97,8 @@ fn main() -> eyre::Result<()>{
                             },
                         };
                     }
-                    ["change_creds_recovery", masterkey, new_username, new_password] => {
-                        let f = client.change_credentials_recovery(masterkey, new_username, new_password);
+                    ["login_recovery_uber", recovery_key] => {
+                        let f = client.login_recovery(recovery_key, true);
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
@@ -108,8 +108,19 @@ fn main() -> eyre::Result<()>{
                             },
                         };
                     }
-                    ["rotate_masterkey", password] => {
-                        let f = client.rotate_masterkey(password);
+                    ["change_username_password", username, password] => {
+                        let f = client.change_username_password(username, password);
+                        match rt.block_on(f) {
+                            Ok(res) => {
+                                trace!("got : {:?}", res);
+                            },
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                        };
+                    }
+                    ["rotate_keys"] => {
+                        let f = client.rotate_keys();
                         match rt.block_on(f) {
                             Ok(res) => {
                                 trace!("got : {:?}", res);
@@ -129,9 +140,6 @@ fn main() -> eyre::Result<()>{
                                 error!("{:?}", e);
                             },
                         };
-                    }
-                    ["get_masterkey"] => {
-                        trace!("got : {:?}", client.get_masterkey());
                     }
                     ["logout"] => {
                         client.logout();

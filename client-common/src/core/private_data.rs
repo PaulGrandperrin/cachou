@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize, Serializer, de::DeserializeOwned};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PrivateData {
     #[serde(with = "serde_keypair")]
-    pub ident_keypair: ed25519_dalek::Keypair
+    pub ident_keypair: ed25519_dalek::Keypair,
+    pub pdk: Vec<u8>, // useful when we want to rotate the keys while being logged with previous recovery key
 }
 
 mod serde_keypair {

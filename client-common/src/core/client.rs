@@ -14,8 +14,8 @@ pub struct Client {
 
 #[derive(Debug)]
 pub struct LoggedUser {
-    pub username: String,
-    masterkey: Vec<u8>,
+    pub username: Vec<u8>,
+    master_key: Vec<u8>,
     private_data: PrivateData,
     sealed_session_token: Vec<u8>,
 }

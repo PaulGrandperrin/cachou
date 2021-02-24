@@ -2,7 +2,7 @@ use std::{convert::TryFrom};
 
 use color_eyre::Section;
 use eyre::eyre;
-use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentialsStart, Rpc, SessionToken, NewCredentialsFinish}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::{self, opaque::OpaqueConf}};
+use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc, SessionToken, UpdateUserCredentials}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::{Key, KeyPair}};
 use rand::Rng;
 use serde::Serialize;
@@ -13,38 +13,54 @@ use eyre::WrapErr;
 
 use crate::opaque;
 
-pub async fn new_credentials_start(req: Request<crate::state::State>, args: &NewCredentialsStart) -> api::Result<<NewCredentialsStart as Rpc>::Ret> {
+pub async fn new_credentials(req: Request<crate::state::State>, args: &NewCredentials) -> api::Result<<NewCredentials as Rpc>::Ret> {
 
     let (opaque_state, opaque_msg) = opaque::registration_start(req.state().opaque_kp.public(), &args.opaque_msg)?;
-    let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start(req.state().opaque_kp.public(), &args.opaque_msg_recovery)?;
 
     //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_new_credentials", &opaque_state).await?;
 
-    let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &(opaque_state, opaque_state_recovery), &())?; // TODO add TTL
+    let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque_state, &())?; // TODO add TTL
 
+    info!("ok");
     Ok((
         server_sealed_state,
-        opaque_msg,
-        opaque_msg_recovery
+        opaque_msg
     ))
 }
 
-pub async fn new_credentials_finish(req: Request<crate::state::State>, args: &NewCredentialsFinish) -> api::Result<<NewCredentialsFinish as Rpc>::Ret> {
-    let (opaque_state, opaque_state_recovery) = crypto::sealed::Sealed::<(Vec<u8>, Vec<u8>), ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
+pub async fn new_user(req: Request<crate::state::State>, args: &NewUser) -> api::Result<<NewUser as Rpc>::Ret> {
+    let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
+    let opaque_state_recovery = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&req.state().secret_key, &args.server_sealed_state_recovery)?.0;
     //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
     
     let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
     let opaque_password_recovery = opaque::registration_finish(&opaque_state_recovery[..], &args.opaque_msg_recovery)?;
 
-    // if we are updating the credentials or masterkey of an existing user
-    let (user_id, new_user) = if let Some(sealed_session_token) = &args.sealed_session_token {
-        (SessionToken::unseal(&req.state().secret_key[..], sealed_session_token, true)?.user_id, false)
-    } else { // if we are creating a new user
-        (rand::thread_rng().gen::<[u8; 32]>().to_vec(), true) // 256bits, so I don't even have to think about birthday attacks
-    };
+    let user_id= rand::thread_rng().gen::<[u8; 32]>().to_vec(); // 256bits, so I don't even have to think about birthday attacks
     
     async {
-        req.state().db.insert_user(&user_id, &args.username, &opaque_password, &args.username_recovery , &opaque_password_recovery, &args.sealed_masterkey, &args.sealed_private_data, new_user).await?;
+        req.state().db.new_user(&user_id, &args.username, &opaque_password, &args.username_recovery , &opaque_password_recovery, &args.sealed_master_key, &args.sealed_private_data).await?;
+
+        let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec, false)
+            .seal(&req.state().secret_key[..])?;
+
+        info!("ok");
+        
+        Ok(sealed_session_token)
+    }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+}
+
+pub async fn update_user_credentials(req: Request<crate::state::State>, args: &UpdateUserCredentials) -> api::Result<<UpdateUserCredentials as Rpc>::Ret> {
+    let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&req.state().secret_key, &args.server_sealed_state)?.0;
+    //let opaque_state = req.state().db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
+    
+    let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
+
+    // get user's user_id and check that token has uber rights
+    let user_id = SessionToken::unseal(&req.state().secret_key[..], &args.sealed_session_token, true)?.user_id;
+
+    async {
+        req.state().db.update_user_credentials(&user_id, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
 
         let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec, false)
             .seal(&req.state().secret_key[..])?;
@@ -79,13 +95,13 @@ pub async fn login_finish(req: Request<crate::state::State>, args: &LoginFinish)
         // check password
         opaque::login_finish(&opaque_state, &args.opaque_msg)?;
 
-        let (sealed_masterkey, sealed_private_data, username) = req.state().db.get_user_data_from_userid(&user_id).await?;
+        let (sealed_master_key, sealed_private_data, username) = req.state().db.get_user_data_from_userid(&user_id).await?;
 
         let sealed_session_token = SessionToken::new(user_id.clone(), req.state().config.session_duration_sec, args.uber_token)
             .seal(&req.state().secret_key[..])?;
 
         info!("ok");
-        Ok((sealed_masterkey, sealed_private_data, sealed_session_token, username))
+        Ok((sealed_master_key, sealed_private_data, sealed_session_token, username))
     }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
@@ -95,7 +111,7 @@ pub async fn get_username(req: Request<crate::state::State>, args: &GetUsername)
     async {
         let username = req.state().db.get_username_from_userid(&session_token.user_id).await?;
 
-        info!("ok: {}", username);
+        info!("ok: {}", String::from_utf8_lossy(&username));
         Ok(username)
     }.instrument(error_span!("id", user_id = %bs58::encode(&session_token.user_id).into_string())).await
 }
