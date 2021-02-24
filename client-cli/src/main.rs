@@ -10,22 +10,17 @@ use tracing::{error, info, metadata::LevelFilter, trace};
 use tracing_subscriber::EnvFilter; // could be async_compat::CompatExt
 
 
-fn setup_logger() -> eyre::Result<()> {
+pub fn setup_logger() -> eyre::Result<()> {
 
-    let filter = EnvFilter::from_default_env()
-        // Set the base level when not matched by other directives to WARN.
-        .add_directive(LevelFilter::WARN.into())
-        // Set the max level for `my_crate::my_mod` to DEBUG, overriding
-        // any directives parsed from the env variable.
-        .add_directive("common=trace".parse()?)
-        .add_directive("client_common=trace".parse()?)
-        .add_directive("client_cli=trace".parse()?)
-    ;
-
+    let filter = EnvFilter::try_new("common=debug,client_cli=debug")?
+        .add_directive(std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_default().parse().unwrap_or_default());
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-    .with_max_level(tracing::Level::TRACE)
     .with_env_filter(filter)
+    //.with_max_level(tracing::Level::TRACE)
+    //.pretty()
+    //.compact()
+    //.with_span_events(FmtSpan::FULL)
     .finish();
 
     tracing::subscriber::set_global_default(subscriber)

@@ -2,7 +2,7 @@
 use tide::{http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
 use eyre::WrapErr;
 use server::*;
-use tracing::info;
+use tracing::{debug, info};
 
 #[async_std::main]
 async fn main() -> eyre::Result<()> {
@@ -20,7 +20,7 @@ async fn main() -> eyre::Result<()> {
 
     // app.with(tide_tracing::TraceMiddleware::new()); // we don't really use http semantics, so not very useful
 
-    info!("ready to handle requests");
+    debug!("ready to handle requests");
 
     app.with(cors);
     app.at("/api").post(rpc::rpc);

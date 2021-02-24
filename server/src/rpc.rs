@@ -7,7 +7,7 @@ use common::api::{self, Call};
 use futures::{Future, FutureExt, TryFutureExt};
 use serde::Serialize;
 use tide::{Body, Request};
-use tracing::{Instrument, debug, error, error_span, info, trace, warn};
+use tracing::{Instrument, debug, error, info, info_span, trace, warn};
 
 use crate::core::auth;
 
@@ -37,31 +37,31 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
     let resp = async { match c {
         Call::NewCredentials(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("NewCredentials"))
+            .instrument(info_span!("NewCredentials"))
             .await),
         Call::NewUser(args) => rmp_serde::encode::to_vec_named(&auth::new_user(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("NewUser", username = %String::from_utf8_lossy(&args.username).into_owned()))
+            .instrument(info_span!("NewUser", username = %String::from_utf8_lossy(&args.username).into_owned()))
             .await),
         Call::UpdateUserCredentials(args) => rmp_serde::encode::to_vec_named(&auth::update_user_credentials(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("UpdateUserCredentials", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
+            .instrument(info_span!("UpdateUserCredentials", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
             .await),
         
         Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("LoginStart", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
+            .instrument(info_span!("LoginStart", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
             .await),
         Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("LoginFinish", uber = %args.uber_token)) // TODO check that true/false if correctly output
+            .instrument(info_span!("LoginFinish", uber = %args.uber_token))
             .await),
 
         Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&auth::get_username(req, &args)
             .inspect_err(log_error)
-            .instrument(error_span!("GetUsername"))
+            .instrument(info_span!("GetUsername"))
             .await),
-    }}.instrument(error_span!("rpc", %ip, port)).await;
+    }}.instrument(info_span!("rpc", %ip, port)).await;
 
     /*
     let resp = match c {

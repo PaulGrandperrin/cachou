@@ -8,7 +8,7 @@ use rand::Rng;
 use serde::Serialize;
 use sha2::Digest;
 use tide::Request;
-use tracing::{Instrument, error, error_span, info, trace};
+use tracing::{Instrument, debug, error, info, info_span, trace};
 use eyre::WrapErr;
 
 use crate::opaque;
@@ -21,7 +21,7 @@ pub async fn new_credentials(req: Request<crate::state::State>, args: &NewCreden
 
     let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &opaque_state, &())?; // TODO add TTL
 
-    info!("ok");
+    debug!("ok");
     Ok((
         server_sealed_state,
         opaque_msg
@@ -44,10 +44,10 @@ pub async fn new_user(req: Request<crate::state::State>, args: &NewUser) -> api:
         let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec, false)
             .seal(&req.state().secret_key[..])?;
 
-        info!("ok");
+        debug!("ok");
         
         Ok(sealed_session_token)
-    }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+    }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
 pub async fn update_user_credentials(req: Request<crate::state::State>, args: &UpdateUserCredentials) -> api::Result<<UpdateUserCredentials as Rpc>::Ret> {
@@ -65,10 +65,10 @@ pub async fn update_user_credentials(req: Request<crate::state::State>, args: &U
         let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec, false)
             .seal(&req.state().secret_key[..])?;
 
-        info!("ok");
+        debug!("ok");
         
         Ok(sealed_session_token)
-    }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+    }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
 pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -> api::Result<<LoginStart as Rpc>::Ret> {
@@ -82,9 +82,9 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
         //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_state", &opaque.state.to_bytes()).await?;
         //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_username", args.username.as_bytes()).await?;
 
-        info!("ok");
+        debug!("ok");
         Ok((server_sealed_state.to_vec(), opaque_msg))
-    }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+    }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
 
@@ -100,9 +100,9 @@ pub async fn login_finish(req: Request<crate::state::State>, args: &LoginFinish)
         let sealed_session_token = SessionToken::new(user_id.clone(), req.state().config.session_duration_sec, args.uber_token)
             .seal(&req.state().secret_key[..])?;
 
-        info!("ok");
+        debug!("ok");
         Ok((sealed_master_key, sealed_private_data, sealed_session_token, username))
-    }.instrument(error_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+    }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
 pub async fn get_username(req: Request<crate::state::State>, args: &GetUsername) -> api::Result<<GetUsername as Rpc>::Ret> {
@@ -111,8 +111,8 @@ pub async fn get_username(req: Request<crate::state::State>, args: &GetUsername)
     async {
         let username = req.state().db.get_username_from_userid(&session_token.user_id).await?;
 
-        info!("ok: {}", String::from_utf8_lossy(&username));
+        debug!("ok: {}", String::from_utf8_lossy(&username));
         Ok(username)
-    }.instrument(error_span!("id", user_id = %bs58::encode(&session_token.user_id).into_string())).await
+    }.instrument(info_span!("id", user_id = %bs58::encode(&session_token.user_id).into_string())).await
 }
 
