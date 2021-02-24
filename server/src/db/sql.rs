@@ -158,7 +158,14 @@ impl Db {
             .bind(sealed_master_key)
             .bind(sealed_private_data)
             .bind(user_id)
-            .execute(&self.pool).await.map_err(|e| eyre::eyre!(e))?; // not supposed to fail
+            .execute(&self.pool).await.map_err(|e| {
+                match e {
+                    sqlx::Error::Database(e)
+                        if e.as_error().downcast_ref::<MySqlDatabaseError>().map(|e| e.number()) == Some(1062)
+                        => api::Error::UsernameConflict,
+                    _ => api::Error::ServerSideError(e.into()),
+                }
+            })?;
 
         Ok(())
     }

@@ -19,7 +19,7 @@ pub fn setup_logger() -> eyre::Result<()> {
         // Set the max level for `my_crate::my_mod` to DEBUG, overriding
         // any directives parsed from the env variable.
         .add_directive("common=debug".parse()?)
-        .add_directive("server=debug".parse()?)
+        .add_directive("server=trace".parse()?)
         .add_directive("tide_tracing=info".parse()?);
 
 
