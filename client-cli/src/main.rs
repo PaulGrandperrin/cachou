@@ -6,7 +6,7 @@ use eyre::WrapErr;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-use tracing::{error, metadata::LevelFilter, trace};
+use tracing::{error, info, metadata::LevelFilter, trace};
 use tracing_subscriber::EnvFilter; // could be async_compat::CompatExt
 
 
@@ -48,105 +48,25 @@ fn main() -> eyre::Result<()>{
         println!("No previous history.");
     }
     loop {
-        let readline = rl.readline(&format!("{}>> ", client.get_username()?.unwrap_or_default()));
+        let readline = rl.readline(&format!("{}> ", client.get_username()?.unwrap_or_default()));
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
-                    ["signup", username, password] => {
-                        let f = client.signup(username, password);
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["login", username, password] => {
-                        let f = client.login(username, password, false);
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["login_uber", username, password] => {
-                        let f = client.login(username, password, true);
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["login_recovery", recovery_key] => {
-                        let f = client.login_recovery(recovery_key, false);
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["login_recovery_uber", recovery_key] => {
-                        let f = client.login_recovery(recovery_key, true);
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["change_username_password", username, password] => {
-                        let f = client.change_username_password(username, password);
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["rotate_keys"] => {
-                        let f = client.rotate_keys();
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["update_username"] => {
-                        let f = client.update_username();
-                        match rt.block_on(f) {
-                            Ok(res) => {
-                                trace!("got : {:?}", res);
-                            },
-                            Err(e) => {
-                                error!("{:?}", e);
-                            },
-                        };
-                    }
-                    ["logout"] => {
-                        client.logout();
-                    }
-                    _ => {
-                        tracing::error!("unknown command");
-                    }
+                let f = async { match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
+                    ["signup", username, password] => client.signup(username, password).await.map(|e| format!("{:?}", e)),
+                    ["login", username, password] => client.login(username, password, false).await.map(|e| format!("{:?}", e)),
+                    ["login_uber", username, password] => client.login(username, password, true).await.map(|e| format!("{:?}", e)),
+                    ["login_recovery", recovery_key] => client.login_recovery(recovery_key, false).await.map(|e| format!("{:?}", e)),
+                    ["login_recovery_uber", recovery_key] => client.login_recovery(recovery_key, true).await.map(|e| format!("{:?}", e)),
+                    ["change_username_password", username, password] => client.change_username_password(username, password).await.map(|e| format!("{:?}", e)),
+                    ["rotate_keys"] => client.rotate_keys().await.map(|e| format!("{:?}", e)),
+                    ["update_username"] => client.update_username().await.map(|e| format!("{:?}", e)),
+                    ["logout"] => Ok(format!("{:?}", client.logout())),
+                    _ => Err(eyre::eyre!("invalid command")),
+                }};
+                match rt.block_on(f) {
+                    Ok(o) => info!("{}", o),
+                    Err(e) => error!("{:?}", e),
                 }
             },
             Err(ReadlineError::Interrupted) => {

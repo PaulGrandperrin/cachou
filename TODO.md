@@ -1,5 +1,3 @@
-- new server-side error: Recovery_key not found / Not valid
-
 - be careful to never save to disk uber token
 
 - prevent user enumeration: https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22
