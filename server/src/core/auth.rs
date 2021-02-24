@@ -44,7 +44,7 @@ pub async fn new_user(req: Request<crate::state::State>, args: &NewUser) -> api:
         let sealed_session_token = SessionToken::new(user_id.to_vec(), req.state().config.session_duration_sec, false)
             .seal(&req.state().secret_key[..])?;
 
-        debug!("ok");
+        info!("ok");
         
         Ok(sealed_session_token)
     }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
@@ -75,6 +75,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
     let (user_id, opaque_password) = req.state().db.get_userid_and_opaque_password_from_username(&args.username, args.recovery).await?;
     
     async {
+        // TODO if recovery, alert user (by mail) and block request for a few days
         let (opaque_state, opaque_msg) = opaque::login_start(req.state().opaque_kp.private(), &args.opaque_msg, &args.username, &opaque_password, if args.recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
         
         let server_sealed_state = crypto::sealed::Sealed::seal(&req.state().secret_key[..], &(opaque_state, user_id.clone()), &())?; // TODO add TTL
@@ -82,7 +83,7 @@ pub async fn login_start(req: Request<crate::state::State>, args: &LoginStart) -
         //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_state", &opaque.state.to_bytes()).await?;
         //req.state().db.save_tmp(&session_id, ip, expiration, "opaque_login_start_username", args.username.as_bytes()).await?;
 
-        debug!("ok");
+        info!("ok");
         Ok((server_sealed_state.to_vec(), opaque_msg))
     }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }

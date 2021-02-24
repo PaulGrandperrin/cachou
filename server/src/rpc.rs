@@ -11,27 +11,23 @@ use tracing::{Instrument, debug, error, info, info_span, trace, warn};
 
 use crate::core::auth;
 
+fn log_error(e: &api::Error) {
+    match e {
+        api::Error::ServerSideError(_) | api::Error::ClientSideError(_) => error!("{0:#?}\n{0:?}", e), // never supposed to happen
+        // TODO implement ServerSideWarn
+        _ => info!("{}", e)
+    }
+}
 
-pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
-    let body = req.body_bytes().await?;
-    let c: api::Call = rmp_serde::from_slice(&body)?;
+pub async fn rpc_impl(mut req: Request<crate::state::State>) -> api::Result<Vec<u8>> {
+    let body = req.body_bytes().await.map_err(|e| eyre!(e))?;
+    let c: api::Call = rmp_serde::from_slice(&body).map_err(|e| eyre!(e))?;
 
     let (ip, port) = req.peer_addr()
         .map(|s| s.parse::<SocketAddr>().ok())
         .flatten()
         .map(|sa| {(sa.ip(), sa.port())})
-        .ok_or(tide::Error::from_str(500, "incoming RPC does't have a peer_addr()"))?;
-
-    let log_error = |e: &api::Error| {
-        match e {
-            api::Error::ServerSideError(_) => {
-                warn!("{}", e);
-                trace!("{:?}", e);
-            }
-            api::Error::ClientSideError(_) => error!("{0:#?}\n{0:?}", e), // never supposed to happen
-            _ => info!("{}", e)
-        }
-    };
+        .ok_or(eyre!("incoming RPC does't have a peer_addr()"))?;
 
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
     let resp = async { match c {
@@ -63,59 +59,17 @@ pub async fn rpc(mut req: Request<crate::state::State>) -> tide::Result {
             .await),
     }}.instrument(info_span!("rpc", %ip, port)).await;
 
-    /*
-    let resp = match c {
-        Call::NewCredentials(args) => auth::new_credentials(req, args).await.map(|r|rmp_serde::encode::to_vec_named(&r).map_err(|e| e.into())),
-        Call::Signup(args) => auth::signup(req, args).await.map(|r|rmp_serde::encode::to_vec_named(&r).map_err(|e| e.into())),
-        Call::LoginStart(args) => auth::login_start(req, args).await.map(|r|rmp_serde::encode::to_vec_named(&r).map_err(|e| e.into())),
-        Call::LoginFinish(args) => auth::login_finish(req, args).await.map(|r|rmp_serde::encode::to_vec_named(&r).map_err(|e| e.into())),
-    }.flatten();
-    */
+    Ok(resp.map_err(|e| eyre!(e))?)
+}
 
-    /*
-    let resp = match c {
-        Call::NewCredentials(args) => {
-            let f: Pin<Box<dyn Future<Output=eyre::Result<eyre::Result<Vec<u8>>>> + Send>> = Box::pin(auth::new_credentials(req, args)
-                .map(|f|{
-                    f.map(|r| {
-                        rmp_serde::encode::to_vec_named(&r)
-                            .map_err(|e| e.into())
-                    })
-                }));
-                f
-        },
-        Call::Signup(args) => {
-            let f: Pin<Box<dyn Future<Output=eyre::Result<eyre::Result<Vec<u8>>>> + Send>> = Box::pin(auth::signup(req, args)
-                .map(|f|{
-                    f.map(|r| {
-                        rmp_serde::encode::to_vec_named(&r)
-                            .map_err(|e| e.into())
-                    })
-                }));
-                f
-        },
-        Call::LoginStart(args) => {
-            let f: Pin<Box<dyn Future<Output=eyre::Result<eyre::Result<Vec<u8>>>> + Send>> = Box::pin(auth::login_start(req, args)
-                .map(|f| {
-                    f.map(|r|{
-                        rmp_serde::encode::to_vec_named(&r)
-                            .map_err(|e| e.into())
-                    })
-                }));
-                f
-        },
-        Call::LoginFinish(args) => {
-            let f: Pin<Box<dyn Future<Output=eyre::Result<eyre::Result<Vec<u8>>>> + Send>> = Box::pin(auth::login_finish(req, args)
-                .map(|f| {
-                    f.map(|r|{
-                        rmp_serde::encode::to_vec_named(&r)
-                            .map_err(|e| e.into())
-                    })
-                }));
-                f
-        },
-    }.await.flatten();
-    */
+pub async fn rpc(req: Request<crate::state::State>) -> tide::Result {
+    let resp = match rpc_impl(req).await {
+        Ok(o) => o,
+        Err(e) => {
+            log_error(&e);
+            return Err(e.into())
+        }, 
+    };
 
-    Ok(Body::from_bytes(resp?).into())
+    Ok(Body::from_bytes(resp).into())
 }

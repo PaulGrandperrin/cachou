@@ -1,3 +1,5 @@
+- implement ServerSideWarn
+
 - refactor client and logged_user. and ensure to never save to disk uber token
 
 - prevent user enumeration: https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22
