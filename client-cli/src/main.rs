@@ -57,6 +57,7 @@ fn main() -> eyre::Result<()>{
                     ["rotate_keys"] => client.rotate_keys().await.map(|e| format!("{:?}", e)),
                     ["update_username"] => client.update_username().await.map(|e| format!("{:?}", e)),
                     ["logout"] => Ok(format!("{:?}", client.logout())),
+                    ["hibp", password] => client_common::check_password_is_pwned(password).await.map(|e| format!("{:?}", e)),
                     _ => Err(eyre::eyre!("invalid command")),
                 }};
                 match rt.block_on(f) {
