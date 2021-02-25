@@ -12,7 +12,7 @@ async fn main() -> eyre::Result<()> {
 
     debug!("ready!");
 
-    server::web::run(state).await?;
+    server::http_server::run(state).await?;
     Ok(())
 }
 

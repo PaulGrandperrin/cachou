@@ -7,8 +7,7 @@ pub mod db;
 pub mod config;
 mod opaque;
 
-pub mod tide;
-pub use crate::tide as web;
+pub mod http_server;
 
 use eyre::WrapErr;
 use tracing::metadata::LevelFilter;
