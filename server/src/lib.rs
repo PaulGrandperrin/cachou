@@ -7,6 +7,9 @@ pub mod db;
 pub mod config;
 mod opaque;
 
+pub mod tide;
+pub use crate::tide as web;
+
 use eyre::WrapErr;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
