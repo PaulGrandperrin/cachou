@@ -27,7 +27,7 @@ async fn rpc_impl(mut req: Request<crate::state::State>) -> common::api::Result<
         .map(|s| s.parse::<SocketAddr>().ok())
         .flatten()
         .map(|sa| {(sa.ip(), sa.port())})
-        .ok_or(eyre!("incoming RPC does't have a peer_addr()"))?;
+        .ok_or(eyre!("incoming RPC does't have a remote address"))?;
 
     let state = req.state();
 
