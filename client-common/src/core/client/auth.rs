@@ -17,12 +17,11 @@ fn gen_keys() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 }
 
 impl Client {
-    async fn new_user(&mut self, username: &[u8], password: &[u8]) -> eyre::Result<Vec<u8>> {
-        let (recovery_key, master_key, username_recovery) = gen_keys();
-
+    async fn new_user(&mut self, username: &[u8], password: &[u8], username_recovery: &[u8], password_recovery: &[u8], master_key: &[u8], totp_secret: &[u8]) -> eyre::Result<()> {
+        
         // start OPAQUE
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
-        let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start(&recovery_key)?;
+        let (opaque_state_recovery, opaque_msg_recovery) = opaque::registration_start(password_recovery)?;
 
         // send OPAQUE start message to server
 
@@ -40,7 +39,7 @@ impl Client {
 
         // finish OPAQUE
         let (opaque_msg, pdk) = opaque::registration_finish(&opaque_state, &opaque_msg, username, &OPAQUE_S_ID)?;
-        let (opaque_msg_recovery, _) = opaque::registration_finish(&opaque_state_recovery, &opaque_msg_recovery, &username_recovery, &OPAQUE_S_ID_RECOVERY)?;
+        let (opaque_msg_recovery, _) = opaque::registration_finish(&opaque_state_recovery, &opaque_msg_recovery, username_recovery, &OPAQUE_S_ID_RECOVERY)?;
 
         // seal master_key with pdk (opaque's export_key)
         let sealed_master_key = Sealed::seal(&pdk, &master_key, &())?;
@@ -52,7 +51,7 @@ impl Client {
         };
 
         // seal private_data with master_key
-        let sealed_private_data = Sealed::seal(&master_key, &private_data, &())?;
+        let sealed_private_data = Sealed::seal(master_key, &private_data, &())?;
 
         // send OPAQUE finish message to server and save user
         let sealed_session_token = self.rpc_client.call(
@@ -65,17 +64,18 @@ impl Client {
                 username_recovery: username_recovery.to_owned(),
                 sealed_master_key,
                 sealed_private_data,
+                totp_secret: totp_secret.to_owned(),
             }
         ).await?;
 
         self.logged_user = Some( LoggedUser {
             username: username.to_owned(),
-            master_key,
+            master_key: master_key.to_owned(),
             private_data,
             sealed_session_token,
         });
 
-        Ok(recovery_key)
+        Ok(())
     }
 
     async fn update_user_credentials(&mut self, username: &[u8], password: &[u8], recovery: bool) -> eyre::Result<()> { 
@@ -161,9 +161,12 @@ impl Client {
     }
 
     pub async fn signup(&mut self, username: &str, password: &str) -> eyre::Result<String> {
-        let recovery_key = self.new_user(username.as_bytes(), password.as_bytes()).await?;
+        let (password_recovery, master_key, username_recovery) = gen_keys();
+        let totp_secret = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
 
-        Ok(bs58::encode( &recovery_key).into_string())
+        self.new_user(username.as_bytes(), password.as_bytes(), &username_recovery, &password_recovery, &master_key, &totp_secret).await?;
+        
+        Ok(bs58::encode( &password_recovery).into_string())
     }
 
     pub async fn change_username_password(&mut self, username: &str, password: &str) -> eyre::Result<()> {

@@ -1,5 +1,3 @@
-- use futures-lite
-
 - implement ServerSideWarn
 
 - refactor client and logged_user. and ensure to never save to disk uber token
@@ -18,6 +16,8 @@
 
 - implement votes
 
+
+- separate type domains with newtypes and use subtle and other type system tricks when useful
 
 POST MVC
 

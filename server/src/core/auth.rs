@@ -38,7 +38,7 @@ pub async fn new_user(state: &State, args: &NewUser) -> api::Result<<NewUser as 
     let user_id= rand::thread_rng().gen::<[u8; 32]>().to_vec(); // 256bits, so I don't even have to think about birthday attacks
     
     async {
-        state.db.new_user(&user_id, &args.username, &opaque_password, &args.username_recovery , &opaque_password_recovery, &args.sealed_master_key, &args.sealed_private_data).await?;
+        state.db.new_user(&user_id, &args.username, &opaque_password, &args.username_recovery , &opaque_password_recovery, &args.sealed_master_key, &args.sealed_private_data, &args.totp_secret).await?;
 
         let sealed_session_token = SessionToken::new(user_id.to_vec(), state.config.session_duration_sec, false)
             .seal(&state.secret_key[..])?;

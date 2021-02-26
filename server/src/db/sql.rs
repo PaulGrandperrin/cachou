@@ -85,6 +85,7 @@ impl Db {
                 `opaque_password_recovery` varbinary(1024) not null,
                 `sealed_master_key` varbinary(256) not null,
                 `sealed_private_data` varbinary(1024) not null,
+                `totp_secret` binary(32) not null,
                 primary key (user_id),
                 unique index unique_username (username),
                 unique index unique_username_recovery (username_recovery)
@@ -127,9 +128,9 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn new_user(&self, user_id: &[u8], username: &[u8], opaque_password: &[u8], username_recovery: &[u8], opaque_password_recovery: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8]) -> api::Result<()> {
+    pub async fn new_user(&self, user_id: &[u8], username: &[u8], opaque_password: &[u8], username_recovery: &[u8], opaque_password_recovery: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], totp_secret: &[u8]) -> api::Result<()> {
 
-        sqlx::query("insert into `user` (`user_id`, `username`, `opaque_password`, `username_recovery`, `opaque_password_recovery`, `sealed_master_key`, `sealed_private_data`) values (?, ?, ?, ?, ?, ?, ?)")
+        sqlx::query("insert into `user` (`user_id`, `username`, `opaque_password`, `username_recovery`, `opaque_password_recovery`, `sealed_master_key`, `sealed_private_data`, `totp_secret`) values (?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(user_id)
             .bind(username)
             .bind(opaque_password)
@@ -137,6 +138,7 @@ impl Db {
             .bind(opaque_password_recovery)
             .bind(sealed_master_key)
             .bind(sealed_private_data)
+            .bind(totp_secret)
             .execute(&self.pool).await.map_err(|e| {
                 match e {
                     sqlx::Error::Database(e)
