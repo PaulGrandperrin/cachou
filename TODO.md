@@ -17,7 +17,8 @@
 - implement votes
 
 
-- separate type domains with newtypes and use subtle and other type system tricks when useful
+- separate type domains with newtypes and use subtle (for constant-time cmp), zeroize and other type system tricks when useful
+- unicode/ utf8 normalization
 
 POST MVC
 

@@ -5,7 +5,7 @@ use eyre::{WrapErr, eyre};
 
 pub async fn check_password(password: &str) -> eyre::Result<u64>
 {
-    let hash = hex::encode(Sha1::digest(password.as_bytes()).as_slice());
+    let hash = data_encoding::HEXLOWER.encode(Sha1::digest(password.as_bytes()).as_slice());
     let split_hash = hash.split_at(5);
 
     let url = format!("{}{}", "https://api.pwnedpasswords.com/range/", split_hash.0);

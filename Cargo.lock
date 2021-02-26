@@ -705,11 +705,11 @@ version = "0.1.0"
 dependencies = [
  "bs58",
  "common",
+ "data-encoding",
  "derivative",
  "ed25519-dalek",
  "eyre",
  "getrandom 0.2.2",
- "hex",
  "opaque-ke",
  "rand 0.8.3",
  "rand_core 0.6.2",
