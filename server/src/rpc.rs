@@ -4,7 +4,7 @@ use std::error::Error;
 use eyre::{eyre, ContextCompat, Report};
 use api::Rpc;
 use common::api::{self, Call, Result};
-use futures::{Future, FutureExt, TryFutureExt};
+use futures_util::TryFutureExt;
 use serde::Serialize;
 use tracing::{Instrument, debug, error, info, info_span, trace, warn};
 

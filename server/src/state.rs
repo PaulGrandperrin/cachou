@@ -1,5 +1,4 @@
-use std::{convert::{TryFrom, TryInto}, sync::Arc};
-use async_std::{fs::File, io::prelude::ReadExt};
+use std::{convert::{TryFrom, TryInto}, fs::File, io::Read, sync::Arc};
 use common::crypto::opaque::OpaqueConf;
 use eyre::WrapErr;
 use generic_bytes::SizedBytes;
@@ -18,15 +17,15 @@ pub struct State {
 impl State {
     pub async fn new() -> eyre::Result<Self> {
         // load opaque private key
-        let mut f = File::open(common::consts::OPAQUE_PRIVATE_KEY_PATH).await?;
+        let mut f = File::open(common::consts::OPAQUE_PRIVATE_KEY_PATH)?;
         let mut pk = Vec::new();
-        f.read_to_end(&mut pk).await?;
+        f.read_to_end(&mut pk)?;
         let opaque_kp = KeyPair::from_private_key_slice(&pk)?;
 
         // load secret key
-        let mut f = File::open(common::consts::SECRET_KEY_PATH).await?;
+        let mut f = File::open(common::consts::SECRET_KEY_PATH)?;
         let mut secret_key = [0u8; 32];
-        let size = f.read(&mut secret_key).await?;
+        let size = f.read(&mut secret_key)?;
         eyre::ensure!(size == secret_key.len(), "failed to read secret_key");
 
         // load config

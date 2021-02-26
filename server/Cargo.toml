@@ -7,31 +7,48 @@ edition = "2018"
 default-run = "server"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+
+default = ["exec-tokio-rt-tokio"]
+
+exec-tokio-rt-tokio = ["_ex-tokio", "_rt-tokio"]
+exec-tokio-rt-async = ["_ex-tokio", "_rt-async"]
+exec-async-rt-tokio = ["_ex-async", "_rt-tokio", "async-global-executor/tokio"]
+exec-async-rt-async = ["_ex-async", "_rt-async", "async-global-executor/async-io"]
+
+_rt-tokio = ["sqlx/runtime-tokio-rustls", "warp"]
+_rt-async = ["sqlx/runtime-async-std-rustls", "tide"]
+_ex-tokio = ["tokio/rt-multi-thread"]
+_ex-async = ["async-global-executor"]
+
 [dependencies]
 common = { path = "../common/", features = ["server"]}
 tracing = "0.1"
 tracing-subscriber = "0.2"
 #tracing-futures = "0.2"
-async-std = { version = "1", features = ["attributes", "tokio1"]}
-#tokio = { version = "1", features = ["full"] }
-warp = "0.3"
-tide = "0.16"
-tide-tracing = "0.0"
+
 rmp-serde = "0.15"
 rand = "0.8"
 rand_core = "0.6"
 eyre = "0.6"
 color-eyre = "0.5"
-sqlx = { version = "0.5", default-features = false, features = [ "mysql","runtime-async-std-rustls" ] }
+
 #chrono = "0.4"
 structopt = "0.3"
 generic-bytes = "0.1"
 generic-array = "0.14"
 serde = "1.0"
-#async-trait = "0.1"
 sha2 = "0.9"
-futures = "0.3"
+futures-util = "0.3"
 toml = "0.5"
 bs58 = "0.4"
 
 opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}
+
+sqlx = { version = "0.5", default-features = false, features = [ "mysql" ] }
+
+tokio = { version = "1", optional = true, default-features = false, features = []}
+warp = { version = "0.3", optional = true }
+
+async-global-executor = { version = "2", optional = true, default-features = false, features = []}
+tide = { version = "0.16", optional = true }

@@ -1,12 +1,11 @@
 #![allow(unused_imports)]
 
-use async_std::io::prelude::WriteExt;
 use common::crypto::opaque::OpaqueConf;
 use opaque_ke::{ciphersuite::CipherSuite, keypair::KeyPair};
 use rand::Rng;
 use server::*;
 use tracing::error;
-use std::path::PathBuf;
+use std::{io::Write, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -22,25 +21,26 @@ enum Command {
     DropDatabase,
 }
 
-#[async_std::main]
-async fn main() -> eyre::Result<()> {
+
+fn main() -> eyre::Result<()> {
     color_eyre::install()?;
     let mut rng = rand_core::OsRng;
     let opt = Opt::from_args();
     match opt.command {
         Command::CreateIdentityKey => {
             let kp = <OpaqueConf as CipherSuite>::generate_random_keypair(&mut rng);
-            let mut f = async_std::fs::File::create(common::consts::OPAQUE_PRIVATE_KEY_PATH).await?;
-            f.write_all(kp.private()).await?;
+            let mut f = std::fs::File::create(common::consts::OPAQUE_PRIVATE_KEY_PATH)?;
+            f.write_all(kp.private())?;
         }
         Command::CreateSecretKey => {
             let secret_key: [u8; 32] = rand::thread_rng().gen(); // 256bits
-            let mut f = async_std::fs::File::create(common::consts::SECRET_KEY_PATH).await?;
-            f.write_all(&secret_key).await?;
+            let mut f = std::fs::File::create(common::consts::SECRET_KEY_PATH)?;
+            f.write_all(&secret_key)?;
         }
         Command::DropDatabase => {
-            let db = server::db::Db::new().await?;
-            db.drop_database().await?;
+            todo!()
+            //let db = server::db::Db::new()?;
+            //db.drop_database()?;
         }
     }
     Ok(())
