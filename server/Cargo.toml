@@ -38,10 +38,15 @@ structopt = "0.3"
 generic-bytes = "0.1"
 generic-array = "0.14"
 serde = "1.0"
+sha-1 = "0.9"
 sha2 = "0.9"
+hmac = "0.10"
 futures-util = "0.3"
 toml = "0.5"
 bs58 = "0.4"
+url = "2"
+data-encoding = "2"
+
 
 opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}
 

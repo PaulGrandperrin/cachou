@@ -6,6 +6,7 @@ pub mod state;
 pub mod db;
 pub mod config;
 mod opaque;
+mod totp;
 
 pub mod http_server;
 
