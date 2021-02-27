@@ -40,7 +40,7 @@ pub struct NewUser {
     pub username_recovery: Vec<u8>,
     pub sealed_master_key: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     pub sealed_private_data: Vec<u8>, // sealed with masterkey
-    pub totp_secret: Vec<u8>,
+    pub totp_uri: Option<String>,
 }
 impl Rpc for NewUser {
     type Ret = Vec<u8>; // sealed_session_token

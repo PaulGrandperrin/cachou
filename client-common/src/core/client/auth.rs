@@ -17,7 +17,7 @@ fn gen_keys() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 }
 
 impl Client {
-    async fn new_user(&mut self, username: &[u8], password: &[u8], username_recovery: &[u8], password_recovery: &[u8], master_key: &[u8], totp_secret: &[u8]) -> eyre::Result<()> {
+    async fn new_user(&mut self, username: &[u8], password: &[u8], username_recovery: &[u8], password_recovery: &[u8], master_key: &[u8], totp_uri: Option<String>) -> eyre::Result<()> {
         
         // start OPAQUE
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
@@ -64,7 +64,7 @@ impl Client {
                 username_recovery: username_recovery.to_owned(),
                 sealed_master_key,
                 sealed_private_data,
-                totp_secret: totp_secret.to_owned(),
+                totp_uri,
             }
         ).await?;
 
@@ -160,11 +160,10 @@ impl Client {
         Ok(())
     }
 
-    pub async fn signup(&mut self, username: &str, password: &str) -> eyre::Result<String> {
+    pub async fn signup(&mut self, username: &str, password: &str, totp_uri: Option<String>) -> eyre::Result<String> {
         let (password_recovery, master_key, username_recovery) = gen_keys();
-        let totp_secret = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
 
-        self.new_user(username.as_bytes(), password.as_bytes(), &username_recovery, &password_recovery, &master_key, &totp_secret).await?;
+        self.new_user(username.as_bytes(), password.as_bytes(), &username_recovery, &password_recovery, &master_key, totp_uri).await?;
         
         Ok(bs58::encode( &password_recovery).into_string())
     }
