@@ -28,16 +28,16 @@ pub async fn new_credentials(state: &State, args: &NewCredentials) -> api::Resul
 }
 
 pub async fn new_user(state: &State, args: &NewUser) -> api::Result<<NewUser as Rpc>::Ret> {
-    let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&state.secret_key, &args.server_sealed_state)?.0;
-    let opaque_state_recovery = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&state.secret_key, &args.server_sealed_state_recovery)?.0;
-    //let opaque_state = state.db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
-    
-    let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
-    let opaque_password_recovery = opaque::registration_finish(&opaque_state_recovery[..], &args.opaque_msg_recovery)?;
-
     let user_id= rand::thread_rng().gen::<[u8; 32]>().to_vec(); // 256bits, so I don't even have to think about birthday attacks
     
     async {
+        let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&state.secret_key, &args.server_sealed_state)?.0;
+        let opaque_state_recovery = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&state.secret_key, &args.server_sealed_state_recovery)?.0;
+        //let opaque_state = state.db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
+        
+        let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
+        let opaque_password_recovery = opaque::registration_finish(&opaque_state_recovery[..], &args.opaque_msg_recovery)?;
+
         state.db.new_user(&user_id, &args.username, &opaque_password, &args.username_recovery , &opaque_password_recovery, &args.sealed_master_key, &args.sealed_private_data, &args.totp_uri).await?;
 
         let sealed_session_token = SessionToken::new(user_id.to_vec(), state.config.session_duration_sec, false)
@@ -50,15 +50,15 @@ pub async fn new_user(state: &State, args: &NewUser) -> api::Result<<NewUser as 
 }
 
 pub async fn update_user_credentials(state: &State, args: &UpdateUserCredentials) -> api::Result<<UpdateUserCredentials as Rpc>::Ret> {
-    let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&state.secret_key, &args.server_sealed_state)?.0;
-    //let opaque_state = state.db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
-    
-    let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
-
     // get user's user_id and check that token has uber rights
     let user_id = SessionToken::unseal(&state.secret_key[..], &args.sealed_session_token, true)?.user_id;
-
+    
     async {
+        let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&state.secret_key, &args.server_sealed_state)?.0;
+        //let opaque_state = state.db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
+        
+        let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
+
         state.db.update_user_credentials(&user_id, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
 
         let sealed_session_token = SessionToken::new(user_id.to_vec(), state.config.session_duration_sec, false)
