@@ -4,14 +4,16 @@ use crate::api;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionToken {
     pub user_id: Vec<u8>,
+    pub version: u64,
     pub valid_until: i64, // unix timestamp in seconds
     pub uber: bool, // uber token allows changing credentials and masterkey
 }
 
 impl SessionToken {
-    pub fn new(user_id: Vec<u8>, session_duration_sec: i64, uber: bool) -> Self {
+    pub fn new(user_id: Vec<u8>, version: u64, session_duration_sec: i64, uber: bool) -> Self {
         SessionToken {
             user_id,
+            version,
             valid_until: (chrono::Utc::now() + chrono::Duration::minutes(session_duration_sec)).timestamp(),
             uber,
         }
