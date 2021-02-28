@@ -8,9 +8,8 @@
 
 - setup panic handler to trace panics. see https://github.com/tokio-rs/tracing/issues/587
 
-- validate token TTL, and also opaque_state
-
-- factorise sealed stuff in API
+- validate sealed_opaque_state TTL 
+  factorise sealed stuff in API: sealed_opaque_state and sealed_session_token
 
 - check that replay attack are not an issue with our stateless OPAQUE negociation
 

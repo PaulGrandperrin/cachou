@@ -5,7 +5,8 @@ use toml;
 use serde::Deserialize;
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
-    pub session_duration_sec: i64,
+    pub session_token_logged_duration_sec: u32,
+    pub session_token_uber_duration_sec: u32,
 }
 
 impl Config {

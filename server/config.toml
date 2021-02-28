@@ -1,2 +1,3 @@
-session_duration_sec = 10
+session_token_logged_duration_sec = 15
+session_token_uber_duration_sec = 5
 
