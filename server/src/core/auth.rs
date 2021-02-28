@@ -116,6 +116,10 @@ pub async fn change_totp(state: &State, args: &ChangeTotp) -> api::Result<<Chang
     // get user's user_id and check that token has uber rights
     let SessionToken{user_id, version, ..} = SessionToken::unseal_validated(&state.secret_key[..], &args.sealed_session_token, Clearance::Uber)?;
 
+    if let Some(uri) = &args.totp_uri {
+        common::crypto::totp::parse_totp_uri(uri)?; // TODO send back error not obscurated
+    }
+
     async {
         state.db.change_totp(&user_id, version, &args.totp_uri).await?;
         debug!("ok");
