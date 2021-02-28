@@ -31,7 +31,7 @@ pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> 
             .inspect_err(log_error)
             .instrument(info_span!("NewUser", username = %String::from_utf8_lossy(&args.username).into_owned()))
             .await),
-        Call::UpdateUserCredentials(args) => rmp_serde::encode::to_vec_named(&auth::update_user_credentials(state, &args)
+        Call::ChangeUserCredentials(args) => rmp_serde::encode::to_vec_named(&auth::change_user_credentials(state, &args)
             .inspect_err(log_error)
             .instrument(info_span!("UpdateUserCredentials", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
             .await),
@@ -48,6 +48,11 @@ pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> 
         Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&auth::get_username(state, &args)
             .inspect_err(log_error)
             .instrument(info_span!("GetUsername"))
+            .await),
+
+        Call::ChangeTotp(args) => rmp_serde::encode::to_vec_named(&auth::change_totp(state, &args)
+            .inspect_err(log_error)
+            .instrument(info_span!("UpdateTotp"))
             .await),
     }}.instrument(info_span!("rpc", %req.ip, req.port)).await;
 

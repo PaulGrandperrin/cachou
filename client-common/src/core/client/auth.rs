@@ -78,7 +78,7 @@ impl Client {
         Ok(())
     }
 
-    async fn update_user_credentials(&mut self, username: &[u8], password: &[u8], recovery: bool) -> eyre::Result<()> { 
+    async fn change_user_credentials(&mut self, username: &[u8], password: &[u8], recovery: bool) -> eyre::Result<()> { 
         let mut logged_user  = self.logged_user.take().ok_or(eyre::eyre!("not logged in"))?;
 
         // start OPAQUE
@@ -108,7 +108,7 @@ impl Client {
 
         // send OPAQUE finish message to server and save user
         logged_user.sealed_session_token = self.rpc_client.call(
-            common::api::UpdateUserCredentials {
+            common::api::ChangeUserCredentials {
                 server_sealed_state,
                 opaque_msg,
                 username: username.to_owned(),
@@ -160,6 +160,21 @@ impl Client {
         Ok(())
     }
 
+    // --- public functions
+
+    pub async fn change_totp(&mut self, totp_uri: Option<String>) -> eyre::Result<()> { 
+        let logged_user  = self.logged_user.as_ref().take().ok_or(eyre::eyre!("not logged in"))?;
+
+        self.rpc_client.call(
+            common::api::ChangeTotp {
+                sealed_session_token: logged_user.sealed_session_token.clone(),
+                totp_uri,
+            }
+        ).await?;
+
+        Ok(())
+    }
+
     pub async fn signup(&mut self, username: &str, password: &str, totp_uri: Option<String>) -> eyre::Result<String> {
         let (password_recovery, master_key, username_recovery) = gen_keys();
 
@@ -169,7 +184,7 @@ impl Client {
     }
 
     pub async fn change_username_password(&mut self, username: &str, password: &str) -> eyre::Result<()> {
-        self.update_user_credentials(username.as_bytes(), password.as_bytes(), false).await?;
+        self.change_user_credentials(username.as_bytes(), password.as_bytes(), false).await?;
 
         Ok(())
     }
@@ -177,7 +192,7 @@ impl Client {
     pub async fn rotate_keys(&mut self) -> eyre::Result<String> {
         let (recovery_key, master_key, username_recovery) = gen_keys();
         self.logged_user.as_mut().map(|lu| lu.master_key = master_key);
-        self.update_user_credentials(&username_recovery, &recovery_key, true).await?;
+        self.change_user_credentials(&username_recovery, &recovery_key, true).await?;
 
         Ok(bs58::encode( &recovery_key).into_string())
     }

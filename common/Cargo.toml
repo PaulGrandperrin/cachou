@@ -30,9 +30,13 @@ opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}
 curve25519-dalek = "3"
 xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git" }
 ed25519-dalek = { git = "https://github.com/PaulGrandperrin/ed25519-dalek.git" }
+sha-1 = "0.9"
 sha2 = "0.9"
+hmac = "0.10"
+data-encoding = "2"
 aead = "0.3"
 digest = "0.9"
+url = "2"
 
 # key derivation
 #blake2b_simd = "0.5"

@@ -57,7 +57,10 @@ fn main() -> eyre::Result<()>{
                     ["rotate_keys"] => client.rotate_keys().await.map(|e| format!("{:?}", e)),
                     ["update_username"] => client.update_username().await.map(|e| format!("{:?}", e)),
                     ["logout"] => Ok(format!("{:?}", client.logout())),
-                    ["hibp", password] => client_common::check_password_is_pwned(password).await.map(|e| format!("{:?}", e)),
+                    ["hibp", password] => client_common::hibp(password).await.map(|e| format!("{:?}", e)),
+                    ["set_totp", uri] => client.change_totp(Some(uri.to_string())).await.map(|e| format!("{:?}", e)),
+                    ["unset_totp"] => client.change_totp(None).await.map(|e| format!("{:?}", e)),
+                    ["check_totp", uri, input] => common::crypto::totp::check_totp (uri, input).map(|e| format!("{:?}", e)),
                     _ => Err(eyre::eyre!("invalid command")),
                 }};
                 match rt.block_on(f) {

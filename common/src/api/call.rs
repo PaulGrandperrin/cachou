@@ -6,12 +6,14 @@ pub enum Call {
     /// to create a new user, or update an existing one credentials (username, password, masterkey)
     NewCredentials(NewCredentials),
     NewUser(NewUser),
-    UpdateUserCredentials(UpdateUserCredentials),
+    ChangeUserCredentials(ChangeUserCredentials),
 
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
 
     GetUsername(GetUsername),
+
+    ChangeTotp(ChangeTotp),
 }
 
 pub trait Rpc: Serialize {
@@ -49,7 +51,7 @@ impl Rpc for NewUser {
 
 // UpdateUserCredentials
 #[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateUserCredentials {
+pub struct ChangeUserCredentials {
     pub server_sealed_state: Vec<u8>,
     pub opaque_msg: Vec<u8>,
     pub username: Vec<u8>,
@@ -58,9 +60,9 @@ pub struct UpdateUserCredentials {
     pub sealed_session_token: Vec<u8>, // must have uber rights
     pub recovery: bool, // update username/password or recovery_key/master_key ?
 }
-impl Rpc for UpdateUserCredentials {
+impl Rpc for ChangeUserCredentials {
     type Ret = Vec<u8>; // sealed_session_token
-    fn into_call(self) -> Call { Call::UpdateUserCredentials(self) }
+    fn into_call(self) -> Call { Call::ChangeUserCredentials(self) }
 }
 
 // LoginStart
@@ -95,4 +97,15 @@ pub struct GetUsername {
 impl Rpc for GetUsername {
     type Ret = Vec<u8>; // username
     fn into_call(self) -> Call { Call::GetUsername(self) }
+}
+
+// UpdateTotp
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ChangeTotp {
+    pub sealed_session_token: Vec<u8>, // must have uber rights
+    pub totp_uri: Option<String>,
+}
+impl Rpc for ChangeTotp {
+    type Ret = ();
+    fn into_call(self) -> Call { Call::ChangeTotp(self) }
 }

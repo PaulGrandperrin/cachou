@@ -1,5 +1,6 @@
 use std::{convert::TryInto, time::SystemTime};
 
+use data_encoding::BASE32_NOPAD;
 use eyre::{eyre, ContextCompat, WrapErr, bail};
 use hmac::{Hmac, Mac, NewMac};
 use sha1::Sha1;
@@ -17,7 +18,7 @@ pub fn check_totp(uri: &str, input: &str) -> eyre::Result<()> {
 
     let counter = time / period as u64;
 
-    for c in counter - 1 .. counter {
+    for c in counter - 1 ..= counter {
         let totp = match algo.as_str() {
             "SHA1" => hotp::<Hmac<Sha1>>(&secret, digits, c),
             "SHA256" => hotp::<Hmac<Sha256>>(&secret, digits, c),
@@ -57,7 +58,7 @@ pub fn parse_totp_uri(uri: &str) -> eyre::Result<(Vec<u8>, u8, String, u32)> {
     if uri.scheme() != "otpauth" || uri.host() != Some(Domain("totp")) { bail!("not an 'otpauth://totp/' URL") }
     
     // find, extract and parse the secret
-    let secret = data_encoding::BASE32_NOPAD.decode(
+    let secret = BASE32_NOPAD.decode(
         uri.query_pairs().find_map(|(k, v)| {
             if k == "secret" { Some(v) } else { None }
         }).wrap_err("attribute 'secret' not found")?.as_bytes()

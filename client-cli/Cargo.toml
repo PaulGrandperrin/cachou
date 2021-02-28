@@ -5,6 +5,7 @@ authors = ["Paul Grandperrin <paul.grandperrin@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+common = {path = "../common"}
 client-common = {path = "../client-common"}
 tracing = "0.1"
 tracing-subscriber = "0.2"

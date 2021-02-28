@@ -1,3 +1,7 @@
+- prevent overriding of sealed masterkey if export_key has changed in between
+
+- TOTP: 1 pass should allow only one login!
+
 - implement ServerSideWarn
 
 - refactor client and logged_user. and ensure to never save to disk uber token

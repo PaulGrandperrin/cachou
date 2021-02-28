@@ -2,11 +2,10 @@ use std::{convert::TryFrom};
 
 use color_eyre::Section;
 use eyre::eyre;
-use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc, SessionToken, UpdateUserCredentials}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::{self, opaque::OpaqueConf}};
+use common::{api::{self, GetUsername, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc, SessionToken, ChangeTotp, ChangeUserCredentials}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::{self, opaque::OpaqueConf}};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::{Key, KeyPair}};
 use rand::Rng;
 use serde::Serialize;
-use sha2::Digest;
 use tracing::{Instrument, debug, error, info, info_span, trace};
 use eyre::WrapErr;
 
@@ -49,7 +48,7 @@ pub async fn new_user(state: &State, args: &NewUser) -> api::Result<<NewUser as 
     }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
 }
 
-pub async fn update_user_credentials(state: &State, args: &UpdateUserCredentials) -> api::Result<<UpdateUserCredentials as Rpc>::Ret> {
+pub async fn change_user_credentials(state: &State, args: &ChangeUserCredentials) -> api::Result<<ChangeUserCredentials as Rpc>::Ret> {
     // get user's user_id and check that token has uber rights
     let user_id = SessionToken::unseal(&state.secret_key[..], &args.sealed_session_token, true)?.user_id;
     
@@ -59,7 +58,7 @@ pub async fn update_user_credentials(state: &State, args: &UpdateUserCredentials
         
         let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
 
-        state.db.update_user_credentials(&user_id, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
+        state.db.change_user_credentials(&user_id, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
 
         let sealed_session_token = SessionToken::new(user_id.to_vec(), state.config.session_duration_sec, false)
             .seal(&state.secret_key[..])?;
@@ -116,3 +115,13 @@ pub async fn get_username(state: &State, args: &GetUsername) -> api::Result<<Get
     }.instrument(info_span!("id", user_id = %bs58::encode(&session_token.user_id).into_string())).await
 }
 
+pub async fn change_totp(state: &State, args: &ChangeTotp) -> api::Result<<ChangeTotp as Rpc>::Ret> {
+    // get user's user_id and check that token has uber rights
+    let user_id = SessionToken::unseal(&state.secret_key[..], &args.sealed_session_token, true)?.user_id;
+
+    async {
+        state.db.change_totp(&user_id, &args.totp_uri).await?;
+        debug!("ok");
+        Ok(())
+    }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+}

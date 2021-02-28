@@ -16,6 +16,6 @@ pub fn check_password_strength(password: &str, email: &str) -> u8 {
     }
 }
 
-pub async fn check_password_is_pwned(password: &str) -> eyre::Result<u64> {
+pub async fn hibp(password: &str) -> eyre::Result<u64> {
     hibp::check_password(password).await
 }

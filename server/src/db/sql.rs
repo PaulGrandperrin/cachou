@@ -152,7 +152,7 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn update_user_credentials(&self, user_id: &[u8], username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], recovery: bool) -> api::Result<()> {
+    pub async fn change_user_credentials(&self, user_id: &[u8], username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], recovery: bool) -> api::Result<()> {
         let query = format!("update `user` set `username{0}` = ?, `opaque_password{0}` = ?, `sealed_master_key` = ?, `sealed_private_data` = ? where `user_id` = ?", if recovery {"_recovery"} else {""});
         sqlx::query(&query)
             .bind(username)
@@ -213,5 +213,14 @@ impl Db {
         )
     }
 
+    #[tracing::instrument]
+    pub async fn change_totp(&self, user_id: &[u8], totp_uri: &Option<String>) -> api::Result<()> {
+        sqlx::query("update `user` set `totp_uri` = ? where `user_id` = ?")
+            .bind(totp_uri)
+            .bind(user_id)
+            .execute(&self.pool).await.map_err(|e| eyre::eyre!(e))?; 
+
+        Ok(())
+    }
     
 }
