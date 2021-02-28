@@ -39,6 +39,12 @@ impl SessionToken {
     fn validate(&self, required_clearance: Clearance) -> api::Result<()> {
         let now = chrono::Utc::now().timestamp();
 
+        // check that the token has not been forged too much in the future (distributed servers can be a little unsynchronized)
+        if self.timestamp > now + 5 {
+            Err(api::Error::InvalidSessionToken)?
+        }
+
+        // TODO check that durations are not too big (requires access to conf)
         match required_clearance {
             Clearance::Logged => self.logged_duration.filter(|duration| { self.timestamp + *duration as i64 > now }).ok_or(api::Error::InvalidSessionToken),
             Clearance::Uber   => self.uber_duration.filter(  |duration| { self.timestamp + *duration as i64 > now }).ok_or(api::Error::InvalidSessionToken),
