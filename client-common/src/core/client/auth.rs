@@ -79,7 +79,7 @@ impl Client {
     }
 
     async fn change_user_credentials(&mut self, username: &[u8], password: &[u8], recovery: bool) -> eyre::Result<()> { 
-        let mut logged_user  = self.logged_user.as_ref().take().ok_or(eyre::eyre!("not logged in"))?.clone();
+        let mut logged_user  = self.logged_user.as_ref().ok_or(eyre::eyre!("not logged in"))?.clone();
 
         // start OPAQUE
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
@@ -163,7 +163,7 @@ impl Client {
     // --- public functions
 
     pub async fn change_totp(&mut self, totp_uri: Option<String>) -> eyre::Result<()> { 
-        let logged_user  = self.logged_user.as_ref().take().ok_or(eyre::eyre!("not logged in"))?;
+        let logged_user  = self.logged_user.as_ref().ok_or(eyre::eyre!("not logged in"))?;
 
         self.rpc_client.call(
             common::api::ChangeTotp {
@@ -209,7 +209,7 @@ impl Client {
     }
 
     pub async fn update_username(&mut self) -> eyre::Result<String> {
-        let lu  = self.logged_user.as_mut().take().ok_or(eyre::eyre!("not logged in"))?;
+        let lu  = self.logged_user.as_mut().ok_or(eyre::eyre!("not logged in"))?;
 
         let username = self.rpc_client.call(
             common::api::GetUsername{ sealed_session_token: lu.sealed_session_token.clone() }
