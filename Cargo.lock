@@ -692,6 +692,7 @@ version = "0.1.0"
 dependencies = [
  "client-common",
  "color-eyre",
+ "common",
  "eyre",
  "rustyline",
  "tokio",
@@ -771,6 +772,7 @@ dependencies = [
  "aead",
  "chrono",
  "curve25519-dalek",
+ "data-encoding",
  "derivative",
  "derive_more",
  "digest 0.9.0",
@@ -778,16 +780,19 @@ dependencies = [
  "eyre",
  "generic-array 0.14.4",
  "hex-literal",
+ "hmac 0.10.1",
  "opaque-ke",
  "rand 0.8.3",
  "rand_core 0.6.2",
  "rmp-serde",
  "rust-argon2",
  "serde",
+ "sha-1 0.9.4",
  "sha2",
  "thiserror",
  "tracing",
  "tracing-subscriber",
+ "url",
  "xchacha8blake3siv",
 ]
 
@@ -2821,9 +2826,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.63"
+version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43535db9747a4ba938c0ce0a98cc631a46ebf943c9e1d604e091df6007620bf6"
+checksum = "799e97dc9fdae36a5c8b8f2cae9ce2ee9fdce2058c57a93e6099d919fd982f79"
 dependencies = [
  "itoa",
  "ryu",
@@ -2862,19 +2867,15 @@ dependencies = [
  "bs58",
  "color-eyre",
  "common",
- "data-encoding",
  "eyre",
  "futures-util",
  "generic-array 0.14.4",
  "generic-bytes",
- "hmac 0.10.1",
  "opaque-ke",
  "rand 0.8.3",
  "rand_core 0.6.2",
  "rmp-serde",
  "serde",
- "sha-1 0.9.4",
- "sha2",
  "sqlx",
  "structopt",
  "tide",
@@ -2882,7 +2883,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "url",
  "warp",
 ]
 
