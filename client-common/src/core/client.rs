@@ -12,7 +12,7 @@ pub struct Client {
     logged_user: Option<LoggedUser>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LoggedUser {
     pub username: Vec<u8>,
     master_key: Vec<u8>,

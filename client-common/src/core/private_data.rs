@@ -7,6 +7,15 @@ pub struct PrivateData {
     pub pdk: Vec<u8>, // useful when we want to rotate the keys while being logged with previous recovery key
 }
 
+impl Clone for PrivateData {
+    fn clone(&self) -> Self {
+        Self {
+            ident_keypair: ed25519_dalek::Keypair::from_bytes(&self.ident_keypair.to_bytes()).unwrap(), // really ennoying...
+            pdk: self.pdk.clone(),
+        }
+    }
+}
+
 mod serde_keypair {
     use std::fmt;
     use serde::{Deserialize, Serialize, Serializer, Deserializer, de};
