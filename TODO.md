@@ -1,5 +1,7 @@
 - TOTP: 1 pass should allow only one login!
 
+- check if session_token is valid for user's version
+
 - implement ServerSideWarn
 
 - refactor client and logged_user. and ensure to never save to disk uber token
@@ -26,3 +28,5 @@ POST MVC
 - MFA: backup codes, TOTP, WebAuthn
 - add delay to recovery procedure
 - add alterting when recovery: email
+
+- encrypt username at all time (check if possible through OPAQUE)
