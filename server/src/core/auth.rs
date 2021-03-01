@@ -50,7 +50,7 @@ impl State {
 
     pub async fn change_user_credentials(&self, args: &ChangeUserCredentials) -> api::Result<<ChangeUserCredentials as Rpc>::Ret> {
         // get user's user_id and check that token has uber rights
-        let session_token = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Uber)?;
+        let session_token = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Uber).await?;
         
         async {
             let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
@@ -105,7 +105,7 @@ impl State {
     }
 
     pub async fn get_username(&self, args: &GetUsername) -> api::Result<<GetUsername as Rpc>::Ret> {
-        let SessionToken{user_id, version, ..} = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Logged)?;
+        let SessionToken{user_id, version, ..} = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Logged).await?;
 
         async {
             let username = self.db.get_username_from_userid(&user_id, version).await?;
@@ -117,7 +117,7 @@ impl State {
 
     pub async fn change_totp(&self, args: &ChangeTotp) -> api::Result<<ChangeTotp as Rpc>::Ret> {
         // get user's user_id and check that token has uber rights
-        let SessionToken{user_id, version, ..} = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Uber)?;
+        let SessionToken{user_id, version, ..} = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Uber).await?;
 
         if let Some(uri) = &args.totp_uri {
             common::crypto::totp::parse_totp_uri(uri)?; // TODO send back error not obscurated

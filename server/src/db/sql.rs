@@ -225,9 +225,20 @@ impl Db {
 
     #[tracing::instrument]
     pub async fn get_username_from_userid(&self, user_id: &[u8], version: u64) -> api::Result<Vec<u8>> {
-        let row: MySqlRow = sqlx::query("select `username` from `user` where `user_id` = ? and `version` = ? ")
+        let row: MySqlRow = sqlx::query("select `username` from `user` where `user_id` = ? and `version` = ?")
         .bind(user_id)
         .bind(version)
+        .fetch_one(&self.pool).await.map_err(|e| api::Error::ServerSideError(e.into()))?; // do not leak in returned error if the user_id exists or not
+
+        Ok(
+            row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?,
+        )
+    }
+
+    #[tracing::instrument]
+    pub async fn get_user_version_from_userid(&self, user_id: &[u8]) -> api::Result<u64> {
+        let row: MySqlRow = sqlx::query("select `version` from `user` where `user_id` = ?")
+        .bind(user_id)
         .fetch_one(&self.pool).await.map_err(|e| api::Error::ServerSideError(e.into()))?; // do not leak in returned error if the user_id exists or not
 
         Ok(

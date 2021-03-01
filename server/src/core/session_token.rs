@@ -79,8 +79,13 @@ impl State {
         SessionToken::new(user_id, version, one_factor, logged, uber).seal(&self.secret_key[..])
     }
 
-    pub fn session_token_unseal_validated(&self, sealed_session_token: &[u8], required_clearance: Clearance) -> api::Result<SessionToken> {
+    pub async fn session_token_unseal_validated(&self, sealed_session_token: &[u8], required_clearance: Clearance) -> api::Result<SessionToken> {
         let t = SessionToken::unseal(&self.secret_key[..], sealed_session_token)?;
+        
+        if self.db.get_user_version_from_userid(&t.user_id).await? != t.version {
+            return Err(api::Error::InvalidSessionToken);
+        }
+        
         t.validate(required_clearance, 
                 self.config.session_token_one_factor_duration_sec,
                 self.config.session_token_logged_duration_sec,
