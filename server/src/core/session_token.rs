@@ -1,5 +1,7 @@
+use common::{api, crypto::sealed::Sealed};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use crate::api;
+
+use crate::state::State;
 
 pub enum Clearance {
     OneFactor, // the user identified with one factor but his account requires a second one
@@ -31,15 +33,15 @@ impl SessionToken {
         }
     }
 
-    pub fn seal(&self, key: &[u8]) -> eyre::Result<Vec<u8>> {
-        crate::crypto::sealed::Sealed::seal(key, &(), &self)
+    pub fn seal(&self, key: &[u8]) -> eyre::Result<Vec<u8>> { // TODO remove pub when possible
+        Sealed::seal(key, &(), &self)
     }
 
     fn unseal(key: &[u8], sealed_session_token: &[u8]) -> api::Result<Self> {
-        Ok(crate::crypto::sealed::Sealed::<(), SessionToken>::unseal(key, sealed_session_token)?.1)
+        Ok(Sealed::<(), SessionToken>::unseal(key, sealed_session_token)?.1)
     }
 
-    fn validate(&self, required_clearance: Clearance) -> api::Result<()> {
+    fn validate(&self, required_clearance: Clearance, one_factor_duration: u32, logged_duration: u32, uber_duration: u32, ) -> api::Result<()> {
         let now = chrono::Utc::now().timestamp();
 
         // check that the token has not been forged too much in the future (distributed servers can be a little unsynchronized)
@@ -48,7 +50,7 @@ impl SessionToken {
         }
 
         // uber rights valid?
-        if self.uber_age.filter(|age| { self.timestamp - *age as i64 + 15 > now }).is_some() { // TODO read duration from conf
+        if self.uber_age.filter(|age| { self.timestamp - *age as i64 + uber_duration as i64 > now }).is_some() {
             return Ok(()) // uber rights are higher than all others
         }
         if let Clearance::Uber = required_clearance {
@@ -56,7 +58,7 @@ impl SessionToken {
         }
 
         // logged rights valid?
-        if self.logged_age.filter(|age| { self.timestamp - *age as i64 + 60 > now }).is_some() { // TODO read duration from conf
+        if self.logged_age.filter(|age| { self.timestamp - *age as i64 + logged_duration as i64 > now }).is_some() {
             return Ok(()) // logged rights are higher than once_factor
         }
         if let Clearance::Logged = required_clearance {
@@ -64,21 +66,29 @@ impl SessionToken {
         }
 
         // one_factor rights valid?
-        if self.one_factor_age.filter(|age| { self.timestamp - *age as i64 + 30 > now }).is_some() { // TODO read duration from conf
+        if self.one_factor_age.filter(|age| { self.timestamp - *age as i64 + one_factor_duration as i64 > now }).is_some() {
             return Ok(())
         }
 
         return Err(api::Error::InvalidSessionToken)
     }
 
-    pub fn new_sealed(key: &[u8], user_id: Vec<u8>, version: u64, one_factor: bool, logged: bool, uber: bool) -> eyre::Result<Vec<u8>> {
+    fn new_sealed(key: &[u8], user_id: Vec<u8>, version: u64, one_factor: bool, logged: bool, uber: bool) -> eyre::Result<Vec<u8>> {
         Self::new(user_id, version, one_factor, logged, uber).seal(key)
     }
+}
 
-    pub fn unseal_validated(key: &[u8], sealed_session_token: &[u8], required_clearance: Clearance) -> api::Result<Self> {
-        let t = Self::unseal(key, sealed_session_token)?;
-        t.validate(required_clearance)?;
-        Ok(t)
+impl State {
+    pub fn session_token_new_sealed(&self, user_id: Vec<u8>, version: u64, one_factor: bool, logged: bool, uber: bool) -> eyre::Result<Vec<u8>> {
+        SessionToken::new(user_id, version, one_factor, logged, uber).seal(&self.secret_key[..])
     }
 
+    pub fn session_token_unseal_validated(&self, sealed_session_token: &[u8], required_clearance: Clearance) -> api::Result<SessionToken> {
+        let t = SessionToken::unseal(&self.secret_key[..], sealed_session_token)?;
+        t.validate(required_clearance, 
+                self.config.session_token_one_factor_duration_sec,
+                self.config.session_token_logged_duration_sec,
+                self.config.session_token_uber_duration_sec)?;
+        Ok(t)
+    }
 }

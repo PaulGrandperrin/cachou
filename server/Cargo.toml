@@ -42,6 +42,7 @@ serde = "1.0"
 futures-util = "0.3"
 toml = "0.5"
 bs58 = "0.4"
+chrono = "0.4"
 
 opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}
 

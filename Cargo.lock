@@ -770,7 +770,6 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "aead",
- "chrono",
  "curve25519-dalek",
  "data-encoding",
  "derivative",
@@ -2865,6 +2864,7 @@ version = "0.1.0"
 dependencies = [
  "async-global-executor",
  "bs58",
+ "chrono",
  "color-eyre",
  "common",
  "eyre",

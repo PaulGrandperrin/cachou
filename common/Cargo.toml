@@ -17,7 +17,6 @@ rand_core = "0.6"
 eyre = "0.6"
 generic-array = "0.14"
 thiserror = "1"
-chrono = "0.4"
 
 
 # logging / tracing
