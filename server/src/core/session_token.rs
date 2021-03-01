@@ -72,10 +72,6 @@ impl SessionToken {
 
         return Err(api::Error::InvalidSessionToken)
     }
-
-    fn new_sealed(key: &[u8], user_id: Vec<u8>, version: u64, one_factor: bool, logged: bool, uber: bool) -> eyre::Result<Vec<u8>> {
-        Self::new(user_id, version, one_factor, logged, uber).seal(key)
-    }
 }
 
 impl State {

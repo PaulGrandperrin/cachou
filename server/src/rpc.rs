@@ -23,34 +23,34 @@ pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> 
 
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
     let resp = async { match c {
-        Call::NewCredentials(args) => rmp_serde::encode::to_vec_named(&auth::new_credentials(state, &args)
+        Call::NewCredentials(args) => rmp_serde::encode::to_vec_named(&state.new_credentials(&args)
             .inspect_err(log_error)
             .instrument(info_span!("NewCredentials"))
             .await),
-        Call::NewUser(args) => rmp_serde::encode::to_vec_named(&auth::new_user(state, &args)
+        Call::NewUser(args) => rmp_serde::encode::to_vec_named(&state.new_user(&args)
             .inspect_err(log_error)
             .instrument(info_span!("NewUser", username = %String::from_utf8_lossy(&args.username).into_owned()))
             .await),
-        Call::ChangeUserCredentials(args) => rmp_serde::encode::to_vec_named(&auth::change_user_credentials(state, &args)
+        Call::ChangeUserCredentials(args) => rmp_serde::encode::to_vec_named(&state.change_user_credentials(&args)
             .inspect_err(log_error)
             .instrument(info_span!("UpdateUserCredentials", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
             .await),
         
-        Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&auth::login_start(state, &args)
+        Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&state.login_start(&args)
             .inspect_err(log_error)
             .instrument(info_span!("LoginStart", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
             .await),
-        Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&auth::login_finish(state, &args)
+        Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&state.login_finish(&args)
             .inspect_err(log_error)
             .instrument(info_span!("LoginFinish", uber = %args.uber_token))
             .await),
 
-        Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&auth::get_username(state, &args)
+        Call::GetUsername(args) => rmp_serde::encode::to_vec_named(&state.get_username(&args)
             .inspect_err(log_error)
             .instrument(info_span!("GetUsername"))
             .await),
 
-        Call::ChangeTotp(args) => rmp_serde::encode::to_vec_named(&auth::change_totp(state, &args)
+        Call::ChangeTotp(args) => rmp_serde::encode::to_vec_named(&state.change_totp(&args)
             .inspect_err(log_error)
             .instrument(info_span!("UpdateTotp"))
             .await),
