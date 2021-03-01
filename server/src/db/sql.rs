@@ -163,6 +163,7 @@ impl Db {
         let db_version: u64 = row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?;
         
         if db_version != version { 
+            tx.rollback().await.map_err(|e| api::Error::ServerSideError(e.into()))?; // FIXME workaround for https://github.com/launchbadge/sqlx/issues/1078
             return Err(api::Error::VersionConflict(db_version, version));
         };
 
