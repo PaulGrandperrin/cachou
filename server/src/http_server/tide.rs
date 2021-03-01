@@ -1,9 +1,13 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use tide::{Body, Request, http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
 use eyre::eyre;
 
-pub async fn run(state: crate::state::State) -> eyre::Result<()> {
+use crate::state::State;
+
+pub async fn run(state: State) -> eyre::Result<()> {
+    let state = Arc::new(state);
+
     let cors = CorsMiddleware::new() // FIXME used for dev, probably remove later
         .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().map_err(|e| eyre::eyre!(e))?)
         .allow_origin(Origin::from("*"))
@@ -20,21 +24,7 @@ pub async fn run(state: crate::state::State) -> eyre::Result<()> {
     Ok(())
 }
 
-async fn rpc_impl(mut req: Request<crate::state::State>) -> common::api::Result<Vec<u8>> {
-    let body = req.body_bytes().await.map_err(|e| eyre!(e))?;
-    
-    let (ip, port) = req.peer_addr()
-        .map(|s| s.parse::<SocketAddr>().ok())
-        .flatten()
-        .map(|sa| {(sa.ip(), sa.port())})
-        .ok_or(eyre!("incoming RPC does't have a remote address"))?;
-
-    let state = req.state();
-
-    crate::rpc::rpc(state, &crate::rpc::Req{ip, port}, &body).await
-}
-
-async fn rpc(req: Request<crate::state::State>) -> tide::Result {
+async fn rpc(req: Request<Arc<State>>) -> tide::Result {
     let resp = match rpc_impl(req).await {
         Ok(o) => o,
         Err(e) => {
@@ -45,3 +35,18 @@ async fn rpc(req: Request<crate::state::State>) -> tide::Result {
 
     Ok(Body::from_bytes(resp).into())
 }
+
+async fn rpc_impl(mut req: Request<Arc<State>>) -> common::api::Result<Vec<u8>> {
+    let body = req.body_bytes().await.map_err(|e| eyre!(e))?;
+    
+    let (ip, port) = req.peer_addr()
+        .map(|s| s.parse::<SocketAddr>().ok())
+        .flatten()
+        .map(|sa| {(sa.ip(), sa.port())})
+        .ok_or(eyre!("incoming RPC does't have a remote address"))?;
+
+    let state = req.state().clone();
+
+    crate::rpc::rpc(&state, &crate::rpc::Req{ip, port}, &body).await
+}
+

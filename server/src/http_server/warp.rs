@@ -1,19 +1,21 @@
-use std::{convert::Infallible, net::SocketAddr, str::FromStr};
+use std::{convert::Infallible, net::SocketAddr, str::FromStr, sync::Arc};
 
 use eyre::{Context, eyre};
 use warp::{Filter, hyper::{Response, body::Bytes}};
 
+use crate::state::State;
 
-pub async fn run(state: crate::state::State) -> eyre::Result<()> {
+
+pub async fn run(state: State) -> eyre::Result<()> {
+    let state = Arc::new(state);
 
     let filter = warp::post()
         .and(warp::path!("api"))
         .and(warp::body::content_length_limit(1024 * 16)) // 16k
         .and(warp::body::bytes())
         .and(warp::addr::remote())
-        .and_then(move |body, addr|{
-            let state = state.clone(); // TODO don't copy everything, use some RO reference instead
-            rpc(state, body, addr)
+        .and_then(move |body, addr| {
+            rpc(state.clone(), body, addr)
         })
         .with(warp::cors().allow_any_origin()); // FIXME used for dev, probably remove later
 
@@ -26,7 +28,7 @@ pub async fn run(state: crate::state::State) -> eyre::Result<()> {
     todo!()
 }
 
-async fn rpc(state: crate::state::State, body: Bytes, addr: Option<SocketAddr>) -> Result<impl warp::Reply, warp::reject::Rejection> {
+async fn rpc(state: Arc<State>, body: Bytes, addr: Option<SocketAddr>) -> Result<impl warp::Reply, warp::reject::Rejection> {
 
     let body = match rpc_impl(&state, &body, &addr).await {
         Ok(o) => o,
@@ -43,7 +45,7 @@ async fn rpc(state: crate::state::State, body: Bytes, addr: Option<SocketAddr>) 
     Ok(resp)
 }
 
-async fn rpc_impl(state: &crate::state::State, body: &Bytes, addr: &Option<SocketAddr>) -> common::api::Result<Vec<u8>> {
+async fn rpc_impl(state: &State, body: &Bytes, addr: &Option<SocketAddr>) -> common::api::Result<Vec<u8>> {
     let body = body.to_vec();
 
     let addr = addr.ok_or(eyre!("incoming RPC does't have a remote address"))?;

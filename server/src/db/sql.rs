@@ -6,7 +6,7 @@ use tracing::{error, trace};
 use eyre::{eyre, WrapErr};
 
 // making things generic doesn't seem very useful at this point
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Db {
     pool: sqlx::Pool<sqlx::MySql>
 }

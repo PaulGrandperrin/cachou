@@ -3,7 +3,7 @@ use std::{fs::File, io::Read};
 
 use toml;
 use serde::Deserialize;
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug)]
 pub struct Config {
     pub session_token_one_factor_duration_sec: u32,
     pub session_token_logged_duration_sec: u32,

@@ -6,7 +6,7 @@ use opaque_ke::{ciphersuite::CipherSuite, keypair::{Key, KeyPair}};
 use crate::db::Db;
 use crate::config::Config;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct State {
     pub opaque_kp: KeyPair::<<OpaqueConf as CipherSuite>::Group>,
     pub secret_key: [u8; 32],
