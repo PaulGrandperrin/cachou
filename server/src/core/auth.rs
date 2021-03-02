@@ -15,9 +15,6 @@ use crate::core::session_token::{SessionToken, Clearance};
 impl State {
     pub async fn new_credentials(&self, args: &NewCredentials) -> api::Result<<NewCredentials as Rpc>::Ret> {
         let (opaque_state, opaque_msg) = opaque::registration_start(self.opaque_kp.public(), &args.opaque_msg)?;
-
-        //state.db.save_tmp(&session_id, ip, expiration, "opaque_new_credentials", &opaque_state).await?;
-
         let server_sealed_state = crypto::sealed::Sealed::seal(&self.secret_key[..], &opaque_state, &())?; // TODO add TTL
 
         debug!("ok");
@@ -54,8 +51,6 @@ impl State {
         
         async {
             let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
-            //let opaque_state = state.db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
-            
             let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
 
             let version = self.db.change_user_credentials(&session_token.user_id, session_token.version, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
@@ -75,11 +70,7 @@ impl State {
         async {
             // TODO if recovery, alert user (by mail) and block request for a few days
             let (opaque_state, opaque_msg) = opaque::login_start(self.opaque_kp.private(), &args.opaque_msg, &args.username, &opaque_password, if args.recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
-            
             let server_sealed_state = crypto::sealed::Sealed::seal(&self.secret_key[..], &(opaque_state, user_id.clone(), version), &())?; // TODO add TTL
-
-            //state.db.save_tmp(&session_id, ip, expiration, "opaque_login_start_state", &opaque.state.to_bytes()).await?;
-            //state.db.save_tmp(&session_id, ip, expiration, "opaque_login_start_username", args.username.as_bytes()).await?;
 
             info!("ok");
             Ok((server_sealed_state.to_vec(), opaque_msg))
