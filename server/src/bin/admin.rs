@@ -1,11 +1,9 @@
-#![allow(unused_imports)]
+//#![allow(unused_imports)]
 
 use common::crypto::opaque::OpaqueConf;
-use opaque_ke::{ciphersuite::CipherSuite, keypair::KeyPair};
+use opaque_ke::{ciphersuite::CipherSuite};
 use rand::Rng;
-use server::*;
-use tracing::error;
-use std::{io::Write, path::PathBuf};
+use std::{io::Write};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

@@ -1,5 +1,5 @@
 use common::{api, crypto::sealed::Sealed};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize};
 use eyre::eyre;
 
 use crate::state::State;

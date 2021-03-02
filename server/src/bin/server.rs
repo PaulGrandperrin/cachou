@@ -1,7 +1,6 @@
-#![allow(unused_imports)]
-use eyre::WrapErr;
+//#![allow(unused_imports)]
 use server::{setup_logger, state::State};
-use tracing::{debug, info};
+use tracing::{debug};
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;

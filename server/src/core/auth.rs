@@ -1,21 +1,14 @@
-use std::{convert::TryFrom};
-
-use color_eyre::Section;
-use eyre::eyre;
-use common::{api::{self, ChangeTotp, ChangeUserCredentials, GetUsername, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::{self, opaque::OpaqueConf}};
-use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::{Key, KeyPair}};
+use common::{api::{self, ChangeTotp, ChangeUserCredentials, GetUsername, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use rand::Rng;
-use serde::Serialize;
-use tracing::{Instrument, debug, error, info, info_span, trace};
-use eyre::WrapErr;
+use tracing::{Instrument, debug, info, info_span};
 
-use crate::{opaque, rpc::Req, state::State};
+use crate::{opaque, state::State};
 use crate::core::session_token::{SessionToken, Clearance};
 
 impl State {
     pub async fn new_credentials(&self, args: &NewCredentials) -> api::Result<<NewCredentials as Rpc>::Ret> {
         let (opaque_state, opaque_msg) = opaque::registration_start(self.opaque_kp.public(), &args.opaque_msg)?;
-        let server_sealed_state = crypto::sealed::Sealed::seal(&self.secret_key[..], &opaque_state, &())?; // TODO add TTL
+        let server_sealed_state = Sealed::seal(&self.secret_key[..], &opaque_state, &())?; // TODO add TTL
 
         debug!("ok");
         Ok((
@@ -28,8 +21,8 @@ impl State {
         let user_id= rand::thread_rng().gen::<[u8; 32]>().to_vec(); // 256bits, so I don't even have to think about birthday attacks
         
         async {
-            let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
-            let opaque_state_recovery = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state_recovery)?.0;
+            let opaque_state = Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
+            let opaque_state_recovery = Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state_recovery)?.0;
             //let opaque_state = state.db.restore_tmp(&args.session_id, "opaque_new_credentials").await?;
             
             let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
@@ -50,10 +43,10 @@ impl State {
         let session_token = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::Uber).await?;
         
         async {
-            let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
+            let opaque_state = Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
             let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
 
-            let version = self.db.change_user_credentials(&session_token.user_id, session_token.version, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
+            let _version = self.db.change_user_credentials(&session_token.user_id, session_token.version, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
 
             // TODO update token with new version number
             let sealed_session_token = self.session_token_seal(&session_token)?;
@@ -70,7 +63,7 @@ impl State {
         async {
             // TODO if recovery, alert user (by mail) and block request for a few days
             let (opaque_state, opaque_msg) = opaque::login_start(self.opaque_kp.private(), &args.opaque_msg, &args.username, &opaque_password, if args.recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
-            let server_sealed_state = crypto::sealed::Sealed::seal(&self.secret_key[..], &(opaque_state, user_id.clone(), version), &())?; // TODO add TTL
+            let server_sealed_state = Sealed::seal(&self.secret_key[..], &(opaque_state, user_id.clone(), version), &())?; // TODO add TTL
 
             info!("ok");
             Ok((server_sealed_state.to_vec(), opaque_msg))
@@ -79,7 +72,7 @@ impl State {
 
 
     pub async fn login_finish(&self, args: &LoginFinish) -> api::Result<<LoginFinish as Rpc>::Ret> {
-        let (opaque_state, user_id, version) = crypto::sealed::Sealed::<(Vec<u8>, Vec<u8>, u64), ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
+        let (opaque_state, user_id, version) = Sealed::<(Vec<u8>, Vec<u8>, u64), ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
 
         async {
             // check password

@@ -1,7 +1,6 @@
 use common::{api, crypto::opaque::OpaqueConf};
-use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse, ciphersuite::CipherSuite};
+use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use eyre::eyre;
-
 
 pub fn registration_start(password: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {
     let mut rng = rand_core::OsRng;

@@ -1,6 +1,4 @@
-use std::fmt::Display;
-
-use common::api::{self, Call, Rpc};
+use common::api::{self, Rpc};
 use eyre::WrapErr;
 use tracing::warn;
 

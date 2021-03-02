@@ -1,14 +1,11 @@
-use std::{convert::TryInto, fmt::Display, net::{IpAddr, SocketAddr}, pin::Pin};
-use std::error::Error;
+use std::net::IpAddr;
 
-use eyre::{eyre, ContextCompat, Report};
-use api::Rpc;
-use common::api::{self, Call, Result};
+use eyre::eyre;
+use common::api::{self, Call};
 use futures_util::TryFutureExt;
-use serde::Serialize;
-use tracing::{Instrument, debug, error, info, info_span, trace, warn};
+use tracing::{Instrument, error, info, info_span};
 
-use crate::{core::auth, state::State};
+use crate::state::State;
 
 pub fn log_error(e: &api::Error) {
     match e {

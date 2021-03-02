@@ -2,8 +2,6 @@ use std::{time::Duration};
 
 use common::api;
 use sqlx::{Executor, Row, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}};
-use tracing::{error, trace};
-use eyre::{eyre, WrapErr};
 
 // making things generic doesn't seem very useful at this point
 #[derive(Debug)]

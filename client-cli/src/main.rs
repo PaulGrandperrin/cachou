@@ -1,12 +1,10 @@
-#![allow(unused_imports)]
-
-
+//#![allow(unused_imports)]
 use client_common::core::client::Client;
 use eyre::WrapErr;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-use tracing::{error, info, metadata::LevelFilter, trace};
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter; // could be async_compat::CompatExt
 
 

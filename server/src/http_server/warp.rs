@@ -1,10 +1,9 @@
-use std::{convert::Infallible, net::SocketAddr, str::FromStr, sync::Arc};
+use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
-use eyre::{Context, eyre};
+use eyre::eyre;
 use warp::{Filter, hyper::{Response, body::Bytes}};
 
 use crate::state::State;
-
 
 pub async fn run(state: State) -> eyre::Result<()> {
     let state = Arc::new(state);

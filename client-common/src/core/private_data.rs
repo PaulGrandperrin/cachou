@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize, Serializer, de::DeserializeOwned};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PrivateData {
@@ -18,7 +18,7 @@ impl Clone for PrivateData {
 
 mod serde_keypair {
     use std::fmt;
-    use serde::{Deserialize, Serialize, Serializer, Deserializer, de};
+    use serde::{Serializer, Deserializer, de};
 
     pub fn serialize<S>(x: &ed25519_dalek::Keypair, s: S) -> Result<S::Ok, S::Error> where S: Serializer {
         s.serialize_bytes(&x.to_bytes())

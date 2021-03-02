@@ -1,12 +1,9 @@
-use std::{iter, mem::swap};
+use std::iter;
 
-use common::{api, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::{opaque::OpaqueConf, sealed::Sealed}};
-use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, CredentialResponse, RegistrationResponse};
+use common::{consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use sha2::Digest;
-use eyre::{eyre, WrapErr};
 
 use crate::{core::private_data::PrivateData, opaque};
-
 use super::{Client, LoggedUser};
 
 fn gen_keys() -> (Vec<u8>, Vec<u8>, Vec<u8>) {

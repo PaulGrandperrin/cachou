@@ -1,5 +1,5 @@
 use common::{api, crypto::opaque::OpaqueConf};
-use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, ciphersuite::CipherSuite, keypair::Key};
+use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::Key};
 use eyre::WrapErr;
 
 pub fn registration_start(pk: &Key, msg: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {

@@ -1,5 +1,5 @@
 //#![feature(result_flattening)]
-#![allow(unused_imports)]
+//#![allow(unused_imports)]
 pub mod rpc;
 pub mod core;
 pub mod state;
@@ -10,8 +10,7 @@ mod opaque;
 pub mod http_server;
 
 use eyre::WrapErr;
-use tracing::metadata::LevelFilter;
-use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
+use tracing_subscriber::{EnvFilter};
 
 pub fn setup_logger() -> eyre::Result<()> {
 

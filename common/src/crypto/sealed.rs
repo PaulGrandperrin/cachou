@@ -2,7 +2,7 @@ use std::{iter, marker::PhantomData};
 
 use aead::{AeadInPlace, Key, NewAead, Nonce, Tag};
 use generic_array::typenum::Unsigned;
-use serde::{Deserialize, Serialize, Serializer, de::DeserializeOwned};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use xchacha8blake3siv::XChaCha8Blake3Siv;
 
 #[derive(Serialize, Deserialize, derivative::Derivative)]

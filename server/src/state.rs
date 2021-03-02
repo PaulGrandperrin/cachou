@@ -1,8 +1,7 @@
-use std::{convert::{TryFrom, TryInto}, fs::File, io::Read, sync::Arc};
+use std::{fs::File, io::Read};
 use common::crypto::opaque::OpaqueConf;
 use eyre::WrapErr;
-use generic_bytes::SizedBytes;
-use opaque_ke::{ciphersuite::CipherSuite, keypair::{Key, KeyPair}};
+use opaque_ke::{ciphersuite::CipherSuite, keypair::KeyPair};
 use crate::db::Db;
 use crate::config::Config;
 
