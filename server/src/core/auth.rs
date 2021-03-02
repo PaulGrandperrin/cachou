@@ -40,21 +40,21 @@ impl State {
 
     pub async fn change_user_credentials(&self, args: &ChangeUserCredentials) -> api::Result<<ChangeUserCredentials as Rpc>::Ret> {
         // get user's user_id and check that token has uber rights
-        let session_token = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::Uber).await?;
-        
+        let mut session_token = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::Uber).await?;
+        let user_id = bs58::encode(&session_token.user_id).into_string();
+
         async {
             let opaque_state = Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
             let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
 
-            let _version = self.db.change_user_credentials(&session_token.user_id, session_token.version, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
-
-            // TODO update token with new version number
+            session_token.version = self.db.change_user_credentials(&session_token.user_id, session_token.version, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
+            
             let sealed_session_token = self.session_token_seal(&session_token)?;
 
             debug!("ok");
             
             Ok(sealed_session_token)
-        }.instrument(info_span!("id", user_id = %bs58::encode(&session_token.user_id).into_string())).await
+        }.instrument(info_span!("id", %user_id)).await
     }
 
     pub async fn login_start(&self, args: &LoginStart) -> api::Result<<LoginStart as Rpc>::Ret> {
