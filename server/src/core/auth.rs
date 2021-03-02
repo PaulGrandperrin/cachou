@@ -40,7 +40,7 @@ impl State {
 
             let version = self.db.new_user(&user_id, 0,  &args.username, &opaque_password, &args.username_recovery , &opaque_password_recovery, &args.sealed_master_key, &args.sealed_private_data, &args.totp_uri).await?;
 
-            let sealed_session_token = self.session_token_new_sealed(user_id.to_vec(), version, false, true, false)?;
+            let sealed_session_token = self.session_token_new_logged_in_sealed(user_id.to_vec(), version, true, false)?;
 
             info!("ok");
             
@@ -50,7 +50,7 @@ impl State {
 
     pub async fn change_user_credentials(&self, args: &ChangeUserCredentials) -> api::Result<<ChangeUserCredentials as Rpc>::Ret> {
         // get user's user_id and check that token has uber rights
-        let session_token = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Uber).await?;
+        let session_token = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::Uber).await?;
         
         async {
             let opaque_state = crypto::sealed::Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
@@ -61,7 +61,7 @@ impl State {
             let version = self.db.change_user_credentials(&session_token.user_id, session_token.version, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_private_data, args.recovery).await?;
 
             // TODO update token with new version number
-            let sealed_session_token = session_token.seal(&self.secret_key[..])?;
+            let sealed_session_token = self.session_token_seal(&session_token)?;
 
             debug!("ok");
             
@@ -97,7 +97,7 @@ impl State {
             let (sealed_master_key, sealed_private_data, username) = self.db.get_user_from_userid(&user_id, version).await?;
 
             // TODO, check if needs to 2nd factor 
-            let sealed_session_token = self.session_token_new_sealed(user_id.clone(), version, false, true, args.uber_token)?;
+            let sealed_session_token = self.session_token_new_logged_in_sealed(user_id.clone(), version, false, args.uber_token)?;
 
             debug!("ok");
             Ok((sealed_master_key, sealed_private_data, sealed_session_token, username))
@@ -105,7 +105,7 @@ impl State {
     }
 
     pub async fn get_username(&self, args: &GetUsername) -> api::Result<<GetUsername as Rpc>::Ret> {
-        let SessionToken{user_id, version, ..} = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Logged).await?;
+        let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::LoggedIn).await?;
 
         async {
             let username = self.db.get_username_from_userid(&user_id, version).await?;
@@ -117,7 +117,7 @@ impl State {
 
     pub async fn change_totp(&self, args: &ChangeTotp) -> api::Result<<ChangeTotp as Rpc>::Ret> {
         // get user's user_id and check that token has uber rights
-        let SessionToken{user_id, version, ..} = self.session_token_unseal_validated(&args.sealed_session_token, Clearance::Uber).await?;
+        let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::Uber).await?;
 
         if let Some(uri) = &args.totp_uri {
             common::crypto::totp::parse_totp_uri(uri)?; // TODO send back error not obscurated

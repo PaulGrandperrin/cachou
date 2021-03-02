@@ -1,4 +1,5 @@
 session_token_one_factor_duration_sec = 15
 session_token_logged_duration_sec = 15
+session_token_auto_logout_duration_sec = 5
 session_token_uber_duration_sec = 5
 

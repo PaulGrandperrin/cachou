@@ -7,6 +7,7 @@ use serde::Deserialize;
 pub struct Config {
     pub session_token_one_factor_duration_sec: u32,
     pub session_token_logged_duration_sec: u32,
+    pub session_token_auto_logout_duration_sec: u32,
     pub session_token_uber_duration_sec: u32,
 }
 
