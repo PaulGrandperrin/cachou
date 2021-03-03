@@ -36,6 +36,7 @@ data-encoding = "2"
 aead = "0.3"
 digest = "0.9"
 url = "2"
+chrono = "0.4"
 
 # key derivation
 #blake2b_simd = "0.5"

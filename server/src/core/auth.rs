@@ -1,9 +1,8 @@
-use common::{api::{self, ChangeTotp, ChangeUserCredentials, GetUsername, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{self, ChangeTotp, ChangeUserCredentials, GetUsername, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use rand::Rng;
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{opaque, state::State};
-use crate::core::session_token::{SessionToken, Clearance};
 
 impl State {
     pub async fn new_credentials(&self, args: &NewCredentials) -> api::Result<<NewCredentials as Rpc>::Ret> {

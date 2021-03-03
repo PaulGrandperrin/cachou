@@ -770,6 +770,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "aead",
+ "chrono",
  "curve25519-dalek",
  "data-encoding",
  "derivative",
