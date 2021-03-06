@@ -59,7 +59,8 @@ impl SessionToken {
     pub fn get_clearance(&self) -> Clearance {
         match self.session_state {
             SessionState::NeedSecondFactor { .. } => Clearance::NeedSecondFactor,
-            SessionState::LoggedIn { .. } => Clearance::LoggedIn,
+            SessionState::LoggedIn { uber: None, .. } => Clearance::LoggedIn,
+            SessionState::LoggedIn { uber: Some(_), .. } => Clearance::Uber,
             SessionState::Invalid => unreachable!("receive a session ticket with an `Invalid` session state"),
         }
     }
