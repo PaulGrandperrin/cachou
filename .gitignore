@@ -7,3 +7,4 @@ Cargo.lock
 server/opaque_private_key.bin
 server/secret_key.bin
 client-cli/history.txt
+client-web/dist/
