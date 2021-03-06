@@ -15,7 +15,7 @@ pub mod account_creation;
 
 // instanciate our client as a singleton
 use std::{lazy::SyncLazy, sync::Mutex};
-static CLIENT: SyncLazy<Mutex<Client>> = SyncLazy::new(|| Mutex::new(Client::new()));
+static CLIENT: SyncLazy<Mutex<Client>> = SyncLazy::new(|| Mutex::new(Client::default()));
 
 
 

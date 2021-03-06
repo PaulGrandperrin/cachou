@@ -66,7 +66,7 @@ pub fn parse_totp_uri(uri: &str) -> eyre::Result<(Vec<u8>, u8, String, u32)> {
 
     let digits = match uri.query_pairs().find_map(|(k, v)| {
         if k == "digits" { Some(v.to_string()) } else { None }
-    }).unwrap_or("6".to_string())
+    }).unwrap_or_else(|| "6".to_string())
     .parse::<u8>().wrap_err("failed to parse 'digits'")? {
         d @ 6 | d @ 8 => d,
         _ => bail!("'digits' must be 6 or 8")
@@ -74,14 +74,14 @@ pub fn parse_totp_uri(uri: &str) -> eyre::Result<(Vec<u8>, u8, String, u32)> {
 
     let algo = match uri.query_pairs().find_map(|(k, v)| {
         if k == "algorithm" { Some(v.to_string()) } else { None }
-    }).unwrap_or("SHA1".to_string()).as_str() {
+    }).unwrap_or_else(|| "SHA1".to_string()).as_str() {
         a @ "SHA1" | a @ "SHA256" | a @ "SHA512" => a.to_string(),
         _ => bail!("'invalid 'algorithm'")
     };
 
     let period = uri.query_pairs().find_map(|(k, v)| {
         if k == "period" { Some(v.to_string()) } else { None }
-    }).unwrap_or("30".to_string())
+    }).unwrap_or_else(|| "30".to_string())
     .parse::<u32>().wrap_err("failed to parse 'period'")?;
 
     Ok((secret, digits, algo, period))

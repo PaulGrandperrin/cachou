@@ -28,7 +28,7 @@ pub fn registration_finish(state: &[u8], msg: &[u8]) -> api::Result<Vec<u8>> {
 pub fn login_start(sk: &Key, msg: &[u8], username: &[u8], password: &[u8], server_id: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>)> {
     let mut rng = rand_core::OsRng;
 
-    let password = ServerRegistration::<OpaqueConf>::deserialize(&password[..])
+    let password = ServerRegistration::<OpaqueConf>::deserialize(password)
             .wrap_err("failed to instantiate opaque password")?;
 
     let opaque = ServerLogin::start(

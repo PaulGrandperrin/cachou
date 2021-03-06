@@ -30,7 +30,7 @@ impl RpcClient {
                         warn!("request failed: {:#}", e);
                         retries -= 1;
                     },
-                    e @ _ => break e,
+                    e => break e,
                 }
         }.wrap_err("Reqwest error")?;
 

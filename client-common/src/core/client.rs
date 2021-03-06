@@ -20,13 +20,12 @@ pub struct LoggedUser {
     sealed_session_token: Vec<u8>,
 }
 
-impl Client {
-    pub fn new() -> Self {
+impl Default for Client {
+    fn default() -> Self {
         Self {
             rpc_client: RpcClient::new("http://[::1]:8081/api"),
             logged_user: None,
         }
     }
-
 }
 

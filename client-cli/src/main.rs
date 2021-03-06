@@ -33,7 +33,7 @@ fn main() -> eyre::Result<()>{
 
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
     
-    let mut client = Client::new();
+    let mut client = Client::default();
 
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();

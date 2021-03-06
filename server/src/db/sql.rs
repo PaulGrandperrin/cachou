@@ -126,6 +126,7 @@ impl Db {
         Ok(state)
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
     pub async fn new_user(&self, user_id: &[u8], mut version: u64, username: &[u8], opaque_password: &[u8], username_recovery: &[u8], opaque_password_recovery: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], totp_uri: &Option<String>) -> api::Result<u64> {
         version += 1;
@@ -151,6 +152,7 @@ impl Db {
         Ok(version)
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
     pub async fn change_user_credentials(&self, user_id: &[u8], mut version: u64, username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], recovery: bool) -> api::Result<u64> {
         let mut tx = self.pool.begin().await.map_err(|e| api::Error::ServerSideError(e.into()))?;

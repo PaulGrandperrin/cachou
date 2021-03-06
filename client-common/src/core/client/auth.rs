@@ -7,7 +7,7 @@ use crate::{core::private_data::PrivateData, opaque};
 use super::{Client, LoggedUser};
 
 fn gen_keys() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
-    let recovery_key = iter::repeat_with(|| rand::random()).take(32).collect::<Vec<_>>();
+    let recovery_key = iter::repeat_with(rand::random).take(32).collect::<Vec<_>>();
     let master_key = sha2::Sha256::digest(&recovery_key).to_vec(); // FIXME used keyed_hash ?
     let username_recovery = sha2::Sha256::digest(&master_key).to_vec();
     (recovery_key, master_key, username_recovery)
@@ -24,7 +24,7 @@ impl Client {
 
         let (server_sealed_state, opaque_msg) = self.rpc_client.call(
             common::api::NewCredentials {
-                opaque_msg: opaque_msg
+                opaque_msg
             }
         ).await?;
 
@@ -76,7 +76,7 @@ impl Client {
     }
 
     async fn change_user_credentials(&mut self, username: &[u8], password: &[u8], recovery: bool) -> eyre::Result<()> { 
-        let mut logged_user  = self.logged_user.as_ref().ok_or(eyre::eyre!("not logged in"))?.clone();
+        let mut logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?.clone();
 
         // start OPAQUE
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
@@ -160,13 +160,13 @@ impl Client {
     // --- public functions
 
     pub fn get_clearance(&self) -> eyre::Result<Clearance> {
-        let logged_user  = self.logged_user.as_ref().ok_or(eyre::eyre!("not logged in"))?;
+        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
         Ok(SessionToken::unseal_unauthenticated(&logged_user.sealed_session_token)?.get_clearance())
     }
 
     pub async fn change_totp(&mut self, totp_uri: Option<String>) -> eyre::Result<()> { 
-        let logged_user  = self.logged_user.as_ref().ok_or(eyre::eyre!("not logged in"))?;
+        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
         self.rpc_client.call(
             common::api::ChangeTotp {
@@ -192,6 +192,7 @@ impl Client {
         Ok(())
     }
 
+    #[allow(clippy::option_map_unit_fn)]
     pub async fn rotate_keys(&mut self) -> eyre::Result<String> {
         let (recovery_key, master_key, username_recovery) = gen_keys();
         self.logged_user.as_mut().map(|lu| lu.master_key = master_key);
@@ -214,7 +215,7 @@ impl Client {
     }
 
     pub async fn update_username(&mut self) -> eyre::Result<String> {
-        let lu  = self.logged_user.as_mut().ok_or(eyre::eyre!("not logged in"))?;
+        let lu  = self.logged_user.as_mut().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
         let username = self.rpc_client.call(
             common::api::GetUsername{ sealed_session_token: lu.sealed_session_token.clone() }
@@ -228,6 +229,7 @@ impl Client {
         self.logged_user = None;
     }
     
+    #[allow(clippy::manual_map)] // see https://github.com/rust-lang/rust-clippy/issues/6857
     pub fn get_username(&self) -> eyre::Result<Option<String>> {
         Ok(if let Some(lu) = self.logged_user.as_ref() {
             Some(String::from_utf8(lu.username.clone())?)

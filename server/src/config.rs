@@ -1,7 +1,5 @@
 
 use std::{fs::File, io::Read};
-
-use toml;
 use serde::Deserialize;
 #[derive(Deserialize, Debug)]
 pub struct Config {

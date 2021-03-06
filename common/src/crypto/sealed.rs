@@ -24,7 +24,7 @@ impl<C, A> Sealed<C, A> {
         Aead: NewAead + AeadInPlace {
         let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
         //let nonce = Nonce::from(rand::random::<[u8; <<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE]>()); // FIXME when const_generic are stable
-        let nonce = iter::repeat_with(|| rand::random()).take(<<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
+        let nonce = iter::repeat_with(rand::random).take(<<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
         let nonce = Nonce::from_slice(&nonce);
 
         let mut plaintext = rmp_serde::encode::to_vec_named(plaindata)?;
