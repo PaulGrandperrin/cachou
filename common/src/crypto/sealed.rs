@@ -57,6 +57,14 @@ impl<C, A> Sealed<C, A> {
 
         Ok((plaindata, associated_data))
     }
+
+    pub fn get_ad(this: &[u8]) -> eyre::Result<A>
+    where A: DeserializeOwned {
+        let me = rmp_serde::decode::from_slice::<Self>(this)?;
+        let associated_data: A = rmp_serde::decode::from_slice(&me.associated_data)?;
+
+        Ok(associated_data)
+    }
 }
 
 

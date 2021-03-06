@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::session_token::{Clearance, SessionToken}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use sha2::Digest;
 
 use crate::{core::private_data::PrivateData, opaque};
@@ -159,6 +159,12 @@ impl Client {
 
     // --- public functions
 
+    pub fn get_clearance(&self) -> eyre::Result<Clearance> {
+        let logged_user  = self.logged_user.as_ref().ok_or(eyre::eyre!("not logged in"))?;
+
+        Ok(SessionToken::unseal_unauthenticated(&logged_user.sealed_session_token)?.get_clearance())
+    }
+
     pub async fn change_totp(&mut self, totp_uri: Option<String>) -> eyre::Result<()> { 
         let logged_user  = self.logged_user.as_ref().ok_or(eyre::eyre!("not logged in"))?;
 
@@ -194,15 +200,17 @@ impl Client {
         Ok(bs58::encode( &recovery_key).into_string())
     }
 
-    pub async fn login(&mut self, username: &str, password: &str, uber: bool) -> eyre::Result<()> {
-        self.login_impl(username.as_bytes(), password.as_bytes(), uber, false).await
+    pub async fn login(&mut self, username: &str, password: &str, uber: bool) -> eyre::Result<Clearance> {
+        self.login_impl(username.as_bytes(), password.as_bytes(), uber, false).await?;
+        self.get_clearance()
     }
 
-    pub async fn login_recovery(&mut self, recovery_key: &str, uber: bool) -> eyre::Result<()> {
+    pub async fn login_recovery(&mut self, recovery_key: &str, uber: bool) -> eyre::Result<Clearance> {
         let password = bs58::decode(recovery_key).into_vec()?;
         let master_key = sha2::Sha256::digest(&password).to_vec();
         let username = sha2::Sha256::digest(&master_key).to_vec();
-        self.login_impl(&username, &password, uber, true).await
+        self.login_impl(&username, &password, uber, true).await?;
+        self.get_clearance()
     }
 
     pub async fn update_username(&mut self) -> eyre::Result<String> {
