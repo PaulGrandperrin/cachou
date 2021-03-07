@@ -144,7 +144,7 @@ impl Db {
                 match e {
                     sqlx::Error::Database(e)
                         if e.as_error().downcast_ref::<MySqlDatabaseError>().map(|e| e.number()) == Some(1062)
-                        => api::Error::UsernameConflict,
+                        => api::Error::Conflict,
                     _ => api::Error::ServerSideError(e.into()),
                 }
             })?;
@@ -154,41 +154,27 @@ impl Db {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    pub async fn change_user_credentials(&self, user_id: &[u8], mut version: u64, username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], recovery: bool) -> api::Result<u64> {
-        let mut tx = self.pool.begin().await.map_err(|e| api::Error::ServerSideError(e.into()))?;
-        
-        let row: MySqlRow = sqlx::query("select `version` from `user` where `user_id` = ?")
-            .bind(user_id)
-            .fetch_one(&mut tx).await.map_err(|e| api::Error::ServerSideError(e.into()))?;
-        let db_version: u64 = row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?;
-        
-        if db_version != version { 
-            tx.rollback().await.map_err(|e| api::Error::ServerSideError(e.into()))?; // FIXME workaround for https://github.com/launchbadge/sqlx/issues/1078
-            return Err(api::Error::VersionConflict(db_version, version));
-        };
-
-        version +=1;
-
-        let query = format!("update `user` set `version` = ?, `username{0}` = ?, `opaque_password{0}` = ?, `sealed_master_key` = ?, `sealed_private_data` = ? where `user_id` = ?", if recovery {"_recovery"} else {""});
+    pub async fn change_user_credentials(&self, user_id: &[u8], version: u64, username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], recovery: bool) -> api::Result<u64> {
+        let query = format!("update `user` set `version` = ?, `username{0}` = ?, `opaque_password{0}` = ?, `sealed_master_key` = ?, `sealed_private_data` = ? where `user_id` = ? and `version` = ?", if recovery {"_recovery"} else {""});
         sqlx::query(&query)
-            .bind(version)
+            .bind(version + 1)
             .bind(username)
             .bind(opaque_password)
             .bind(sealed_master_key)
             .bind(sealed_private_data)
             .bind(user_id)
-            .execute(&mut tx).await.map_err(|e| {
+            .bind(version)
+            .execute(&self.pool).await.map_err(|e| {
                 match e {
                     sqlx::Error::Database(e)
                         if e.as_error().downcast_ref::<MySqlDatabaseError>().map(|e| e.number()) == Some(1062)
-                        => api::Error::UsernameConflict,
+                        => api::Error::Conflict, // the username is already taken
+                    sqlx::Error::RowNotFound => api::Error::NotFound, // the user has been deleted or updated to a new version
                     _ => api::Error::ServerSideError(e.into()),
                 }
             })?;
 
-        tx.commit().await.map_err(|e| api::Error::ServerSideError(e.into()))?;
-
-        Ok(version)
+        Ok(version + 1)
     }
 
     #[tracing::instrument]
@@ -197,7 +183,7 @@ impl Db {
         let row = sqlx::query(&query)
             .bind(username).fetch_one(&self.pool).await.map_err(|e| {
                 match e {
-                    sqlx::Error::RowNotFound => api::Error::UsernameNotFound,
+                    sqlx::Error::RowNotFound => api::Error::NotFound,
                     _ => api::Error::ServerSideError(e.into()),
                 }
             })?;
@@ -210,24 +196,29 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_user_from_userid(&self, user_id: &[u8], version: u64) -> api::Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
-        let row: MySqlRow = sqlx::query("select `sealed_master_key`, `sealed_private_data`, `username` from `user` where `user_id` = ? and `version` = ?")
+    pub async fn get_user_from_userid(&self, user_id: &[u8], version: u64) -> api::Result<(Vec<u8>, Vec<u8>, Vec<u8>, Option<String>)> {
+        let row: MySqlRow = sqlx::query("select `sealed_master_key`, `sealed_private_data`, `username`, `totp_uri` from `user` where `user_id` = ? and `version` = ?")
         .bind(user_id)
         .bind(version)
-        .fetch_one(&self.pool).await.map_err(|e| api::Error::ServerSideError(e.into()))?; // do not leak in returned error if the user_id exists or not
+        .fetch_one(&self.pool).await.map_err(|e| {
+            match e {
+                sqlx::Error::RowNotFound => api::Error::NotFound, // the user has been deleted or updated to a new version
+                _ => api::Error::ServerSideError(e.into()),
+            }
+        })?;
 
         Ok((
             row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?,
             row.try_get(1).map_err(|e| api::Error::ServerSideError(e.into()))?,
             row.try_get(2).map_err(|e| api::Error::ServerSideError(e.into()))?,
+            row.try_get(3).map_err(|e| api::Error::ServerSideError(e.into()))?,
         ))
     }
 
     #[tracing::instrument]
-    pub async fn get_username_from_userid(&self, user_id: &[u8], version: u64) -> api::Result<Vec<u8>> {
-        let row: MySqlRow = sqlx::query("select `username` from `user` where `user_id` = ? and `version` = ?")
+    pub async fn get_user_version_from_userid(&self, user_id: &[u8]) -> api::Result<u64> {
+        let row: MySqlRow = sqlx::query("select `version` from `user` where `user_id` = ?")
         .bind(user_id)
-        .bind(version)
         .fetch_one(&self.pool).await.map_err(|e| api::Error::ServerSideError(e.into()))?; // do not leak in returned error if the user_id exists or not
 
         Ok(
@@ -236,8 +227,8 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_user_version_from_userid(&self, user_id: &[u8]) -> api::Result<u64> {
-        let row: MySqlRow = sqlx::query("select `version` from `user` where `user_id` = ?")
+    pub async fn get_totp_from_userid(&self, user_id: &[u8]) -> api::Result<Option<String>> {
+        let row: MySqlRow = sqlx::query("select `totp_uri` from `user` where `user_id` = ?")
         .bind(user_id)
         .fetch_one(&self.pool).await.map_err(|e| api::Error::ServerSideError(e.into()))?; // do not leak in returned error if the user_id exists or not
 

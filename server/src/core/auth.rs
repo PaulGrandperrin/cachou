@@ -1,4 +1,4 @@
-use common::{api::{self, ChangeTotp, ChangeUserCredentials, GetUsername, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{self, ChangeTotp, ChangeUserCredentials, GetUserData, LoginFinish, LoginStart, NewCredentials, NewUser, Rpc, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use rand::Rng;
 use tracing::{Instrument, debug, info, info_span};
 
@@ -77,24 +77,30 @@ impl State {
             // check password
             opaque::login_finish(&opaque_state, &args.opaque_msg)?;
 
-            let (sealed_master_key, sealed_private_data, username) = self.db.get_user_from_userid(&user_id, version).await?;
+            let totp_uri = self.db.get_totp_from_userid(&user_id).await?;
 
-            // TODO, check if needs to 2nd factor 
-            let sealed_session_token = self.session_token_new_logged_in_sealed(user_id.clone(), version, false, args.uber_token)?;
-
-            debug!("ok");
-            Ok((sealed_master_key, sealed_private_data, sealed_session_token, username))
+            let sealed_session_token = if totp_uri.is_some() {
+                let r = self.session_token_new_need_second_factor_sealed(user_id.clone(), version)?;
+                debug!("ok - need second factor");
+                r
+            } else {
+                let r = self.session_token_new_logged_in_sealed(user_id.clone(), version, false, args.uber_token)?;
+                debug!("ok - logged in");
+                r
+            };
+            
+            Ok(sealed_session_token)
         }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
     }
 
-    pub async fn get_username(&self, args: &GetUsername) -> api::Result<<GetUsername as Rpc>::Ret> {
+    pub async fn get_user_data(&self, args: &GetUserData) -> api::Result<<GetUserData as Rpc>::Ret> {
         let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::LoggedIn).await?;
 
         async {
-            let username = self.db.get_username_from_userid(&user_id, version).await?;
+            let (sealed_master_key, sealed_private_data, username, .. ) = self.db.get_user_from_userid(&user_id, version).await?;
 
             debug!("ok: {}", String::from_utf8_lossy(&username));
-            Ok(username)
+            Ok((username, sealed_master_key, sealed_private_data))
         }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
     }
 

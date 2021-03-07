@@ -11,7 +11,7 @@ pub enum Call {
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
 
-    GetUsername(GetUsername),
+    GetUserData(GetUserData),
 
     ChangeTotp(ChangeTotp),
 }
@@ -85,18 +85,18 @@ pub struct LoginFinish {
     pub uber_token: bool,
 }
 impl Rpc for LoginFinish {
-    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>); // sealed_master_key, sealed_private_data, sealed_session_token, username (usefull when doing recovery)
+    type Ret = Vec<u8>; // sealed_session_token
     fn into_call(self) -> Call { Call::LoginFinish(self) }
 }
 
 // GetUsername
 #[derive(Serialize, Deserialize, Debug)]
-pub struct GetUsername {
+pub struct GetUserData {
     pub sealed_session_token: Vec<u8>,
 }
-impl Rpc for GetUsername {
-    type Ret = Vec<u8>; // username
-    fn into_call(self) -> Call { Call::GetUsername(self) }
+impl Rpc for GetUserData {
+    type Ret = (Vec<u8>, Vec<u8>, Vec<u8>); // username, sealed_master_key, sealed_private_data
+    fn into_call(self) -> Call { Call::GetUserData(self) }
 }
 
 // UpdateTotp

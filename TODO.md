@@ -1,3 +1,9 @@
+- compile both tokio and async stuff on test cfg 
+
+- change recovery scheme: make it more symmetric to normal login
+
+- validate username client-side and server-side (alphanum only)
+
 - TOTP: 1 pass should allow only one login!
 
 - implement ServerSideWarn

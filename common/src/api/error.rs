@@ -7,14 +7,12 @@ pub enum Error {
 
     #[error("InvalidSessionToken")]
     InvalidSessionToken,
-    #[error("UsernameConflict")]
-    UsernameConflict,
-    #[error("UsernameNotFound")]
-    UsernameNotFound,
+    #[error("Conflict")]
+    Conflict,
+    #[error("NotFound")]
+    NotFound,
     #[error("InvalidPassword")]
     InvalidPassword,
-    #[error("VersionConflict({0}, {1})")] // db_version, update_version
-    VersionConflict(u64, u64),
 
     /* Execution errors which interrupted request processing but falls outside normal operation.
        Intentionnaly doesn't specify if expected or not, nor if client-side or server-side
