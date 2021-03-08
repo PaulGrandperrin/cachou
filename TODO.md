@@ -1,12 +1,8 @@
 - compile both tokio and async stuff on test cfg 
 
-- check messagepack binary format (compression info leak?)
-
 - reimplement totp
 
 - finish implementing auto_logout
-
-- change recovery scheme: make it more symmetric to normal login
 
 - validate username client-side and server-side (alphanum only)
 
