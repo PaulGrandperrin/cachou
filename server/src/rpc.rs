@@ -4,7 +4,7 @@ use eyre::eyre;
 use common::api::{self, Call};
 use futures_util::TryFutureExt;
 use tracing::{Instrument, error, info, info_span};
-
+use common::api::Rpc;
 use crate::state::State;
 
 pub fn log_error(e: &api::Error) {
@@ -14,42 +14,45 @@ pub fn log_error(e: &api::Error) {
         _ => info!("{}", e)
     }
 }
-
+// TODO call a generic method instead
 pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> {
     let c: api::Call = rmp_serde::from_slice(&body).map_err(|e| eyre!(e))?;
 
     // this dispatch is verbose, convoluted and repetitive but factoring this requires even more complex polymorphism which is not worth it
     let resp = async { match c {
+        Call::AddUser(args) => rmp_serde::encode::to_vec_named(&state.add_user(&args)
+            .inspect_err(log_error)
+            .instrument(info_span!(api::AddUser::DISPLAY_NAME))
+            .await),
+
         Call::NewCredentials(args) => rmp_serde::encode::to_vec_named(&state.new_credentials(&args)
             .inspect_err(log_error)
-            .instrument(info_span!("NewCredentials"))
+            .instrument(info_span!(api::NewCredentials::DISPLAY_NAME))
             .await),
-        Call::NewUser(args) => rmp_serde::encode::to_vec_named(&state.new_user(&args)
+
+        Call::SetCredentials(args) => rmp_serde::encode::to_vec_named(&state.set_credentials(&args)
             .inspect_err(log_error)
-            .instrument(info_span!("NewUser", username = %String::from_utf8_lossy(&args.username).into_owned()))
-            .await),
-        Call::ChangeUserCredentials(args) => rmp_serde::encode::to_vec_named(&state.change_user_credentials(&args)
-            .inspect_err(log_error)
-            .instrument(info_span!("ChangeUserCredentials", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
+            .instrument(info_span!(api::SetCredentials::DISPLAY_NAME))
             .await),
         
         Call::LoginStart(args) => rmp_serde::encode::to_vec_named(&state.login_start(&args)
             .inspect_err(log_error)
-            .instrument(info_span!("LoginStart", username = %if args.recovery {bs58::encode(&args.username).into_string()} else { String::from_utf8_lossy(&args.username).into_owned()}, recovery = %args.recovery))
+            .instrument(info_span!(api::LoginStart::DISPLAY_NAME))
             .await),
+
         Call::LoginFinish(args) => rmp_serde::encode::to_vec_named(&state.login_finish(&args)
             .inspect_err(log_error)
-            .instrument(info_span!("LoginFinish", uber = %args.uber_token))
+            .instrument(info_span!(api::LoginFinish::DISPLAY_NAME))
             .await),
 
-        Call::GetUserData(args) => rmp_serde::encode::to_vec_named(&state.get_user_data(&args)
+        Call::GetUserPrivateData(args) => rmp_serde::encode::to_vec_named(&state.get_user_private_data(&args)
             .inspect_err(log_error)
-            .instrument(info_span!("GetUserData"))
+            .instrument(info_span!(api::GetUserPrivateData::DISPLAY_NAME))
             .await),
 
-        Call::ChangeTotp(args) => rmp_serde::encode::to_vec_named(&state.change_totp(&args)
+        Call::SetUserPrivateData(args) => rmp_serde::encode::to_vec_named(&state.set_user_private_data(&args)
             .inspect_err(log_error)
-            .instrument(info_span!("ChangeTotp"))
+            .instrument(info_span!(api::SetUserPrivateData::DISPLAY_NAME))
             .await),
     }}.instrument(info_span!("rpc", %req.ip, req.port)).await;
 

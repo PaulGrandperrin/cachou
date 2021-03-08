@@ -41,7 +41,8 @@ fn main() -> eyre::Result<()>{
         println!("No previous history.");
     }
     loop {
-        let readline = rl.readline(&format!("{}> ", client.get_username()?.unwrap_or_default()));
+        //let readline = rl.readline(&format!("{}> ", client.get_username()?.unwrap_or_default()));
+        let readline = rl.readline(">");
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
@@ -52,12 +53,11 @@ fn main() -> eyre::Result<()>{
                     ["login_recovery", recovery_key] => client.login_recovery(recovery_key, false).await.map(|e| format!("{:?}", e)),
                     ["login_recovery_uber", recovery_key] => client.login_recovery(recovery_key, true).await.map(|e| format!("{:?}", e)),
                     ["change_username_password", username, password] => client.change_username_password(username, password).await.map(|e| format!("{:?}", e)),
-                    ["rotate_keys"] => client.rotate_keys().await.map(|e| format!("{:?}", e)),
-                    ["update_username"] => client.update_username().await.map(|e| format!("{:?}", e)),
+                    ["change_recovery_key"] => client.change_recovery_key().await.map(|e| format!("{:?}", e)),
                     ["logout"] => Ok(format!("{:?}", client.logout())),
                     ["hibp", password] => client_common::hibp(password).await.map(|e| format!("{:?}", e)),
-                    ["set_totp", uri] => client.change_totp(Some(uri.to_string())).await.map(|e| format!("{:?}", e)),
-                    ["unset_totp"] => client.change_totp(None).await.map(|e| format!("{:?}", e)),
+                    //["set_totp", uri] => client.change_totp(Some(uri.to_string())).await.map(|e| format!("{:?}", e)),
+                    //["unset_totp"] => client.change_totp(None).await.map(|e| format!("{:?}", e)),
                     ["check_totp", uri, input] => common::crypto::totp::check_totp (uri, input).map(|e| format!("{:?}", e)),
                     _ => Err(eyre::eyre!("invalid command")),
                 }};

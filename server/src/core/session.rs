@@ -22,9 +22,11 @@ impl State {
 
         t.validate(required_clearance)?;
 
-        if self.db.get_user_version_from_userid(&t.user_id).await? != t.version {
-            return Err(api::Error::InvalidSessionToken);
-        }
+
+        // TODO implement again
+        //if self.db.get_user_version_from_userid(&t.user_id).await? != t.version {
+        //    return Err(api::Error::InvalidSessionToken);
+        //}
 
         Ok(t)
     }

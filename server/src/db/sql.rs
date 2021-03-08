@@ -75,21 +75,25 @@ impl Db {
         ").await?;
 
         conn.execute("
-            create table if not exists `user` (
-                `user_id` binary(32) not null,
-                `version` bigint unsigned not null,
-                `username` varbinary(32) not null,
-                `opaque_password` varbinary(1024) not null,
-                `username_recovery` varbinary(32) not null,
-                `opaque_password_recovery` varbinary(1024) not null,
-                `sealed_master_key` varbinary(256) not null,
-                `sealed_private_data` varbinary(1024) not null,
-                `totp_uri` varchar(256),
-                primary key (user_id),
-                unique index unique_username (username),
-                unique index unique_username_recovery (username_recovery)
+            create table if not exists `users` (
+                `user_id`             binary(16)      not null,
+                `sealed_private_data` varbinary(1024)         ,
+                `totp`                varchar(256)            ,
+                primary key (`user_id`)
             )
         ").await?;
+
+        conn.execute("
+            create table if not exists `credentials` (
+                `recovery`          tinyint unsigned not null,
+                `username`          varbinary(32)    not null,
+                `opaque_password`   varbinary(1024)  not null,
+                `sealed_master_key` varbinary(256)   not null,
+                `sealed_export_key` varbinary(256)   not null,
+                `user_id`           binary(16)       not null,
+                primary key (`recovery`, `username`)
+            )
+    ").await?;
 
         Ok(())
     }
@@ -128,18 +132,9 @@ impl Db {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    pub async fn new_user(&self, user_id: &[u8], mut version: u64, username: &[u8], opaque_password: &[u8], username_recovery: &[u8], opaque_password_recovery: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], totp_uri: &Option<String>) -> api::Result<u64> {
-        version += 1;
-        sqlx::query("insert into `user` (`user_id`, `version`, `username`, `opaque_password`, `username_recovery`, `opaque_password_recovery`, `sealed_master_key`, `sealed_private_data`, `totp_uri`) values (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    pub async fn new_user(&self, user_id: &[u8]) -> api::Result<()> {
+        sqlx::query("insert into `users` (`user_id`) values (?)")
             .bind(user_id)
-            .bind(version)
-            .bind(username)
-            .bind(opaque_password)
-            .bind(username_recovery)
-            .bind(opaque_password_recovery)
-            .bind(sealed_master_key)
-            .bind(sealed_private_data)
-            .bind(totp_uri)
             .execute(&self.pool).await.map_err(|e| {
                 match e {
                     sqlx::Error::Database(e)
@@ -149,39 +144,37 @@ impl Db {
                 }
             })?;
 
-        Ok(version)
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    pub async fn change_user_credentials(&self, user_id: &[u8], version: u64, username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_private_data: &[u8], recovery: bool) -> api::Result<u64> {
-        let query = format!("update `user` set `version` = ?, `username{0}` = ?, `opaque_password{0}` = ?, `sealed_master_key` = ?, `sealed_private_data` = ? where `user_id` = ? and `version` = ?", if recovery {"_recovery"} else {""});
-        sqlx::query(&query)
-            .bind(version + 1)
+    pub async fn set_credentials(&self, recovery: bool, username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_export_key: &[u8], user_id: &[u8], ) -> api::Result<()> {
+        sqlx::query("replace into `credentials` set `recovery` = ?, `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ?, `user_id` = ?")
+            .bind(if recovery {1} else {0})
             .bind(username)
             .bind(opaque_password)
             .bind(sealed_master_key)
-            .bind(sealed_private_data)
+            .bind(sealed_export_key)
             .bind(user_id)
-            .bind(version)
             .execute(&self.pool).await.map_err(|e| {
                 match e {
                     sqlx::Error::Database(e)
                         if e.as_error().downcast_ref::<MySqlDatabaseError>().map(|e| e.number()) == Some(1062)
                         => api::Error::Conflict, // the username is already taken
-                    sqlx::Error::RowNotFound => api::Error::NotFound, // the user has been deleted or updated to a new version
                     _ => api::Error::ServerSideError(e.into()),
                 }
             })?;
 
-        Ok(version + 1)
+        Ok(())
     }
 
     #[tracing::instrument]
-    pub async fn get_credentials_from_username(&self, username: &[u8], recovery: bool) -> api::Result<(Vec<u8>, u64, Vec<u8>)> {
-        let query = format!("select `user_id`, `version`, `opaque_password{0}` from `user` where `username{0}` = ?", if recovery {"_recovery"} else {""});
-        let row = sqlx::query(&query)
-            .bind(username).fetch_one(&self.pool).await.map_err(|e| {
+    pub async fn get_credentials_from_username(&self, recovery: bool, username: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let row = sqlx::query("select `user_id`, `opaque_password`, `sealed_master_key` from `credentials` where `recovery` = ? and `username` = ?")
+            .bind(if recovery {1} else {0})    
+            .bind(username)
+            .fetch_one(&self.pool).await.map_err(|e| {
                 match e {
                     sqlx::Error::RowNotFound => api::Error::NotFound,
                     _ => api::Error::ServerSideError(e.into()),
@@ -196,56 +189,30 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn get_user_from_userid(&self, user_id: &[u8], version: u64) -> api::Result<(Vec<u8>, Vec<u8>, Vec<u8>, Option<String>)> {
-        let row: MySqlRow = sqlx::query("select `sealed_master_key`, `sealed_private_data`, `username`, `totp_uri` from `user` where `user_id` = ? and `version` = ?")
+    pub async fn get_user_private_data(&self, user_id: &[u8]) -> api::Result<Vec<u8>> {
+        let row: MySqlRow = sqlx::query("select `sealed_private_data` from `users` where `user_id` = ?")
         .bind(user_id)
-        .bind(version)
         .fetch_one(&self.pool).await.map_err(|e| {
             match e {
-                sqlx::Error::RowNotFound => api::Error::NotFound, // the user has been deleted or updated to a new version
                 _ => api::Error::ServerSideError(e.into()),
             }
         })?;
 
-        Ok((
-            row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?,
-            row.try_get(1).map_err(|e| api::Error::ServerSideError(e.into()))?,
-            row.try_get(2).map_err(|e| api::Error::ServerSideError(e.into()))?,
-            row.try_get(3).map_err(|e| api::Error::ServerSideError(e.into()))?,
-        ))
-    }
-
-    #[tracing::instrument]
-    pub async fn get_user_version_from_userid(&self, user_id: &[u8]) -> api::Result<u64> {
-        let row: MySqlRow = sqlx::query("select `version` from `user` where `user_id` = ?")
-        .bind(user_id)
-        .fetch_one(&self.pool).await.map_err(|e| api::Error::ServerSideError(e.into()))?; // do not leak in returned error if the user_id exists or not
-
         Ok(
             row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?,
         )
     }
 
     #[tracing::instrument]
-    pub async fn get_totp_from_userid(&self, user_id: &[u8]) -> api::Result<Option<String>> {
-        let row: MySqlRow = sqlx::query("select `totp_uri` from `user` where `user_id` = ?")
-        .bind(user_id)
-        .fetch_one(&self.pool).await.map_err(|e| api::Error::ServerSideError(e.into()))?; // do not leak in returned error if the user_id exists or not
-
-        Ok(
-            row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?,
-        )
-    }
-
-    #[tracing::instrument]
-    pub async fn change_totp(&self, user_id: &[u8], version: u64, totp_uri: &Option<String>) -> api::Result<()> {
-        sqlx::query("update `user` set `totp_uri` = ? where `user_id` = ? and `version` = ?")
-            .bind(totp_uri)
+    pub async fn set_user_private_data(&self, user_id: &[u8], sealed_private_data: &[u8]) -> api::Result<()> {
+        sqlx::query("update `users` set `sealed_private_data` = ? where `user_id` = ?")
+            .bind(sealed_private_data)
             .bind(user_id)
-            .bind(version)
-            .execute(&self.pool).await.map_err(|e| api::Error::ServerSideError(e.into()))?; 
-
-        // TODO handle version conflict
+            .execute(&self.pool).await.map_err(|e| {
+                match e {
+                    _ => api::Error::ServerSideError(e.into()),
+                }
+            })?;
 
         Ok(())
     }
