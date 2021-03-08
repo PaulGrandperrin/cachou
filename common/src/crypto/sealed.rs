@@ -8,9 +8,13 @@ use xchacha8blake3siv::XChaCha8Blake3Siv;
 #[derive(Serialize, Deserialize, derivative::Derivative)]
 #[derivative(Debug)]
 pub struct Sealed<C, A> {
+    #[serde(with = "serde_bytes")]
     ciphertext: Vec<u8>,
+    #[serde(with = "serde_bytes")]
     associated_data: Vec<u8>,
+    #[serde(with = "serde_bytes")]
     tag: Vec<u8>,
+    #[serde(with = "serde_bytes")]
     nonce: Vec<u8>,
     #[derivative(Debug="ignore")]
     _phantom: PhantomData<(C, A)>,

@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{api::session_token::{Clearance, SessionToken}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{AddUser, AddUserRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use sha2::Digest;
 
 use crate::{core::private_data::PrivateData, opaque};
@@ -30,8 +30,8 @@ impl Client {
         let sealed_private_data = Sealed::seal(&master_key, &private_data, &())?;
 
         // request a new user creation
-        let sealed_session_token = self.rpc_client.call(
-            common::api::AddUser
+        let AddUserRet {sealed_session_token} = self.rpc_client.call(
+            AddUser
         ).await?;
 
         // client is logged
@@ -47,7 +47,7 @@ impl Client {
 
         // upload private data
         self.rpc_client.call(
-            common::api::SetUserPrivateData {
+            SetUserPrivateData {
                 sealed_session_token: sealed_session_token.clone(),
                 sealed_private_data,
             }
@@ -63,8 +63,8 @@ impl Client {
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
 
         // start server-side OPAQUE registration
-        let (server_sealed_state, opaque_msg) = self.rpc_client.call(
-            common::api::NewCredentials {
+        let NewCredentialsRet { server_sealed_state, opaque_msg } = self.rpc_client.call(
+            NewCredentials {
                 opaque_msg
             }
         ).await?;
@@ -82,7 +82,7 @@ impl Client {
 
         // finish server-side OPAQUE registration and set credentials to user
         self.rpc_client.call(
-            common::api::SetCredentials {
+            SetCredentials {
                 server_sealed_state,
                 recovery,
                 opaque_msg,
@@ -102,24 +102,24 @@ impl Client {
         let (opaque_state, opaque_msg) = opaque::login_start(password)?;
 
         // start server-side OPAQUE login
-        let (server_sealed_state, opaque_msg) = self.rpc_client.call(
-            common::api::LoginStart{username: username.to_vec(), opaque_msg, recovery}
+        let LoginStartRet { server_sealed_state, opaque_msg } = self.rpc_client.call(
+            LoginStart{username: username.to_vec(), opaque_msg, recovery}
         ).await?;
 
         // finish client-side OPAQUE login
         let (opaque_msg, export_key) = opaque::login_finish(&opaque_state, &opaque_msg, username, if recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
 
         // finish server-side OPAQUE login
-        let (sealed_session_token, sealed_master_key) = self.rpc_client.call(
-            common::api::LoginFinish{server_sealed_state, opaque_msg, uber_clearance}
+        let LoginFinishRet {sealed_session_token, sealed_master_key} = self.rpc_client.call(
+            LoginFinish{server_sealed_state, opaque_msg, uber_clearance}
         ).await?;
 
         // unseal master key
         let master_key = Sealed::<Vec<u8>, ()>::unseal(&export_key, &sealed_master_key)?.0;
 
         // download user private data
-        let sealed_private_data = self.rpc_client.call(
-            common::api::GetUserPrivateData {
+        let GetUserPrivateDataRet { sealed_private_data } = self.rpc_client.call(
+            GetUserPrivateData {
                 sealed_session_token: sealed_session_token.clone(),
             }
         ).await?;
@@ -148,7 +148,7 @@ impl Client {
         let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
         self.rpc_client.call(
-            common::api::ChangeTotp {
+            ChangeTotp {
                 sealed_session_token: logged_user.sealed_session_token.clone(),
                 totp_uri,
             }
@@ -194,6 +194,4 @@ impl Client {
     pub fn logout(&mut self) {
         self.logged_user = None;
     }
-
-
 }

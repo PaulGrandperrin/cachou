@@ -16,7 +16,7 @@ derivative = "2"
 sha2 = "0.9" # used to derive the secret_id from the masterkey
 sha-1 = "0.9" # for HIBP api
 data-encoding = "2"
-serde = {version = "1.0", features = ["derive"]} 
+serde = {version = "1.0", features = ["derive"]}
 rmp-serde = "0.15"
 bs58 = "0.4"
 

@@ -1,5 +1,8 @@
-use common::{api::{self, GetUserPrivateData, LoginFinish, LoginStart, NewCredentials, AddUser, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use std::ops::Deref;
+
+use common::{api::{self, AddUser, AddUserRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use rand::Rng;
+use serde_bytes::ByteBuf;
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{opaque, state::State};
@@ -15,21 +18,22 @@ impl State {
 
             info!("ok");
             
-            Ok(sealed_session_token)
+            Ok( AddUserRet {
+                sealed_session_token
+            })
         }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
     }
 
     pub async fn new_credentials(&self, args: &NewCredentials) -> api::Result<<NewCredentials as Rpc>::Ret> {
         let (opaque_state, opaque_msg) = opaque::registration_start(self.opaque_kp.public(), &args.opaque_msg)?;
-        let server_sealed_state = Sealed::seal(&self.secret_key[..], &opaque_state, &())?; // TODO add TTL
+        let server_sealed_state = Sealed::seal(&self.secret_key[..], &ByteBuf::from(opaque_state), &())?; // TODO add TTL
 
         debug!("ok");
-        Ok((
+        Ok( NewCredentialsRet {
             server_sealed_state,
             opaque_msg
-        ))
+        })
     }
-
 
     pub async fn set_credentials(&self, args: &SetCredentials) -> api::Result<<SetCredentials as Rpc>::Ret> {
         // get user's user_id and check that token has uber rights
@@ -37,7 +41,7 @@ impl State {
         let user_id = bs58::encode(&session_token.user_id).into_string();
 
         async {
-            let opaque_state = Sealed::<Vec<u8>, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
+            let opaque_state = Sealed::<ByteBuf, ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
             let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
 
             self.db.set_credentials(args.recovery, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_export_key, &session_token.user_id).await?;
@@ -54,16 +58,19 @@ impl State {
         async {
             // TODO if recovery, alert user (by mail) and block request for a few days
             let (opaque_state, opaque_msg) = opaque::login_start(self.opaque_kp.private(), &args.opaque_msg, &args.username, &opaque_password, if args.recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
-            let server_sealed_state = Sealed::seal(&self.secret_key[..], &(opaque_state, user_id.clone(), sealed_master_key, 0), &())?; // TODO add TTL
+            let server_sealed_state = Sealed::seal(&self.secret_key[..], &(ByteBuf::from(opaque_state), ByteBuf::from(user_id.clone()), ByteBuf::from(sealed_master_key), 0), &())?; // TODO add TTL
 
             info!("ok");
-            Ok((server_sealed_state.to_vec(), opaque_msg))
+            Ok(LoginStartRet {
+                server_sealed_state: server_sealed_state.to_vec(),
+                opaque_msg
+            })
         }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
     }
 
 
     pub async fn login_finish(&self, args: &LoginFinish) -> api::Result<<LoginFinish as Rpc>::Ret> {
-        let (opaque_state, user_id, sealed_master_key, version) = Sealed::<(Vec<u8>, Vec<u8>, Vec<u8>, u64), ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
+        let (opaque_state, user_id, sealed_master_key, version) = Sealed::<(ByteBuf, ByteBuf, ByteBuf, u64), ()>::unseal(&self.secret_key, &args.server_sealed_state)?.0;
 
         async {
             // check password
@@ -76,12 +83,15 @@ impl State {
                 debug!("ok - need second factor");
                 r
             } else*/ {
-                let r = self.session_token_new_logged_in_sealed(user_id.clone(), version, false, args.uber_clearance)?;
+                let r = self.session_token_new_logged_in_sealed(user_id.deref().clone(), version, false, args.uber_clearance)?;
                 debug!("ok - logged in");
                 r
             };
             
-            Ok((sealed_session_token, sealed_master_key))
+            Ok( LoginFinishRet {
+                sealed_session_token,
+                sealed_master_key: sealed_master_key.into_vec(),
+            })
         }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
     }
 
@@ -92,7 +102,9 @@ impl State {
             let sealed_private_data = self.db.get_user_private_data(&user_id).await?;
 
             debug!("ok");
-            Ok(sealed_private_data)
+            Ok( GetUserPrivateDataRet {
+                sealed_private_data
+            })
         }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
     }
 
