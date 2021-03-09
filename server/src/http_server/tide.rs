@@ -28,7 +28,7 @@ async fn rpc(req: Request<Arc<State>>) -> tide::Result {
     let resp = match rpc_impl(req).await {
         Ok(o) => o,
         Err(e) => {
-            crate::rpc::log_error(&e);
+            crate::request_dispatcher::log_error(&e);
             return Err(e.into())
         }, 
     };
@@ -47,6 +47,6 @@ async fn rpc_impl(mut req: Request<Arc<State>>) -> common::api::Result<Vec<u8>> 
 
     let state = req.state().clone();
 
-    crate::rpc::rpc(&state, &crate::rpc::Req{ip, port}, &body).await
+    crate::request_dispatcher::rpc(&state, &crate::request_dispatcher::Req{ip, port}, &body).await
 }
 

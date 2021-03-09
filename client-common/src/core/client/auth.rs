@@ -71,7 +71,6 @@ impl Client {
 
         // finish client-side OPAQUE registration
         let (opaque_msg, export_key) = opaque::registration_finish(&opaque_state, &opaque_msg, username, if recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?; // FIXME use revoveru
-        println!("EXPORT {:?}", export_key);
         let export_key = export_key[0..32].to_vec(); // trim to the first 32bytes (256bits)
         
         // seal master_key with export_key

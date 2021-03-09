@@ -1,6 +1,6 @@
 //#![feature(result_flattening)]
 //#![allow(unused_imports)]
-pub mod rpc;
+pub mod request_dispatcher;
 pub mod core;
 pub mod state;
 pub mod db;

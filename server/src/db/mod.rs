@@ -1,4 +1,4 @@
 pub mod sql;
 
 // If later we implement multiple backend, this is were we'll choose which on to use
-pub use sql::Db;
+pub use sql::{DbPool, DbConn};

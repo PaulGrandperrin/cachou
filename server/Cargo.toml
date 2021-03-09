@@ -44,6 +44,7 @@ futures-util = "0.3"
 toml = "0.5"
 bs58 = "0.4"
 chrono = "0.4"
+async-trait = "0.1"
 
 opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}
 

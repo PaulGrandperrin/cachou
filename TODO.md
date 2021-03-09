@@ -1,3 +1,5 @@
+- fix insertion of new credentials, overriding old ones
+
 - compile both tokio and async stuff on test cfg 
 
 - reimplement totp

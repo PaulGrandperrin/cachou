@@ -2,7 +2,7 @@ use std::{fs::File, io::Read};
 use common::crypto::opaque::OpaqueConf;
 use eyre::WrapErr;
 use opaque_ke::{ciphersuite::CipherSuite, keypair::KeyPair};
-use crate::db::Db;
+use crate::db::DbPool;
 use crate::config::Config;
 
 #[derive(Debug)]
@@ -10,7 +10,7 @@ pub struct State {
     pub opaque_kp: KeyPair::<<OpaqueConf as CipherSuite>::Group>,
     pub secret_key: [u8; 32],
     pub config: Config,
-    pub db: Db,
+    pub db_pool: DbPool,
 }
 
 impl State {
@@ -31,13 +31,13 @@ impl State {
         let config = Config::load().await?;
 
         // connect to DB
-        let db = Db::new().await.wrap_err("failed to connect and initialize DB")?;
+        let db = DbPool::new().await.wrap_err("failed to connect and initialize DB")?;
 
         Ok(Self {
             opaque_kp,
             secret_key,
             config,
-            db,
+            db_pool: db,
         })
     }
 }

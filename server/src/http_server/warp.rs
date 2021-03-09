@@ -32,7 +32,7 @@ async fn rpc(state: Arc<State>, body: Bytes, addr: Option<SocketAddr>) -> Result
     let body = match rpc_impl(&state, &body, &addr).await {
         Ok(o) => o,
         Err(e) => {
-            crate::rpc::log_error(&e);
+            crate::request_dispatcher::log_error(&e);
             return Err(warp::reject::not_found()) // FIXME
         }, 
     };
@@ -50,6 +50,6 @@ async fn rpc_impl(state: &State, body: &Bytes, addr: &Option<SocketAddr>) -> com
     let addr = addr.ok_or(eyre!("incoming RPC does't have a remote address"))?;
     let (ip, port) = (addr.ip(), addr.port());
 
-    crate::rpc::rpc(state, &crate::rpc::Req{ip, port}, &body).await
+    crate::request_dispatcher::rpc(state, &crate::request_dispatcher::Req{ip, port}, &body).await
 }
 
