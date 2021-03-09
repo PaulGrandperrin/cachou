@@ -226,9 +226,6 @@ pub trait Queryable: std::fmt::Debug {
         Ok(())
     }
 
-
-
-
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
     async fn new_user(&mut self, user_id: &[u8]) -> api::Result<()> {
