@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{api::{AddUser, AddUserRet, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoUsername, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{AddUser, AddUserRet, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoUsername, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use sha2::Digest;
 
 use crate::{core::private_data::PrivateData, opaque};
@@ -56,8 +56,8 @@ impl Client {
         Ok(())
     }
 
-    async fn set_credentials_impl(&mut self, username: &BoUsername, password: &[u8], recovery: bool) -> eyre::Result<()> {
-        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
+    async fn new_credentials_impl(&self, master_key: &[u8], username: &BoUsername, password: &[u8], recovery: bool) -> eyre::Result<Credentials> {
+        
 
         // start client-side OPAQUE registration
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
@@ -70,24 +70,33 @@ impl Client {
         ).await?;
 
         // finish client-side OPAQUE registration
-        let (opaque_msg, export_key) = opaque::registration_finish(&opaque_state, &opaque_msg, username, if recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?; // FIXME use revoveru
+        let (opaque_msg, export_key) = opaque::registration_finish(&opaque_state, &opaque_msg, username, if recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
         let export_key = export_key[0..32].to_vec(); // trim to the first 32bytes (256bits)
         
         // seal master_key with export_key
-        let sealed_master_key = BoSealedMasterKey::from(Sealed::seal(&export_key, &logged_user.master_key, &())?);
+        let sealed_master_key = BoSealedMasterKey::from(Sealed::seal(&export_key, &master_key, &())?);
 
         // seal export_key with master_key
-        let sealed_export_key = BoSealedExportKey::from(Sealed::seal(&logged_user.master_key, &export_key, &())?);
+        let sealed_export_key = BoSealedExportKey::from(Sealed::seal(master_key, &export_key, &())?);
+    
+        Ok(Credentials{
+            sealed_server_state,
+            opaque_msg,
+            username: username.clone(),
+            sealed_export_key,
+            sealed_master_key,
+        })
+    }
+
+    async fn set_credentials_impl(&mut self, username: &BoUsername, password: &[u8], recovery: bool) -> eyre::Result<()> {
+        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
+        let credentials = self.new_credentials_impl(&logged_user.master_key, username, password, recovery).await?;
 
         // finish server-side OPAQUE registration and set credentials to user
         self.rpc_client.call(
             SetCredentials {
-                sealed_server_state,
                 recovery,
-                opaque_msg,
-                username: username.to_owned(),
-                sealed_master_key,
-                sealed_export_key,
+                credentials,
                 sealed_session_token: logged_user.sealed_session_token.clone(),
             }
         ).await?;

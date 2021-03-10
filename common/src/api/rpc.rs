@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoSealedServerState, BoSealedSessionToken, BoUsername};
 
+// --- Enum
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Rpc {
     AddUser(AddUser),
@@ -17,11 +19,26 @@ pub enum Rpc {
     SetUserPrivateData(SetUserPrivateData),
 }
 
+// --- Trait
+
 pub trait RpcTrait: Serialize {
     const DISPLAY_NAME: &'static str;
     type Ret: DeserializeOwned; /// our deserialized structs will need to be self owned to be easily given back from rpc calls
     fn into_call(self) -> Rpc;
 }
+
+// --- Standalone Structs
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Credentials {
+    pub sealed_server_state: BoSealedServerState,
+    pub opaque_msg: BoOpaqueClientFinishMsg,
+    pub username: BoUsername,
+    pub sealed_master_key: BoSealedMasterKey, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
+    pub sealed_export_key: BoSealedExportKey, // sealed with masterkey. useful when we want to rotate the masterkey
+}
+
+// --- Rpc Structs
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddUser;
@@ -56,12 +73,8 @@ impl RpcTrait for NewCredentials {
 // SetCredentialsToUser
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetCredentials {
-    pub sealed_server_state: BoSealedServerState,
     pub recovery: bool,
-    pub opaque_msg: BoOpaqueClientFinishMsg,
-    pub username: BoUsername,
-    pub sealed_master_key: BoSealedMasterKey, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
-    pub sealed_export_key: BoSealedExportKey, // sealed with masterkey. useful when we want to rotate the masterkey
+    pub credentials: Credentials,
     pub sealed_session_token: BoSealedSessionToken, // must have uber rights
 }
 impl RpcTrait for SetCredentials {
