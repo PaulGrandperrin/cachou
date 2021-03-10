@@ -7,34 +7,35 @@ pub enum Anything {}
 pub type Bytes = BytesOf<Anything>;
 
 pub enum SealedSessionToken {}
-pub type BytesOfSealedSessionToken = BytesOf<SealedSessionToken>;
+pub type BoSealedSessionToken = BytesOf<SealedSessionToken>;
 
 pub enum SealedServerState {}
-pub type BytesOfSealedServerState = BytesOf<SealedServerState>;
+pub type BoSealedServerState = BytesOf<SealedServerState>;
 
 pub enum OpaqueClientStartMsg {}
-pub type BytesOfOpaqueClientStartMsg = BytesOf<OpaqueClientStartMsg>;
+pub type BoOpaqueClientStartMsg = BytesOf<OpaqueClientStartMsg>;
 
 pub enum OpaqueServerStartMsg {}
-pub type BytesOfOpaqueServerStartMsg = BytesOf<OpaqueServerStartMsg>;
+pub type BoOpaqueServerStartMsg = BytesOf<OpaqueServerStartMsg>;
 
 pub enum OpaqueClientFinishMsg {}
-pub type BytesOfOpaqueClientFinishMsg = BytesOf<OpaqueClientFinishMsg>;
+pub type BoOpaqueClientFinishMsg = BytesOf<OpaqueClientFinishMsg>;
 
 pub enum OpaqueState {}
-pub type BytesOfOpaqueState = BytesOf<OpaqueState>;
+pub type BoOpaqueState = BytesOf<OpaqueState>;
 
 pub enum UserId {}
-pub type BytesOfUserId = BytesOf<UserId>;
+pub type BoUserId = BytesOf<UserId>;
 
-impl BytesOfUserId {
+impl BoUserId {
     pub fn gen() -> Self {
         rand::thread_rng().gen::<[u8; 16]>().into()
     }
 }
 
 pub enum Username {}
-pub type BytesOfUsername = BytesOf<Username>;
+pub type BoUsername = BytesOf<Username>;
+
 
 
 //#[derive(Default, Eq, Ord)]

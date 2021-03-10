@@ -1,17 +1,17 @@
-use common::{api::{self, BytesOfSealedSessionToken, BytesOfUserId, session_token::{Clearance, SessionToken}}};
+use common::{api::{self, BoSealedSessionToken, BoUserId, session_token::{Clearance, SessionToken}}};
 
 use crate::state::State;
 
 impl State {
-    pub fn session_token_new_need_second_factor_sealed(&self, user_id: BytesOfUserId, version: u64) -> eyre::Result<BytesOfSealedSessionToken> {
+    pub fn session_token_new_need_second_factor_sealed(&self, user_id: BoUserId, version: u64) -> eyre::Result<BoSealedSessionToken> {
         SessionToken::new_need_second_factor(user_id, version).seal(&self.secret_key[..])
     }
 
-    pub fn session_token_new_logged_in_sealed(&self, user_id: BytesOfUserId, version: u64, auto_logout: bool, uber: bool) -> eyre::Result<BytesOfSealedSessionToken> {
+    pub fn session_token_new_logged_in_sealed(&self, user_id: BoUserId, version: u64, auto_logout: bool, uber: bool) -> eyre::Result<BoSealedSessionToken> {
         SessionToken::new_logged_in(user_id, version, auto_logout, uber).seal(&self.secret_key[..])
     }
 
-    pub async fn session_token_unseal_refreshed_and_validated(&self, sealed_session_token: &BytesOfSealedSessionToken, required_clearance: Clearance) -> api::Result<SessionToken> {
+    pub async fn session_token_unseal_refreshed_and_validated(&self, sealed_session_token: &BoSealedSessionToken, required_clearance: Clearance) -> api::Result<SessionToken> {
         let mut t = SessionToken::unseal(&self.secret_key[..], sealed_session_token)?;
         
         t.refresh( 
@@ -31,7 +31,7 @@ impl State {
         Ok(t)
     }
 
-    pub fn session_token_seal(&self, session_token: &SessionToken) -> eyre::Result<BytesOfSealedSessionToken> {
+    pub fn session_token_seal(&self, session_token: &SessionToken) -> eyre::Result<BoSealedSessionToken> {
         session_token.seal(&self.secret_key[..])
     }
 }

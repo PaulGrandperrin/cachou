@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, BytesOfOpaqueState, BytesOfUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::DbConn, opaque, state::State};
@@ -7,13 +7,13 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ServerCredentialsState {
-    opaque_state: BytesOfOpaqueState,
+    opaque_state: BoOpaqueState,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ServerLoginState {
-    opaque_state: BytesOfOpaqueState,
-    user_id: BytesOfUserId,
+    opaque_state: BoOpaqueState,
+    user_id: BoUserId,
     #[serde(with = "serde_bytes")]
     sealed_master_key: Vec<u8>,
     version: u64,
@@ -21,7 +21,7 @@ struct ServerLoginState {
 
 impl State {
     pub async fn add_user(&self, _args: &AddUser, conn: &mut DbConn<'_>) -> api::Result<<AddUser as Rpc>::Ret> {
-        let user_id = BytesOfUserId::gen(); // 128bits, so I don't even have to think about birthday attacks
+        let user_id = BoUserId::gen(); // 128bits, so I don't even have to think about birthday attacks
         
         async {
             conn.std().await?.new_user(&user_id).await?;

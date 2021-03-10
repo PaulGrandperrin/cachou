@@ -1,4 +1,4 @@
-use common::api::BytesOfSealedSessionToken;
+use common::api::BoSealedSessionToken;
 
 use crate::rpc_client::RpcClient;
 
@@ -18,7 +18,7 @@ pub struct Client {
 pub struct LoggedUser {
     master_key: Vec<u8>,
     private_data: PrivateData,
-    sealed_session_token: BytesOfSealedSessionToken,
+    sealed_session_token: BoSealedSessionToken,
 }
 
 impl Default for Client {

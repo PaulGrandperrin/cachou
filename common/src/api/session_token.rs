@@ -5,7 +5,7 @@ use crate::api;
 
 use eyre::eyre;
 
-use api::{BytesOfSealedSessionToken, BytesOfUserId};
+use api::{BoSealedSessionToken, BoUserId};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum SessionState {
@@ -22,7 +22,7 @@ enum SessionState {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionToken {
-    pub user_id: BytesOfUserId,
+    pub user_id: BoUserId,
     pub version: u64,
 
     session_state: SessionState,
@@ -36,7 +36,7 @@ pub enum Clearance {
 }
 
 impl SessionToken {
-    pub fn new_need_second_factor(user_id: BytesOfUserId, version: u64) -> Self {   
+    pub fn new_need_second_factor(user_id: BoUserId, version: u64) -> Self {   
         SessionToken {
             user_id,
             version,
@@ -46,7 +46,7 @@ impl SessionToken {
         }
     }
 
-    pub fn new_logged_in(user_id: BytesOfUserId, version: u64, auto_logout: bool, uber: bool) -> Self {   
+    pub fn new_logged_in(user_id: BoUserId, version: u64, auto_logout: bool, uber: bool) -> Self {   
         SessionToken {
             user_id,
             version,
@@ -67,15 +67,15 @@ impl SessionToken {
         }
     }
 
-    pub fn seal(&self, key: &[u8]) -> eyre::Result<BytesOfSealedSessionToken> {
+    pub fn seal(&self, key: &[u8]) -> eyre::Result<BoSealedSessionToken> {
         Sealed::seal(key, &(), &self).map(Into::into)
     }
 
-    pub fn unseal(key: &[u8], sealed_session_token: &BytesOfSealedSessionToken) -> api::Result<Self> {
+    pub fn unseal(key: &[u8], sealed_session_token: &BoSealedSessionToken) -> api::Result<Self> {
         Ok(Sealed::<(), SessionToken>::unseal(key, sealed_session_token.as_slice())?.1)
     }
 
-    pub fn unseal_unauthenticated(sealed_session_token: &BytesOfSealedSessionToken) -> api::Result<Self> {
+    pub fn unseal_unauthenticated(sealed_session_token: &BoSealedSessionToken) -> api::Result<Self> {
         Ok(Sealed::<(), SessionToken>::get_ad(sealed_session_token.as_slice())?)
     }
 
