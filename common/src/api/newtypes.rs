@@ -39,6 +39,9 @@ pub type BoUsername = BytesOf<Username>;
 pub enum SealedMasterKey {}
 pub type BoSealedMasterKey = BytesOf<SealedMasterKey>;
 
+pub enum SealedExportKey {}
+pub type BoSealedExportKey = BytesOf<SealedExportKey>;
+
 
 //#[derive(Default, Eq, Ord)]
 pub struct BytesOf<P>(Vec<u8>, PhantomData<P>);

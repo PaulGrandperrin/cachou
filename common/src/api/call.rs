@@ -1,7 +1,7 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoSealedMasterKey, BoSealedServerState, BoSealedSessionToken, BoUsername};
+use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoSealedExportKey, BoSealedMasterKey, BoSealedServerState, BoSealedSessionToken, BoUsername};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -62,8 +62,7 @@ pub struct SetCredentials {
     pub opaque_msg: BoOpaqueClientFinishMsg,
     pub username: BoUsername,
     pub sealed_master_key: BoSealedMasterKey, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
-    #[serde(with = "serde_bytes")]
-    pub sealed_export_key: Vec<u8>, // sealed with masterkey. useful when we want to rotate the masterkey
+    pub sealed_export_key: BoSealedExportKey, // sealed with masterkey. useful when we want to rotate the masterkey
     pub sealed_session_token: BoSealedSessionToken, // must have uber rights
 }
 impl Rpc for SetCredentials {

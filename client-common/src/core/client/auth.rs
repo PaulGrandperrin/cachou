@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{api::{AddUser, AddUserRet, BoUsername, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{AddUser, AddUserRet, BoSealedExportKey, BoSealedMasterKey, BoUsername, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use sha2::Digest;
 
 use crate::{core::private_data::PrivateData, opaque};
@@ -74,10 +74,10 @@ impl Client {
         let export_key = export_key[0..32].to_vec(); // trim to the first 32bytes (256bits)
         
         // seal master_key with export_key
-        let sealed_master_key = Sealed::seal(&export_key, &logged_user.master_key, &())?.into();
+        let sealed_master_key = BoSealedMasterKey::from(Sealed::seal(&export_key, &logged_user.master_key, &())?);
 
         // seal export_key with master_key
-        let sealed_export_key = Sealed::seal(&logged_user.master_key, &export_key, &())?;
+        let sealed_export_key = BoSealedExportKey::from(Sealed::seal(&logged_user.master_key, &export_key, &())?);
 
         // finish server-side OPAQUE registration and set credentials to user
         self.rpc_client.call(

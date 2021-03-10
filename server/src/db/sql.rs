@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use common::api::{self, BoSealedMasterKey, BoUserId, BoUsername};
+use common::api::{self, BoSealedExportKey, BoSealedMasterKey, BoUserId, BoUsername};
 use sqlx::{Database, Executor, MySql, Pool, Row, Transaction, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}, pool::PoolConnection};
 use async_trait::async_trait;
 use tracing::error;
@@ -245,13 +245,13 @@ pub trait Queryable: std::fmt::Debug {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn set_credentials(&mut self, recovery: bool, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &BoSealedMasterKey, sealed_export_key: &[u8], user_id: &BoUserId) -> api::Result<()> {
+    async fn set_credentials(&mut self, recovery: bool, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &BoSealedMasterKey, sealed_export_key: &BoSealedExportKey, user_id: &BoUserId) -> api::Result<()> {
         sqlx::query("replace into `credentials` set `recovery` = ?, `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ?, `user_id` = ?")
             .bind(if recovery {1} else {0})
             .bind(username.as_slice())
             .bind(opaque_password)
             .bind(sealed_master_key.as_slice())
-            .bind(sealed_export_key)
+            .bind(sealed_export_key.as_slice())
             .bind(user_id.as_slice())
             .execute(self.conn()).await.map_err(|e| {
                 match e {
