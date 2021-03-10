@@ -32,8 +32,8 @@
 
 - implement votes
 
-
-- separate type domains with newtypes and use subtle (for constant-time cmp), zeroize and other type system tricks when useful
+- create a new newtype generic for constant-sized vectors / keys
+- use subtle (for constant-time cmp), zeroize and other type system tricks when useful
 - unicode/ utf8 normalization
 
 POST MVC
