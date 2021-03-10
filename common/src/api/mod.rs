@@ -1,8 +1,8 @@
 mod error;
-mod call;
+mod rpc;
 pub mod newtypes;
 pub mod session_token;
 
 pub use error::*;
-pub use call::*;
+pub use rpc::*;
 pub use newtypes::*;

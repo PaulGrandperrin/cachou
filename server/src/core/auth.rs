@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoSealedMasterKey, BoSealedServerState, BoUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoSealedMasterKey, BoSealedServerState, BoUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, RpcTrait, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::DbConn, opaque, state::State};
@@ -19,7 +19,7 @@ struct ServerLoginState {
 }
 
 impl State {
-    pub async fn add_user(&self, _args: &AddUser, conn: &mut DbConn<'_>) -> api::Result<<AddUser as Rpc>::Ret> {
+    pub async fn add_user(&self, _args: &AddUser, conn: &mut DbConn<'_>) -> api::Result<<AddUser as RpcTrait>::Ret> {
         let user_id = BoUserId::gen(); // 128bits, so I don't even have to think about birthday attacks
         
         async {
@@ -35,7 +35,7 @@ impl State {
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
-    pub async fn new_credentials(&self, args: &NewCredentials, _conn: &mut DbConn<'_>) -> api::Result<<NewCredentials as Rpc>::Ret> {
+    pub async fn new_credentials(&self, args: &NewCredentials, _conn: &mut DbConn<'_>) -> api::Result<<NewCredentials as RpcTrait>::Ret> {
         let (opaque_state, opaque_msg) = opaque::registration_start(self.opaque_kp.public(), &args.opaque_msg)?;
         let sealed_server_state = BoSealedServerState::from(Sealed::seal(&self.secret_key[..], &ServerCredentialsState{opaque_state}, &())?); // TODO add TTL
 
@@ -46,7 +46,7 @@ impl State {
         })
     }
 
-    pub async fn set_credentials(&self, args: &SetCredentials, conn: &mut DbConn<'_>) -> api::Result<<SetCredentials as Rpc>::Ret> {
+    pub async fn set_credentials(&self, args: &SetCredentials, conn: &mut DbConn<'_>) -> api::Result<<SetCredentials as RpcTrait>::Ret> {
         // get user's user_id and check that token has uber rights
         let session_token = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::Uber).await?;
         let user_id = bs58::encode(session_token.user_id.as_slice()).into_string();
@@ -63,7 +63,7 @@ impl State {
         }.instrument(info_span!("id", %user_id)).await
     }
 
-    pub async fn login_start(&self, args: &LoginStart, conn: &mut DbConn<'_>) -> api::Result<<LoginStart as Rpc>::Ret> {
+    pub async fn login_start(&self, args: &LoginStart, conn: &mut DbConn<'_>) -> api::Result<<LoginStart as RpcTrait>::Ret> {
         let (user_id, opaque_password, sealed_master_key) = conn.std().await?.get_credentials_from_username(args.recovery, &args.username).await?;
 
         async {
@@ -80,7 +80,7 @@ impl State {
     }
 
 
-    pub async fn login_finish(&self, args: &LoginFinish, _conn: &mut DbConn<'_>) -> api::Result<<LoginFinish as Rpc>::Ret> {
+    pub async fn login_finish(&self, args: &LoginFinish, _conn: &mut DbConn<'_>) -> api::Result<<LoginFinish as RpcTrait>::Ret> {
         let ServerLoginState {opaque_state, user_id, sealed_master_key, version} = Sealed::<ServerLoginState, ()>::unseal(&self.secret_key, args.sealed_server_state.as_slice())?.0;
 
         async {
@@ -106,7 +106,7 @@ impl State {
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
-    pub async fn get_user_private_data(&self, args: &GetUserPrivateData, conn: &mut DbConn<'_>) -> api::Result<<GetUserPrivateData as Rpc>::Ret> {
+    pub async fn get_user_private_data(&self, args: &GetUserPrivateData, conn: &mut DbConn<'_>) -> api::Result<<GetUserPrivateData as RpcTrait>::Ret> {
         let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::LoggedIn).await?;
 
         async {
@@ -119,7 +119,7 @@ impl State {
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
-    pub async fn set_user_private_data(&self, args: &SetUserPrivateData, conn: &mut DbConn<'_>) -> api::Result<<SetUserPrivateData as Rpc>::Ret> {
+    pub async fn set_user_private_data(&self, args: &SetUserPrivateData, conn: &mut DbConn<'_>) -> api::Result<<SetUserPrivateData as RpcTrait>::Ret> {
         let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::LoggedIn).await?;
 
         async {

@@ -1,4 +1,4 @@
-use common::api::{self, Rpc};
+use common::api::{self, RpcTrait};
 use eyre::WrapErr;
 use tracing::warn;
 
@@ -16,7 +16,7 @@ impl RpcClient {
         }
     }
 
-    pub async fn call<T: Rpc>(&self, c: T) -> api::Result<T::Ret> {
+    pub async fn call<T: RpcTrait>(&self, c: T) -> api::Result<T::Ret> {
         let c = c.into_call();
         let body = rmp_serde::encode::to_vec_named(&c).wrap_err("Serialization error")?;
 
