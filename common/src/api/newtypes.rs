@@ -8,6 +8,9 @@ pub type Bytes = BytesConstructor<PlainBytes>;
 pub enum SealedSessionTokenBytes {}
 pub type SealedSessionToken = BytesConstructor<SealedSessionTokenBytes>;
 
+pub enum SealedServerStateBytes {}
+pub type SealedServerState = BytesConstructor<SealedServerStateBytes>;
+
 #[derive(Default, Eq, Ord)]
 pub struct BytesConstructor<P>(Vec<u8>, PhantomData<P>);
 

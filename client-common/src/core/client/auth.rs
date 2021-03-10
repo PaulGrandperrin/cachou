@@ -63,7 +63,7 @@ impl Client {
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
 
         // start server-side OPAQUE registration
-        let NewCredentialsRet { server_sealed_state, opaque_msg } = self.rpc_client.call(
+        let NewCredentialsRet { sealed_server_state, opaque_msg } = self.rpc_client.call(
             NewCredentials {
                 opaque_msg
             }
@@ -82,7 +82,7 @@ impl Client {
         // finish server-side OPAQUE registration and set credentials to user
         self.rpc_client.call(
             SetCredentials {
-                server_sealed_state,
+                sealed_server_state,
                 recovery,
                 opaque_msg,
                 username: username.to_owned(),
@@ -101,7 +101,7 @@ impl Client {
         let (opaque_state, opaque_msg) = opaque::login_start(password)?;
 
         // start server-side OPAQUE login
-        let LoginStartRet { server_sealed_state, opaque_msg } = self.rpc_client.call(
+        let LoginStartRet { sealed_server_state, opaque_msg } = self.rpc_client.call(
             LoginStart{username: username.to_vec(), opaque_msg, recovery}
         ).await?;
 
@@ -110,7 +110,7 @@ impl Client {
 
         // finish server-side OPAQUE login
         let LoginFinishRet {sealed_session_token, sealed_master_key} = self.rpc_client.call(
-            LoginFinish{server_sealed_state, opaque_msg, uber_clearance}
+            LoginFinish{sealed_server_state, opaque_msg, uber_clearance}
         ).await?;
 
         // unseal master key

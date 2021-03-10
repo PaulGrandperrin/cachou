@@ -1,7 +1,7 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use super::SealedSessionToken;
+use super::{SealedServerState, SealedSessionToken};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -45,8 +45,7 @@ pub struct NewCredentials {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentialsRet {
-    #[serde(with = "serde_bytes")]
-    pub server_sealed_state: Vec<u8>,
+    pub sealed_server_state: SealedServerState,
     #[serde(with = "serde_bytes")]
     pub opaque_msg: Vec<u8>,
 }
@@ -60,8 +59,7 @@ impl Rpc for NewCredentials {
 // SetCredentialsToUser
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetCredentials {
-    #[serde(with = "serde_bytes")]
-    pub server_sealed_state: Vec<u8>,
+    pub sealed_server_state: SealedServerState,
     pub recovery: bool,
     #[serde(with = "serde_bytes")]
     pub opaque_msg: Vec<u8>,
@@ -90,8 +88,7 @@ pub struct LoginStart {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginStartRet {
-    #[serde(with = "serde_bytes")]
-    pub server_sealed_state: Vec<u8>,
+    pub sealed_server_state: SealedServerState,
     #[serde(with = "serde_bytes")]
     pub opaque_msg: Vec<u8>,
 }
@@ -104,8 +101,7 @@ impl Rpc for LoginStart {
 // LoginFinish
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinish {
-    #[serde(with = "serde_bytes")]
-    pub server_sealed_state: Vec<u8>,
+    pub sealed_server_state: SealedServerState,
     #[serde(with = "serde_bytes")]
     pub opaque_msg: Vec<u8>,
     pub uber_clearance: bool,
