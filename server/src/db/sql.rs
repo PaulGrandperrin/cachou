@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use common::api::{self, BoSealedExportKey, BoSealedMasterKey, BoUserId, BoUsername};
+use common::api::{self, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoUserId, BoUsername};
 use sqlx::{Database, Executor, MySql, Pool, Row, Transaction, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}, pool::PoolConnection};
 use async_trait::async_trait;
 use tracing::error;
@@ -285,7 +285,7 @@ pub trait Queryable: std::fmt::Debug {
     }
 
     #[tracing::instrument]
-    async fn get_user_private_data(&mut self, user_id: &BoUserId) -> api::Result<Vec<u8>> {
+    async fn get_user_private_data(&mut self, user_id: &BoUserId) -> api::Result<BoSealedPrivateData> {
         let row: MySqlRow = sqlx::query("select `sealed_private_data` from `users` where `user_id` = ?")
         .bind(user_id.as_slice())
         .fetch_one(self.conn()).await.map_err(|e| {
@@ -295,14 +295,14 @@ pub trait Queryable: std::fmt::Debug {
         })?;
 
         Ok(
-            row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?,
+            BoSealedPrivateData::from_vec(row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?),
         )
     }
 
     #[tracing::instrument]
-    async fn set_user_private_data(&mut self, user_id: &BoUserId, sealed_private_data: &[u8]) -> api::Result<()> {
+    async fn set_user_private_data(&mut self, user_id: &BoUserId, sealed_private_data: &BoSealedPrivateData) -> api::Result<()> {
         sqlx::query("update `users` set `sealed_private_data` = ? where `user_id` = ?")
-            .bind(sealed_private_data)
+            .bind(sealed_private_data.as_slice())
             .bind(user_id.as_slice())
             .execute(self.conn()).await.map_err(|e| {
                 match e {

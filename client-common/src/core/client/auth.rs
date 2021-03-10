@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{api::{AddUser, AddUserRet, BoSealedExportKey, BoSealedMasterKey, BoUsername, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{AddUser, AddUserRet, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoUsername, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use sha2::Digest;
 
 use crate::{core::private_data::PrivateData, opaque};
@@ -27,7 +27,7 @@ impl Client {
         };
 
         // seal private_data with master_key
-        let sealed_private_data = Sealed::seal(&master_key, &private_data, &())?;
+        let sealed_private_data = BoSealedPrivateData::from(Sealed::seal(&master_key, &private_data, &())?);
 
         // request a new user creation
         let AddUserRet {sealed_session_token} = self.rpc_client.call(
@@ -124,7 +124,7 @@ impl Client {
         ).await?;
 
         // recover user's private data
-        let private_data = Sealed::<PrivateData, ()>::unseal(&master_key, &sealed_private_data)?.0;
+        let private_data = Sealed::<PrivateData, ()>::unseal(&master_key, sealed_private_data.as_slice())?.0;
 
         self.logged_user = Some( LoggedUser {
             master_key,

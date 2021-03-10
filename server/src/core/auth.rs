@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoSealedMasterKey, BoUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoSealedMasterKey, BoSealedServerState, BoUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::DbConn, opaque, state::State};
@@ -37,7 +37,7 @@ impl State {
 
     pub async fn new_credentials(&self, args: &NewCredentials, _conn: &mut DbConn<'_>) -> api::Result<<NewCredentials as Rpc>::Ret> {
         let (opaque_state, opaque_msg) = opaque::registration_start(self.opaque_kp.public(), &args.opaque_msg)?;
-        let sealed_server_state = Sealed::seal(&self.secret_key[..], &ServerCredentialsState{opaque_state}, &())?.into(); // TODO add TTL
+        let sealed_server_state = BoSealedServerState::from(Sealed::seal(&self.secret_key[..], &ServerCredentialsState{opaque_state}, &())?); // TODO add TTL
 
         debug!("ok");
         Ok( NewCredentialsRet {
@@ -69,11 +69,11 @@ impl State {
         async {
             // TODO if recovery, alert user (by mail) and block request for a few days
             let (opaque_state, opaque_msg) = opaque::login_start(self.opaque_kp.private(), &args.opaque_msg, &args.username, &opaque_password, if args.recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
-            let sealed_server_state = Sealed::seal(&self.secret_key[..], &ServerLoginState{opaque_state, user_id: user_id.clone(), sealed_master_key, version: 0}, &())?; // TODO add TTL
+            let sealed_server_state = BoSealedServerState::from(Sealed::seal(&self.secret_key[..], &ServerLoginState{opaque_state, user_id: user_id.clone(), sealed_master_key, version: 0}, &())?); // TODO add TTL
 
             info!("ok");
             Ok(LoginStartRet {
-                sealed_server_state: sealed_server_state.into(),
+                sealed_server_state,
                 opaque_msg
             })
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await

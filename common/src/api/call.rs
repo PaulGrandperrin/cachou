@@ -1,7 +1,7 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoSealedExportKey, BoSealedMasterKey, BoSealedServerState, BoSealedSessionToken, BoUsername};
+use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoSealedServerState, BoSealedSessionToken, BoUsername};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -114,8 +114,7 @@ pub struct GetUserPrivateData {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserPrivateDataRet {
-    #[serde(with = "serde_bytes")]
-    pub sealed_private_data: Vec<u8>,
+    pub sealed_private_data: BoSealedPrivateData,
 }
 impl Rpc for GetUserPrivateData {
     const DISPLAY_NAME: &'static str = "GetUserPrivateData";
@@ -126,8 +125,7 @@ impl Rpc for GetUserPrivateData {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetUserPrivateData {
     pub sealed_session_token: BoSealedSessionToken,
-    #[serde(with = "serde_bytes")]
-    pub sealed_private_data: Vec<u8>,
+    pub sealed_private_data: BoSealedPrivateData,
 }
 impl Rpc for SetUserPrivateData {
     const DISPLAY_NAME: &'static str = "SetUserPrivateData";

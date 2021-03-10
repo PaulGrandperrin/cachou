@@ -41,6 +41,8 @@ pub type BoSealedMasterKey = BytesOf<SealedMasterKey>;
 
 pub enum SealedExportKey {}
 pub type BoSealedExportKey = BytesOf<SealedExportKey>;
+pub enum SealedPrivateData {}
+pub type BoSealedPrivateData = BytesOf<SealedPrivateData>;
 
 
 //#[derive(Default, Eq, Ord)]
@@ -84,10 +86,12 @@ impl<P> BytesOf<P> {
         &mut self.0
     }
 
+    // sometimes type inference needs a little help
     pub fn into_vec(self) -> Vec<u8> {
         self.0
     }
 
+    // sometimes type inference needs a little help
     pub fn from_vec(v: Vec<u8>) -> Self {
         v.into()
     }
