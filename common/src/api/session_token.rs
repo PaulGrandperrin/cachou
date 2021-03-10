@@ -4,7 +4,7 @@ use crate::api;
 
 use eyre::eyre;
 
-use api::{BoUserId};
+use api::{UserId};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum SessionState {
@@ -21,7 +21,7 @@ enum SessionState {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionToken {
-    pub user_id: BoUserId,
+    pub user_id: UserId,
     pub version: u64,
 
     session_state: SessionState,
@@ -35,7 +35,7 @@ pub enum Clearance {
 }
 
 impl SessionToken {
-    pub fn new_need_second_factor(user_id: BoUserId, version: u64) -> Self {   
+    pub fn new_need_second_factor(user_id: UserId, version: u64) -> Self {   
         SessionToken {
             user_id,
             version,
@@ -45,7 +45,7 @@ impl SessionToken {
         }
     }
 
-    pub fn new_logged_in(user_id: BoUserId, version: u64, auto_logout: bool, uber: bool) -> Self {   
+    pub fn new_logged_in(user_id: UserId, version: u64, auto_logout: bool, uber: bool) -> Self {   
         SessionToken {
             user_id,
             version,

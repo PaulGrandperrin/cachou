@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoUserId, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RpcTrait, SealedServerState, SetUserPrivateData, UpdateCredentials, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::{AeadBox, SecretBox}};
+use common::{api::{self, AddUser, AddUserRet, OpaqueState, UserId, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RpcTrait, SecretServerState, SetUserPrivateData, UpdateCredentials, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::DbConn, opaque, state::State};
@@ -7,20 +7,20 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ServerCredentialsState {
-    opaque_state: BoOpaqueState,
+    opaque_state: OpaqueState,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ServerLoginState {
-    opaque_state: BoOpaqueState,
-    user_id: BoUserId,
-    sealed_master_key: SecretBox<MasterKey>,
+    opaque_state: OpaqueState,
+    user_id: UserId,
+    secret_master_key: SecretBox<MasterKey>,
     version: u64,
 }
 
 impl State {
     pub async fn add_user(&self, args: &AddUser, conn: &mut DbConn<'_>) -> api::Result<<AddUser as RpcTrait>::Ret> {
-        let user_id = BoUserId::gen(); // 128bits, so I don't even have to think about birthday attacks
+        let user_id = UserId::gen(); // 128bits, so I don't even have to think about birthday attacks
         
         async {
             // start transaction
@@ -34,7 +34,7 @@ impl State {
             self.set_credentials_impl(tx, true, &args.credentials_recovery, true, &user_id).await?;
             
             // save private data
-            tx.set_user_private_data(&user_id, &args.sealed_private_data).await?;
+            tx.set_user_private_data(&user_id, &args.secret_private_data).await?;
 
             let authed_session_token = self.session_token_new_logged_in_sealed(user_id.clone(), 0, false, true)?;
 
@@ -48,23 +48,23 @@ impl State {
 
     pub async fn new_credentials(&self, args: &NewCredentials, _conn: &mut DbConn<'_>) -> api::Result<<NewCredentials as RpcTrait>::Ret> {
         let (opaque_state, opaque_msg) = opaque::registration_start(self.opaque_kp.public(), &args.opaque_msg)?;
-        let sealed_server_state: SealedServerState = AeadBox::seal(&self.secret_key[..], &ServerCredentialsState{opaque_state}, &())?.into(); // TODO add TTL
+        let secret_server_state: SecretServerState = AeadBox::seal(&self.secret_key[..], &ServerCredentialsState{opaque_state}, &())?.into(); // TODO add TTL
 
         debug!("ok");
         Ok( NewCredentialsRet {
-            sealed_server_state,
+            secret_server_state,
             opaque_msg
         })
     }
 
-    async fn set_credentials_impl(&self, conn: &mut impl Queryable, new: bool, credentials: &Credentials, recovery: bool, user_id: &BoUserId) -> api::Result<()> {
-        let ServerCredentialsState { opaque_state } = AeadBox::<ServerCredentialsState, ()>::unseal(&self.secret_key, credentials.sealed_server_state.as_slice())?.0;
+    async fn set_credentials_impl(&self, conn: &mut impl Queryable, new: bool, credentials: &Credentials, recovery: bool, user_id: &UserId) -> api::Result<()> {
+        let ServerCredentialsState { opaque_state } = AeadBox::<ServerCredentialsState, ()>::unseal(&self.secret_key, credentials.secret_server_state.as_slice())?.0;
         let opaque_password = opaque::registration_finish(&opaque_state, &credentials.opaque_msg)?;
 
         if new {
-            conn.new_credentials(recovery, &user_id, &credentials.username, &opaque_password, &credentials.sealed_master_key, &credentials.sealed_export_key).await?;
+            conn.new_credentials(recovery, &user_id, &credentials.username, &opaque_password, &credentials.secret_master_key, &credentials.secret_export_key).await?;
         } else {
-            conn.update_credentials(recovery, &user_id, &credentials.username, &opaque_password, &credentials.sealed_master_key, &credentials.sealed_export_key).await?;
+            conn.update_credentials(recovery, &user_id, &credentials.username, &opaque_password, &credentials.secret_master_key, &credentials.secret_export_key).await?;
         }
         Ok(())
     }
@@ -84,16 +84,16 @@ impl State {
     }
 
     pub async fn login_start(&self, args: &LoginStart, conn: &mut DbConn<'_>) -> api::Result<<LoginStart as RpcTrait>::Ret> {
-        let (user_id, opaque_password, sealed_master_key) = conn.std().await?.get_credentials_from_username(args.recovery, &args.username).await?;
+        let (user_id, opaque_password, secret_master_key) = conn.std().await?.get_credentials_from_username(args.recovery, &args.username).await?;
 
         async {
             // TODO if recovery, alert user (by mail) and block request for a few days
             let (opaque_state, opaque_msg) = opaque::login_start(self.opaque_kp.private(), &args.opaque_msg, &args.username, &opaque_password, if args.recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
-            let sealed_server_state: SealedServerState = AeadBox::seal(&self.secret_key[..], &ServerLoginState{opaque_state, user_id: user_id.clone(), sealed_master_key, version: 0}, &())?.into(); // TODO add TTL
+            let secret_server_state: SecretServerState = AeadBox::seal(&self.secret_key[..], &ServerLoginState{opaque_state, user_id: user_id.clone(), secret_master_key, version: 0}, &())?.into(); // TODO add TTL
 
             info!("ok");
             Ok(LoginStartRet {
-                sealed_server_state,
+                secret_server_state,
                 opaque_msg
             })
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
@@ -101,7 +101,7 @@ impl State {
 
 
     pub async fn login_finish(&self, args: &LoginFinish, _conn: &mut DbConn<'_>) -> api::Result<<LoginFinish as RpcTrait>::Ret> {
-        let ServerLoginState {opaque_state, user_id, sealed_master_key, version} = AeadBox::<ServerLoginState, ()>::unseal(&self.secret_key, args.sealed_server_state.as_slice())?.0;
+        let ServerLoginState {opaque_state, user_id, secret_master_key, version} = AeadBox::<ServerLoginState, ()>::unseal(&self.secret_key, args.secret_server_state.as_slice())?.0;
 
         async {
             // check password
@@ -121,7 +121,7 @@ impl State {
             
             Ok( LoginFinishRet {
                 authed_session_token,
-                sealed_master_key,
+                secret_master_key,
             })
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
@@ -130,11 +130,11 @@ impl State {
         let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.authed_session_token, Clearance::LoggedIn).await?;
 
         async {
-            let sealed_private_data = conn.std().await?.get_user_private_data(&user_id).await?;
+            let secret_private_data = conn.std().await?.get_user_private_data(&user_id).await?;
 
             debug!("ok");
             Ok( GetUserPrivateDataRet {
-                sealed_private_data
+                secret_private_data
             })
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
@@ -143,7 +143,7 @@ impl State {
         let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.authed_session_token, Clearance::LoggedIn).await?;
 
         async {
-            conn.std().await?.set_user_private_data(&user_id, &args.sealed_private_data).await?;
+            conn.std().await?.set_user_private_data(&user_id, &args.secret_private_data).await?;
 
             debug!("ok");
             Ok(())

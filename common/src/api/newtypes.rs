@@ -3,67 +3,64 @@ use std::{cmp::{self}, fmt, hash::{Hash, Hasher}, marker::PhantomData};
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::{SeqAccess, Visitor}};
 
-pub enum Anything {}
-pub type Bytes = BytesOf<Anything>;
-
 // we use a generic newtype here because we specificaly want to erase the type of what is being sealed
-pub enum _SealedServerState {}
-pub type SealedServerState = BytesOf<_SealedServerState>;
+pub enum _SecretServerState {}
+pub type SecretServerState = Bytes<_SecretServerState>;
 
-pub enum OpaqueClientStartMsg {}
-pub type BoOpaqueClientStartMsg = BytesOf<OpaqueClientStartMsg>;
+pub enum _OpaqueClientStartMsg {}
+pub type OpaqueClientStartMsg = Bytes<_OpaqueClientStartMsg>;
 
-pub enum OpaqueServerStartMsg {}
-pub type BoOpaqueServerStartMsg = BytesOf<OpaqueServerStartMsg>;
+pub enum _OpaqueServerStartMsg {}
+pub type OpaqueServerStartMsg = Bytes<_OpaqueServerStartMsg>;
 
-pub enum OpaqueClientFinishMsg {}
-pub type BoOpaqueClientFinishMsg = BytesOf<OpaqueClientFinishMsg>;
+pub enum _OpaqueClientFinishMsg {}
+pub type OpaqueClientFinishMsg = Bytes<_OpaqueClientFinishMsg>;
 
-pub enum OpaqueState {}
-pub type BoOpaqueState = BytesOf<OpaqueState>;
+pub enum _OpaqueState {}
+pub type OpaqueState = Bytes<_OpaqueState>;
 
-pub enum UserId {}
-pub type BoUserId = BytesOf<UserId>;
+pub enum _UserId {}
+pub type UserId = Bytes<_UserId>;
 
-impl BoUserId {
+impl UserId {
     pub fn gen() -> Self {
         rand::thread_rng().gen::<[u8; 16]>().into()
     }
 }
 
-pub enum Username {}
-pub type BoUsername = BytesOf<Username>;
+pub enum _Username {}
+pub type Username = Bytes<_Username>;
 
 pub enum _MasterKey {}
-pub type MasterKey = BytesOf<_MasterKey>;
+pub type MasterKey = Bytes<_MasterKey>;
 
 pub enum _ExportKey {}
-pub type ExportKey = BytesOf<_ExportKey>;
+pub type ExportKey = Bytes<_ExportKey>;
 
 
 //#[derive(Default, Eq, Ord)]
-pub struct BytesOf<P: ?Sized>(Vec<u8>, PhantomData<P>);
+pub struct Bytes<P: ?Sized>(Vec<u8>, PhantomData<P>);
 
 // maybe that's too generic
-impl<T: Into<Vec<u8>>, P> From<T> for BytesOf<P> {
+impl<T: Into<Vec<u8>>, P> From<T> for Bytes<P> {
     fn from(b: T) -> Self {
-        BytesOf(b.into(), PhantomData)
+        Bytes(b.into(), PhantomData)
     }
 }
 
-impl<P> Clone for BytesOf<P> {
+impl<P> Clone for Bytes<P> {
     fn clone(&self) -> Self {
         Self (self.0.clone(), PhantomData)
     }
 }
 
-impl<P> BytesOf<P> {
+impl<P> Bytes<P> {
     pub fn new() -> Self {
-        BytesOf::from(Vec::new())
+        Bytes::from(Vec::new())
     }
 
     pub fn with_capacity(cap: usize) -> Self {
-        BytesOf::from(Vec::with_capacity(cap))
+        Bytes::from(Vec::with_capacity(cap))
     }
 
     pub fn as_slice(&self) -> &[u8] {
@@ -93,7 +90,7 @@ impl<P> BytesOf<P> {
     }
 }
 
-impl<P> fmt::Debug for BytesOf<P> {
+impl<P> fmt::Debug for Bytes<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.0, f)
     }
@@ -143,13 +140,13 @@ where
     }
 } */
 
-impl<P> Hash for BytesOf<P> {
+impl<P> Hash for Bytes<P> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
     }
 }
 
-impl<P> IntoIterator for BytesOf<P> {
+impl<P> IntoIterator for Bytes<P> {
     type Item = u8;
     type IntoIter = <Vec<u8> as IntoIterator>::IntoIter;
 
@@ -158,7 +155,7 @@ impl<P> IntoIterator for BytesOf<P> {
     }
 }
 
-impl<'a, P> IntoIterator for &'a BytesOf<P> {
+impl<'a, P> IntoIterator for &'a Bytes<P> {
     type Item = &'a u8;
     type IntoIter = <&'a [u8] as IntoIterator>::IntoIter;
 
@@ -167,7 +164,7 @@ impl<'a, P> IntoIterator for &'a BytesOf<P> {
     }
 }
 
-impl<'a, P> IntoIterator for &'a mut BytesOf<P> {
+impl<'a, P> IntoIterator for &'a mut Bytes<P> {
     type Item = &'a mut u8;
     type IntoIter = <&'a mut [u8] as IntoIterator>::IntoIter;
 
@@ -176,7 +173,7 @@ impl<'a, P> IntoIterator for &'a mut BytesOf<P> {
     }
 }
 
-impl<P> Serialize for BytesOf<P> {
+impl<P> Serialize for Bytes<P> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -188,7 +185,7 @@ impl<P> Serialize for BytesOf<P> {
 struct BytesVisitor<P>(PhantomData<P>);
 
 impl<'de, P> Visitor<'de> for BytesVisitor<P> {
-    type Value = BytesOf<P>;
+    type Value = Bytes<P>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("byte array")
@@ -205,39 +202,39 @@ impl<'de, P> Visitor<'de> for BytesVisitor<P> {
             bytes.push(b);
         }
 
-        Ok(BytesOf::from(bytes))
+        Ok(Bytes::from(bytes))
     }
 
     fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(BytesOf::from(v))
+        Ok(Bytes::from(v))
     }
 
     fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(BytesOf::from(v))
+        Ok(Bytes::from(v))
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(BytesOf::from(v))
+        Ok(Bytes::from(v))
     }
 
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(BytesOf::from(v))
+        Ok(Bytes::from(v))
     }
 }
 
-impl<'de, P> Deserialize<'de> for BytesOf<P> {
+impl<'de, P> Deserialize<'de> for Bytes<P> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,

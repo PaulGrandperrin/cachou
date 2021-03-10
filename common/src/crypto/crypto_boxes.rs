@@ -5,7 +5,7 @@ use generic_array::typenum::Unsigned;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use xchacha8blake3siv::XChaCha8Blake3Siv;
 
-use crate::api::BytesOf;
+use crate::api::Bytes;
 
 #[derive(Serialize, Deserialize, derivative::Derivative)]
 #[derivative(Debug)]
@@ -73,9 +73,8 @@ impl<C, A> AeadBox<C, A> {
     }
 }
 
-
-// if we really want to separate those newtypes into their own sub-domain: pub struct SecretBox<P: ?Sized>(PhantomData<P>);
-pub type SecretBox<T> = BytesOf<T>;
+pub struct _SecretBox<T>(PhantomData<T>);
+pub type SecretBox<T> = Bytes<_SecretBox<T>>;
 
 pub trait Seal: Serialize + Sized {
     fn seal(&self, key: &[u8]) -> eyre::Result<SecretBox<Self>> {
@@ -91,7 +90,8 @@ impl<T: DeserializeOwned> SecretBox<T> {
     }
 }
 
-pub type AuthBox<T> = BytesOf<T>;
+pub struct _AuthBox<T>(PhantomData<T>);
+pub type AuthBox<T> = Bytes<_AuthBox<T>>;
 
 pub trait Auth: Serialize + Sized {
     fn authenticate(&self, key: &[u8]) -> eyre::Result<AuthBox<Self>> {
