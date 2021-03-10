@@ -210,7 +210,7 @@ impl TxConn {
 
 // queries that are defined on any kind of connection (transactionnal or not)
 #[async_trait]
-pub trait Queryable: std::fmt::Debug {
+pub trait Queryable: std::fmt::Debug + Send {
     fn conn(&mut self) -> &mut <MySql as Database>::Connection;
 
     #[tracing::instrument]

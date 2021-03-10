@@ -19,11 +19,22 @@ struct ServerLoginState {
 }
 
 impl State {
-    pub async fn add_user(&self, _args: &AddUser, conn: &mut DbConn<'_>) -> api::Result<<AddUser as RpcTrait>::Ret> {
+    pub async fn add_user(&self, args: &AddUser, conn: &mut DbConn<'_>) -> api::Result<<AddUser as RpcTrait>::Ret> {
         let user_id = BoUserId::gen(); // 128bits, so I don't even have to think about birthday attacks
         
         async {
-            conn.std().await?.new_user(&user_id).await?;
+            // start transaction
+            let tx = conn.tx().await?;
+
+            // save user
+            tx.new_user(&user_id).await?;
+            
+            // save normal and recovery credentials
+            self.set_credentials_impl(tx, &args.credentials, false, &user_id).await?;
+            self.set_credentials_impl(tx, &args.credentials_recovery, true, &user_id).await?;
+            
+            // save private data
+            tx.set_user_private_data(&user_id, &args.sealed_private_data).await?;
 
             let sealed_session_token = self.session_token_new_logged_in_sealed(user_id.clone(), 0, false, true)?;
 
@@ -46,11 +57,11 @@ impl State {
         })
     }
 
-    async fn set_credentials_impl(&self, conn: &mut DbConn<'_>, credentials: &Credentials, recovery: bool, user_id: &BoUserId) -> api::Result<()> {
+    async fn set_credentials_impl(&self, conn: &mut impl Queryable, credentials: &Credentials, recovery: bool, user_id: &BoUserId) -> api::Result<()> {
         let ServerCredentialsState { opaque_state } = Sealed::<ServerCredentialsState, ()>::unseal(&self.secret_key, credentials.sealed_server_state.as_slice())?.0;
         let opaque_password = opaque::registration_finish(&opaque_state, &credentials.opaque_msg)?;
 
-        conn.std().await?.set_credentials(recovery, &credentials.username, &opaque_password, &credentials.sealed_master_key, &credentials.sealed_export_key, &user_id).await?;
+        conn.set_credentials(recovery, &credentials.username, &opaque_password, &credentials.sealed_master_key, &credentials.sealed_export_key, &user_id).await?;
         Ok(())
     }
 
@@ -60,7 +71,7 @@ impl State {
         let user_id = bs58::encode(session_token.user_id.as_slice()).into_string();
 
         async {
-            self.set_credentials_impl(conn, &args.credentials, args.recovery, &session_token.user_id).await?;
+            self.set_credentials_impl(conn.std().await?, &args.credentials, args.recovery, &session_token.user_id).await?;
 
             debug!("ok");
             
@@ -128,10 +139,10 @@ impl State {
         let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::LoggedIn).await?;
 
         async {
-            let sealed_private_data = conn.std().await?.set_user_private_data(&user_id, &args.sealed_private_data).await?;
+            conn.std().await?.set_user_private_data(&user_id, &args.sealed_private_data).await?;
 
             debug!("ok");
-            Ok(sealed_private_data)
+            Ok(())
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 

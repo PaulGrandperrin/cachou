@@ -29,9 +29,16 @@ impl Client {
         // seal private_data with master_key
         let sealed_private_data = BoSealedPrivateData::from(Sealed::seal(&master_key, &private_data, &())?);
 
+        let credentials = self.new_credentials_impl(&master_key, username, password, false).await?;
+        let credentials_recovery = self.new_credentials_impl(&master_key, username_recovery, password_recovery, true).await?;
+
         // request a new user creation
         let AddUserRet {sealed_session_token} = self.rpc_client.call(
-            AddUser
+            AddUser {
+                credentials,
+                credentials_recovery,
+                sealed_private_data,
+            }
         ).await?;
 
         // client is logged
@@ -41,23 +48,10 @@ impl Client {
             sealed_session_token: sealed_session_token.clone(),
         });
 
-        // attach username/password and recovery key to user
-        self.set_credentials_impl(username, password, false).await?;
-        self.set_credentials_impl(username_recovery, password_recovery, true).await?;
-
-        // upload private data
-        self.rpc_client.call(
-            SetUserPrivateData {
-                sealed_session_token: sealed_session_token.clone(),
-                sealed_private_data,
-            }
-        ).await?;
-
         Ok(())
     }
 
     async fn new_credentials_impl(&self, master_key: &[u8], username: &BoUsername, password: &[u8], recovery: bool) -> eyre::Result<Credentials> {
-        
 
         // start client-side OPAQUE registration
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;

@@ -41,7 +41,11 @@ pub struct Credentials {
 // --- Rpc Structs
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct AddUser;
+pub struct AddUser {
+    pub credentials: Credentials,
+    pub credentials_recovery: Credentials,
+    pub sealed_private_data: BoSealedPrivateData,
+}
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddUserRet {
     pub sealed_session_token: BoSealedSessionToken,
@@ -70,7 +74,7 @@ impl RpcTrait for NewCredentials {
 }
 
 
-// SetCredentialsToUser
+// SetCredentials
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetCredentials {
     pub recovery: bool,
@@ -133,6 +137,7 @@ impl RpcTrait for GetUserPrivateData {
     type Ret = GetUserPrivateDataRet;
     fn into_call(self) -> Rpc { Rpc::GetUserPrivateData(self) }
 }
+
 // SetUserPrivateData
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetUserPrivateData {
