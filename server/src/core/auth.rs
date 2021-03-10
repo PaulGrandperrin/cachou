@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoSealedMasterKey, BoUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::DbConn, opaque, state::State};
@@ -14,8 +14,7 @@ struct ServerCredentialsState {
 struct ServerLoginState {
     opaque_state: BoOpaqueState,
     user_id: BoUserId,
-    #[serde(with = "serde_bytes")]
-    sealed_master_key: Vec<u8>,
+    sealed_master_key: BoSealedMasterKey,
     version: u64,
 }
 

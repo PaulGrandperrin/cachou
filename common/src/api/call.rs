@@ -1,7 +1,7 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoSealedServerState, BoSealedSessionToken, BoUsername};
+use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoSealedMasterKey, BoSealedServerState, BoSealedSessionToken, BoUsername};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -61,8 +61,7 @@ pub struct SetCredentials {
     pub recovery: bool,
     pub opaque_msg: BoOpaqueClientFinishMsg,
     pub username: BoUsername,
-    #[serde(with = "serde_bytes")]
-    pub sealed_master_key: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
+    pub sealed_master_key: BoSealedMasterKey, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     #[serde(with = "serde_bytes")]
     pub sealed_export_key: Vec<u8>, // sealed with masterkey. useful when we want to rotate the masterkey
     pub sealed_session_token: BoSealedSessionToken, // must have uber rights
@@ -101,8 +100,7 @@ pub struct LoginFinish {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinishRet {
     pub sealed_session_token: BoSealedSessionToken,
-    #[serde(with = "serde_bytes")]
-    pub sealed_master_key: Vec<u8>,
+    pub sealed_master_key: BoSealedMasterKey,
 }
 impl Rpc for LoginFinish {
     const DISPLAY_NAME: &'static str = "LoginFinish";

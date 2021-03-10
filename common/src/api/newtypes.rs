@@ -36,6 +36,8 @@ impl BoUserId {
 pub enum Username {}
 pub type BoUsername = BytesOf<Username>;
 
+pub enum SealedMasterKey {}
+pub type BoSealedMasterKey = BytesOf<SealedMasterKey>;
 
 
 //#[derive(Default, Eq, Ord)]

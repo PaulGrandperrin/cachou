@@ -74,7 +74,7 @@ impl Client {
         let export_key = export_key[0..32].to_vec(); // trim to the first 32bytes (256bits)
         
         // seal master_key with export_key
-        let sealed_master_key = Sealed::seal(&export_key, &logged_user.master_key, &())?;
+        let sealed_master_key = Sealed::seal(&export_key, &logged_user.master_key, &())?.into();
 
         // seal export_key with master_key
         let sealed_export_key = Sealed::seal(&logged_user.master_key, &export_key, &())?;
@@ -114,7 +114,7 @@ impl Client {
         ).await?;
 
         // unseal master key
-        let master_key = Sealed::<Vec<u8>, ()>::unseal(&export_key, &sealed_master_key)?.0;
+        let master_key = Sealed::<Vec<u8>, ()>::unseal(&export_key, sealed_master_key.as_slice())?.0;
 
         // download user private data
         let GetUserPrivateDataRet { sealed_private_data } = self.rpc_client.call(
