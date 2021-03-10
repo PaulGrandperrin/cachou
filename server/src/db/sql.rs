@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use common::api;
+use common::api::{self, BytesOfUserId};
 use sqlx::{Database, Executor, MySql, Pool, Row, Transaction, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}, pool::PoolConnection};
 use async_trait::async_trait;
 use tracing::error;
@@ -67,7 +67,7 @@ impl<'pool> DbConn<'pool> {
         ) */
     }
 
-    pub async fn normal(&mut self) -> api::Result<&mut NormalConn> {
+    pub async fn std(&mut self) -> api::Result<&mut NormalConn> {
         if self.normal.is_none() {
             self.normal = Some(NormalConn(self.pool.acquire().await.map_err(|e| api::Error::ServerSideError(e.into()))?));
         }
@@ -228,9 +228,9 @@ pub trait Queryable: std::fmt::Debug {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn new_user(&mut self, user_id: &[u8]) -> api::Result<()> {
+    async fn new_user(&mut self, user_id: &BytesOfUserId) -> api::Result<()> {
         sqlx::query("insert into `users` (`user_id`) values (?)")
-            .bind(user_id)
+            .bind(user_id.as_slice())
             .execute(self.conn()).await.map_err(|e| {
                 match e {
                     sqlx::Error::Database(e)
@@ -245,14 +245,14 @@ pub trait Queryable: std::fmt::Debug {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn set_credentials(&mut self, recovery: bool, username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_export_key: &[u8], user_id: &[u8], ) -> api::Result<()> {
+    async fn set_credentials(&mut self, recovery: bool, username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_export_key: &[u8], user_id: &BytesOfUserId) -> api::Result<()> {
         sqlx::query("replace into `credentials` set `recovery` = ?, `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ?, `user_id` = ?")
             .bind(if recovery {1} else {0})
             .bind(username)
             .bind(opaque_password)
             .bind(sealed_master_key)
             .bind(sealed_export_key)
-            .bind(user_id)
+            .bind(user_id.as_slice())
             .execute(self.conn()).await.map_err(|e| {
                 match e {
                     sqlx::Error::Database(e)
@@ -266,7 +266,7 @@ pub trait Queryable: std::fmt::Debug {
     }
 
     #[tracing::instrument]
-    async fn get_credentials_from_username(&mut self, recovery: bool, username: &[u8]) -> api::Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+    async fn get_credentials_from_username(&mut self, recovery: bool, username: &[u8]) -> api::Result<(BytesOfUserId, Vec<u8>, Vec<u8>)> {
         let row = sqlx::query("select `user_id`, `opaque_password`, `sealed_master_key` from `credentials` where `recovery` = ? and `username` = ?")
             .bind(if recovery {1} else {0})    
             .bind(username)
@@ -278,16 +278,16 @@ pub trait Queryable: std::fmt::Debug {
             })?;
 
         Ok((
-            row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?,
+            BytesOfUserId::from_vec(row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?),
             row.try_get(1).map_err(|e| api::Error::ServerSideError(e.into()))?,
             row.try_get(2).map_err(|e| api::Error::ServerSideError(e.into()))?,
         ))
     }
 
     #[tracing::instrument]
-    async fn get_user_private_data(&mut self, user_id: &[u8]) -> api::Result<Vec<u8>> {
+    async fn get_user_private_data(&mut self, user_id: &BytesOfUserId) -> api::Result<Vec<u8>> {
         let row: MySqlRow = sqlx::query("select `sealed_private_data` from `users` where `user_id` = ?")
-        .bind(user_id)
+        .bind(user_id.as_slice())
         .fetch_one(self.conn()).await.map_err(|e| {
             match e {
                 _ => api::Error::ServerSideError(e.into()),
@@ -300,10 +300,10 @@ pub trait Queryable: std::fmt::Debug {
     }
 
     #[tracing::instrument]
-    async fn set_user_private_data(&mut self, user_id: &[u8], sealed_private_data: &[u8]) -> api::Result<()> {
+    async fn set_user_private_data(&mut self, user_id: &BytesOfUserId, sealed_private_data: &[u8]) -> api::Result<()> {
         sqlx::query("update `users` set `sealed_private_data` = ? where `user_id` = ?")
             .bind(sealed_private_data)
-            .bind(user_id)
+            .bind(user_id.as_slice())
             .execute(self.conn()).await.map_err(|e| {
                 match e {
                     _ => api::Error::ServerSideError(e.into()),

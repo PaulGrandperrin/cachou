@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use std::{cmp::{self}, fmt, hash::{Hash, Hasher}, marker::PhantomData};
+use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::{SeqAccess, Visitor}};
 
 pub enum Anything {}
@@ -22,6 +23,15 @@ pub type BytesOfOpaqueClientFinishMsg = BytesOf<OpaqueClientFinishMsg>;
 
 pub enum OpaqueState {}
 pub type BytesOfOpaqueState = BytesOf<OpaqueState>;
+
+pub enum UserId {}
+pub type BytesOfUserId = BytesOf<UserId>;
+
+impl BytesOfUserId {
+    pub fn gen() -> Self {
+        rand::thread_rng().gen::<[u8; 16]>().into()
+    }
+}
 
 //#[derive(Default, Eq, Ord)]
 pub struct BytesOf<P>(Vec<u8>, PhantomData<P>);
@@ -66,6 +76,10 @@ impl<P> BytesOf<P> {
 
     pub fn into_vec(self) -> Vec<u8> {
         self.0
+    }
+
+    pub fn from_vec(v: Vec<u8>) -> Self {
+        v.into()
     }
 }
 

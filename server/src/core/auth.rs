@@ -1,5 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, BytesOfOpaqueState, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
-use rand::Rng;
+use common::{api::{self, AddUser, AddUserRet, BytesOfOpaqueState, BytesOfUserId, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::DbConn, opaque, state::State};
@@ -14,8 +13,7 @@ struct ServerCredentialsState {
 #[derive(Serialize, Deserialize, Debug)]
 struct ServerLoginState {
     opaque_state: BytesOfOpaqueState,
-    #[serde(with = "serde_bytes")]
-    user_id: Vec<u8>,
+    user_id: BytesOfUserId,
     #[serde(with = "serde_bytes")]
     sealed_master_key: Vec<u8>,
     version: u64,
@@ -23,19 +21,19 @@ struct ServerLoginState {
 
 impl State {
     pub async fn add_user(&self, _args: &AddUser, conn: &mut DbConn<'_>) -> api::Result<<AddUser as Rpc>::Ret> {
-        let user_id= rand::thread_rng().gen::<[u8; 16]>().to_vec(); // 128bits, so I don't even have to think about birthday attacks
+        let user_id = BytesOfUserId::gen(); // 128bits, so I don't even have to think about birthday attacks
         
         async {
-            conn.normal().await?.new_user(&user_id).await?;
+            conn.std().await?.new_user(&user_id).await?;
 
-            let sealed_session_token = self.session_token_new_logged_in_sealed(user_id.to_vec(), 0, false, true)?;
+            let sealed_session_token = self.session_token_new_logged_in_sealed(user_id.clone(), 0, false, true)?;
 
             info!("ok");
             
             Ok( AddUserRet {
                 sealed_session_token
             })
-        }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+        }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
     pub async fn new_credentials(&self, args: &NewCredentials, _conn: &mut DbConn<'_>) -> api::Result<<NewCredentials as Rpc>::Ret> {
@@ -52,13 +50,13 @@ impl State {
     pub async fn set_credentials(&self, args: &SetCredentials, conn: &mut DbConn<'_>) -> api::Result<<SetCredentials as Rpc>::Ret> {
         // get user's user_id and check that token has uber rights
         let session_token = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::Uber).await?;
-        let user_id = bs58::encode(&session_token.user_id).into_string();
+        let user_id = bs58::encode(session_token.user_id.as_slice()).into_string();
 
         async {
             let ServerCredentialsState { opaque_state } = Sealed::<ServerCredentialsState, ()>::unseal(&self.secret_key, args.sealed_server_state.as_slice())?.0;
             let opaque_password = opaque::registration_finish(&opaque_state, &args.opaque_msg)?;
 
-            conn.normal().await?.set_credentials(args.recovery, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_export_key, &session_token.user_id).await?;
+            conn.std().await?.set_credentials(args.recovery, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_export_key, &session_token.user_id).await?;
             
             debug!("ok");
             
@@ -67,7 +65,7 @@ impl State {
     }
 
     pub async fn login_start(&self, args: &LoginStart, conn: &mut DbConn<'_>) -> api::Result<<LoginStart as Rpc>::Ret> {
-        let (user_id, opaque_password, sealed_master_key) = conn.normal().await?.get_credentials_from_username(args.recovery, &args.username).await?;
+        let (user_id, opaque_password, sealed_master_key) = conn.std().await?.get_credentials_from_username(args.recovery, &args.username).await?;
 
         async {
             // TODO if recovery, alert user (by mail) and block request for a few days
@@ -79,7 +77,7 @@ impl State {
                 sealed_server_state: sealed_server_state.into(),
                 opaque_msg
             })
-        }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+        }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
 
@@ -106,31 +104,31 @@ impl State {
                 sealed_session_token,
                 sealed_master_key,
             })
-        }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+        }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
     pub async fn get_user_private_data(&self, args: &GetUserPrivateData, conn: &mut DbConn<'_>) -> api::Result<<GetUserPrivateData as Rpc>::Ret> {
         let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::LoggedIn).await?;
 
         async {
-            let sealed_private_data = conn.normal().await?.get_user_private_data(&user_id).await?;
+            let sealed_private_data = conn.std().await?.get_user_private_data(&user_id).await?;
 
             debug!("ok");
             Ok( GetUserPrivateDataRet {
                 sealed_private_data
             })
-        }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+        }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
     pub async fn set_user_private_data(&self, args: &SetUserPrivateData, conn: &mut DbConn<'_>) -> api::Result<<SetUserPrivateData as Rpc>::Ret> {
         let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::LoggedIn).await?;
 
         async {
-            let sealed_private_data = conn.normal().await?.set_user_private_data(&user_id, &args.sealed_private_data).await?;
+            let sealed_private_data = conn.std().await?.set_user_private_data(&user_id, &args.sealed_private_data).await?;
 
             debug!("ok");
             Ok(sealed_private_data)
-        }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
+        }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
 

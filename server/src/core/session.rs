@@ -1,13 +1,13 @@
-use common::{api::{self, BytesOfSealedSessionToken, session_token::{Clearance, SessionToken}}};
+use common::{api::{self, BytesOfSealedSessionToken, BytesOfUserId, session_token::{Clearance, SessionToken}}};
 
 use crate::state::State;
 
 impl State {
-    pub fn session_token_new_need_second_factor_sealed(&self, user_id: Vec<u8>, version: u64) -> eyre::Result<BytesOfSealedSessionToken> {
+    pub fn session_token_new_need_second_factor_sealed(&self, user_id: BytesOfUserId, version: u64) -> eyre::Result<BytesOfSealedSessionToken> {
         SessionToken::new_need_second_factor(user_id, version).seal(&self.secret_key[..])
     }
 
-    pub fn session_token_new_logged_in_sealed(&self, user_id: Vec<u8>, version: u64, auto_logout: bool, uber: bool) -> eyre::Result<BytesOfSealedSessionToken> {
+    pub fn session_token_new_logged_in_sealed(&self, user_id: BytesOfUserId, version: u64, auto_logout: bool, uber: bool) -> eyre::Result<BytesOfSealedSessionToken> {
         SessionToken::new_logged_in(user_id, version, auto_logout, uber).seal(&self.secret_key[..])
     }
 
