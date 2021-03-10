@@ -75,6 +75,9 @@ impl<C, A> AeadBox<C, A> {
 
 pub struct _SecretBox<T>(PhantomData<T>);
 pub type SecretBox<T> = Bytes<_SecretBox<T>>;
+// Could also be:
+// pub enum _SecretBox {}
+// pub type SecretBox<T> = Bytes<(_SecretBox, T)>;
 
 pub trait Seal: Serialize + Sized {
     fn seal(&self, key: &[u8]) -> eyre::Result<SecretBox<Self>> {
@@ -92,6 +95,9 @@ impl<T: DeserializeOwned> SecretBox<T> {
 
 pub struct _AuthBox<T>(PhantomData<T>);
 pub type AuthBox<T> = Bytes<_AuthBox<T>>;
+// Could also be:
+// pub enum _AuthBox {}
+// pub type AuthBox<T> = Bytes<(_AuthBox, T)>;
 
 pub trait Auth: Serialize + Sized {
     fn authenticate(&self, key: &[u8]) -> eyre::Result<AuthBox<Self>> {
