@@ -1,6 +1,6 @@
 mod error;
 mod call;
-mod newtypes;
+pub mod newtypes;
 pub mod session_token;
 
 pub use error::*;

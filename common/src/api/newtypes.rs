@@ -1,71 +1,80 @@
 #![allow(dead_code)]
-use std::{cmp::{self, Ordering}, fmt, hash::{Hash, Hasher}, ops::{Deref, DerefMut}};
+use std::{cmp::{self, Ordering}, fmt, hash::{Hash, Hasher}, marker::PhantomData, ops::{Deref, DerefMut}};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::{SeqAccess, Visitor}};
 
+pub enum PlainBytes {}
+pub type Bytes = BytesConstructor<PlainBytes>;
 
-#[derive(Clone, Default, Eq, Ord)]
-struct Bytes(Vec<u8>);
+pub enum SealedSessionTokenBytes {}
+pub type SealedSessionToken = BytesConstructor<SealedSessionTokenBytes>;
+
+#[derive(Default, Eq, Ord)]
+pub struct BytesConstructor<P>(Vec<u8>, PhantomData<P>);
+
+impl<T: Into<Vec<u8>>, P> From<T> for BytesConstructor<P> {
+    fn from(b: T) -> Self {
+        BytesConstructor(b.into(), PhantomData)
+    }
+}
+
+impl<P> Clone for BytesConstructor<P> {
+    fn clone(&self) -> Self {
+        Self (self.0.clone(), PhantomData)
+    }
+}
 
 // inspired from https://github.com/serde-rs/bytes/blob/cbae606b9dc225fc094b031cc84eac9493da2058/src/bytebuf.rs#L48-L253
-impl Bytes {
-    /// Construct a new, empty `Bytes`.
+
+impl<P> BytesConstructor<P> {
     pub fn new() -> Self {
-        Bytes::from(Vec::new())
+        BytesConstructor::from(Vec::new())
     }
 
-    /// Construct a new, empty `Bytes` with the specified capacity.
     pub fn with_capacity(cap: usize) -> Self {
-        Bytes::from(Vec::with_capacity(cap))
+        BytesConstructor::from(Vec::with_capacity(cap))
     }
 
-    /// Wrap existing bytes in a `Bytes`.
     pub fn from<T: Into<Vec<u8>>>(bytes: T) -> Self {
-        Bytes(bytes.into())
+        BytesConstructor(bytes.into(), PhantomData)
     }
 
-    /// Unwrap the vector of byte underlying this `Bytes`.
     pub fn into_vec(self) -> Vec<u8> {
         self.0
     }
 
-/*     #[allow(missing_docs)]
-    pub fn into_boxed_bytes(self) -> Box<Bytes> {
+/*     pub fn into_boxed_bytes(self) -> Box<BytesConstructor<P>> {
         self.0.into_boxed_slice().into()
     } */
 
-    // This would hit "cannot move out of borrowed content" if invoked through
-    // the Deref impl; make it just work.
-    #[doc(hidden)]
     pub fn into_boxed_slice(self) -> Box<[u8]> {
         self.0.into_boxed_slice()
     }
 
-    #[doc(hidden)]
     #[allow(clippy::should_implement_trait)]
     pub fn into_iter(self) -> <Vec<u8> as IntoIterator>::IntoIter {
         self.0.into_iter()
     }
 }
 
-impl fmt::Debug for Bytes {
+impl<P> fmt::Debug for BytesConstructor<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.0, f)
     }
 }
 
-impl AsRef<[u8]> for Bytes {
+impl<P> AsRef<[u8]> for BytesConstructor<P> {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl AsMut<[u8]> for Bytes {
+impl<P> AsMut<[u8]> for BytesConstructor<P> {
     fn as_mut(&mut self) -> &mut [u8] {
         &mut self.0
     }
 }
 
-impl Deref for Bytes {
+impl<P> Deref for BytesConstructor<P> {
     type Target = Vec<u8>;
 
     fn deref(&self) -> &Self::Target {
@@ -73,25 +82,25 @@ impl Deref for Bytes {
     }
 }
 
-impl DerefMut for Bytes {
+impl<P> DerefMut for BytesConstructor<P> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-/* impl Borrow<Bytes> for Bytes {
-    fn borrow(&self) -> &Bytes {
-        Bytes::new(&self.0)
+/* impl<P> Borrow<BytesConstructor<P>> for BytesConstructor<P> {
+    fn borrow(&self) -> &BytesConstructor<P> {
+        BytesConstructor::new(&self.0)
     }
 }
 
-impl BorrowMut<Bytes> for Bytes {
-    fn borrow_mut(&mut self) -> &mut Bytes {
-        unsafe { &mut *(&mut self.0 as &mut [u8] as *mut [u8] as *mut Bytes) }
+impl<P> BorrowMut<BytesConstructor<P>> for BytesConstructor<P> {
+    fn borrow_mut(&mut self) -> &mut BytesConstructor<P> {
+        unsafe { &mut *(&mut self.0 as &mut [u8] as *mut [u8] as *mut BytesConstructor<P>) }
     }
 } */
 
-impl<Rhs> PartialEq<Rhs> for Bytes
+impl<Rhs, P> PartialEq<Rhs> for BytesConstructor<P>
 where
     Rhs: ?Sized + AsRef<[u8]>,
 {
@@ -100,7 +109,7 @@ where
     }
 }
 
-impl<Rhs> PartialOrd<Rhs> for Bytes
+impl<Rhs, P> PartialOrd<Rhs> for BytesConstructor<P>
 where
     Rhs: ?Sized + AsRef<[u8]>,
 {
@@ -109,13 +118,13 @@ where
     }
 }
 
-impl Hash for Bytes {
+impl<P> Hash for BytesConstructor<P> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
     }
 }
 
-impl IntoIterator for Bytes {
+impl<P> IntoIterator for BytesConstructor<P> {
     type Item = u8;
     type IntoIter = <Vec<u8> as IntoIterator>::IntoIter;
 
@@ -124,7 +133,7 @@ impl IntoIterator for Bytes {
     }
 }
 
-impl<'a> IntoIterator for &'a Bytes {
+impl<'a, P> IntoIterator for &'a BytesConstructor<P> {
     type Item = &'a u8;
     type IntoIter = <&'a [u8] as IntoIterator>::IntoIter;
 
@@ -133,7 +142,7 @@ impl<'a> IntoIterator for &'a Bytes {
     }
 }
 
-impl<'a> IntoIterator for &'a mut Bytes {
+impl<'a, P> IntoIterator for &'a mut BytesConstructor<P> {
     type Item = &'a mut u8;
     type IntoIter = <&'a mut [u8] as IntoIterator>::IntoIter;
 
@@ -142,7 +151,7 @@ impl<'a> IntoIterator for &'a mut Bytes {
     }
 }
 
-impl Serialize for Bytes {
+impl<P> Serialize for BytesConstructor<P> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -151,16 +160,16 @@ impl Serialize for Bytes {
     }
 }
 
-struct BytesVisitor;
+struct BytesVisitor<P>(PhantomData<P>);
 
-impl<'de> Visitor<'de> for BytesVisitor {
-    type Value = Bytes;
+impl<'de, P> Visitor<'de> for BytesVisitor<P> {
+    type Value = BytesConstructor<P>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("byte array")
     }
 
-    fn visit_seq<V>(self, mut visitor: V) -> Result<Bytes, V::Error>
+    fn visit_seq<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
     where
         V: SeqAccess<'de>,
     {
@@ -171,43 +180,43 @@ impl<'de> Visitor<'de> for BytesVisitor {
             bytes.push(b);
         }
 
-        Ok(Bytes::from(bytes))
+        Ok(BytesConstructor::from(bytes))
     }
 
-    fn visit_bytes<E>(self, v: &[u8]) -> Result<Bytes, E>
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(Bytes::from(v))
+        Ok(BytesConstructor::from(v))
     }
 
-    fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Bytes, E>
+    fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(Bytes::from(v))
+        Ok(BytesConstructor::from(v))
     }
 
-    fn visit_str<E>(self, v: &str) -> Result<Bytes, E>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(Bytes::from(v))
+        Ok(BytesConstructor::from(v))
     }
 
-    fn visit_string<E>(self, v: String) -> Result<Bytes, E>
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(Bytes::from(v))
+        Ok(BytesConstructor::from(v))
     }
 }
 
-impl<'de> Deserialize<'de> for Bytes {
-    fn deserialize<D>(deserializer: D) -> Result<Bytes, D::Error>
+impl<'de, P> Deserialize<'de> for BytesConstructor<P> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_byte_buf(BytesVisitor)
+        deserializer.deserialize_byte_buf(BytesVisitor(PhantomData))
     }
 }

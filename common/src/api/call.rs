@@ -1,6 +1,8 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
+use super::SealedSessionToken;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
     AddUser(AddUser),
@@ -26,8 +28,7 @@ pub trait Rpc: Serialize {
 pub struct AddUser;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddUserRet {
-    #[serde(with = "serde_bytes")]
-    pub sealed_session_token: Vec<u8>,
+    pub sealed_session_token: SealedSessionToken,
 }
 impl Rpc for AddUser {
     const DISPLAY_NAME: &'static str = "AddUser";
@@ -70,8 +71,7 @@ pub struct SetCredentials {
     pub sealed_master_key: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     #[serde(with = "serde_bytes")]
     pub sealed_export_key: Vec<u8>, // sealed with masterkey. useful when we want to rotate the masterkey
-    #[serde(with = "serde_bytes")]
-    pub sealed_session_token: Vec<u8>, // must have uber rights
+    pub sealed_session_token: SealedSessionToken, // must have uber rights
 }
 impl Rpc for SetCredentials {
     const DISPLAY_NAME: &'static str = "SetCredentials";
@@ -112,8 +112,7 @@ pub struct LoginFinish {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinishRet {
-    #[serde(with = "serde_bytes")]
-    pub sealed_session_token: Vec<u8>,
+    pub sealed_session_token: SealedSessionToken,
     #[serde(with = "serde_bytes")]
     pub sealed_master_key: Vec<u8>,
 }
@@ -126,8 +125,7 @@ impl Rpc for LoginFinish {
 // GetUserPrivateData
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserPrivateData {
-    #[serde(with = "serde_bytes")]
-    pub sealed_session_token: Vec<u8>,
+    pub sealed_session_token: SealedSessionToken,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserPrivateDataRet {
@@ -142,8 +140,7 @@ impl Rpc for GetUserPrivateData {
 // SetUserPrivateData
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetUserPrivateData {
-    #[serde(with = "serde_bytes")]
-    pub sealed_session_token: Vec<u8>,
+    pub sealed_session_token: SealedSessionToken,
     #[serde(with = "serde_bytes")]
     pub sealed_private_data: Vec<u8>,
 }

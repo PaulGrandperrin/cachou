@@ -5,6 +5,8 @@ use crate::api;
 
 use eyre::eyre;
 
+use super::{SealedSessionToken};
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum SessionState {
     Invalid,
@@ -65,15 +67,15 @@ impl SessionToken {
         }
     }
 
-    pub fn seal(&self, key: &[u8]) -> eyre::Result<Vec<u8>> {
-        Sealed::seal(key, &(), &self)
+    pub fn seal(&self, key: &[u8]) -> eyre::Result<SealedSessionToken> {
+        Sealed::seal(key, &(), &self).map(Into::into)
     }
 
-    pub fn unseal(key: &[u8], sealed_session_token: &[u8]) -> api::Result<Self> {
+    pub fn unseal(key: &[u8], sealed_session_token: &SealedSessionToken) -> api::Result<Self> {
         Ok(Sealed::<(), SessionToken>::unseal(key, sealed_session_token)?.1)
     }
 
-    pub fn unseal_unauthenticated(sealed_session_token: &[u8]) -> api::Result<Self> {
+    pub fn unseal_unauthenticated(sealed_session_token: &SealedSessionToken) -> api::Result<Self> {
         Ok(Sealed::<(), SessionToken>::get_ad(sealed_session_token)?)
     }
 
