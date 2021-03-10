@@ -5,9 +5,11 @@ use generic_array::typenum::Unsigned;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use xchacha8blake3siv::XChaCha8Blake3Siv;
 
+use crate::api::BytesOf;
+
 #[derive(Serialize, Deserialize, derivative::Derivative)]
 #[derivative(Debug)]
-pub struct Sealed<C, A> {
+pub struct AeadBox<C, A> {
     #[serde(with = "serde_bytes")]
     ciphertext: Vec<u8>,
     #[serde(with = "serde_bytes")]
@@ -22,13 +24,13 @@ pub struct Sealed<C, A> {
 
 type Aead = XChaCha8Blake3Siv;
 
-impl<C, A> Sealed<C, A> {
+impl<C, A> AeadBox<C, A> {
     pub fn seal(key: &[u8], plaindata: &C, associated_data: &A) -> eyre::Result<Vec<u8>>
     where C: Serialize, A: Serialize,
         Aead: NewAead + AeadInPlace {
-        let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
+        let cipher = XChaCha8Blake3Siv::new(Key::<Aead>::from_slice(&key[0..32]));
         //let nonce = Nonce::from(rand::random::<[u8; <<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE]>()); // FIXME when const_generic are stable
-        let nonce = iter::repeat_with(rand::random).take(<<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
+        let nonce = iter::repeat_with(rand::random).take(<<XChaCha8Blake3Siv as AeadInPlace>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
         let nonce = Nonce::from_slice(&nonce);
 
         let mut plaintext = rmp_serde::encode::to_vec_named(plaindata)?;
@@ -50,7 +52,7 @@ impl<C, A> Sealed<C, A> {
     where C: DeserializeOwned, A: DeserializeOwned,
           Aead: NewAead + AeadInPlace {
         let mut me = rmp_serde::decode::from_slice::<Self>(this)?;
-        let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
+        let cipher = XChaCha8Blake3Siv::new(Key::<Aead>::from_slice(&key[0..32]));
         let tag = Tag::from_slice(&me.tag);
         let nonce = Nonce::from_slice(&me.nonce);
 
@@ -72,3 +74,39 @@ impl<C, A> Sealed<C, A> {
 }
 
 
+// if we really want to separate those newtypes into their own sub-domain: pub struct SecretBox<P: ?Sized>(PhantomData<P>);
+pub type SecretBox<T> = BytesOf<T>;
+
+pub trait Seal: Serialize + Sized {
+    fn seal(&self, key: &[u8]) -> eyre::Result<SecretBox<Self>> {
+        Ok(AeadBox::seal(key, self, &())?.into())
+    }
+}
+
+impl<T: Serialize> Seal for T {}
+
+impl<T: DeserializeOwned> SecretBox<T> {
+    pub fn unseal(&self, key: &[u8]) -> eyre::Result<T> {
+        Ok(AeadBox::<T, ()>::unseal(key, self.as_slice())?.0)
+    }
+}
+
+pub type AuthBox<T> = BytesOf<T>;
+
+pub trait Auth: Serialize + Sized {
+    fn authenticate(&self, key: &[u8]) -> eyre::Result<AuthBox<Self>> {
+        Ok(AeadBox::seal(key, &(), self)?.into())
+    }
+}
+
+impl<T: Serialize> Auth for T {}
+
+impl<T: DeserializeOwned> AuthBox<T> {
+    pub fn get_verified(&self, key: &[u8]) -> eyre::Result<T> {
+        Ok(AeadBox::<(), T>::unseal(key, self.as_slice())?.1)
+    }
+
+    pub fn get_unverified(&self) -> eyre::Result<T> {
+        Ok(AeadBox::<(), T>::get_ad(self.as_slice())?)
+    }
+}

@@ -1,7 +1,9 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoSealedServerState, BoSealedSessionToken, BoUsername};
+use crate::crypto::sealed::{AuthBox, SecretBox};
+
+use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStartMsg, BoUsername, ExportKey, MasterKey, SealedServerState, private_data::PrivateData, session_token::SessionToken};
 
 // --- Enum
 
@@ -31,11 +33,11 @@ pub trait RpcTrait: Serialize {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Credentials {
-    pub sealed_server_state: BoSealedServerState,
+    pub sealed_server_state: SealedServerState,
     pub opaque_msg: BoOpaqueClientFinishMsg,
     pub username: BoUsername,
-    pub sealed_master_key: BoSealedMasterKey, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
-    pub sealed_export_key: BoSealedExportKey, // sealed with masterkey. useful when we want to rotate the masterkey
+    pub sealed_master_key: SecretBox<MasterKey>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
+    pub sealed_export_key: SecretBox<ExportKey>, // sealed with masterkey. useful when we want to rotate the masterkey
 }
 
 // --- Rpc Structs
@@ -44,11 +46,11 @@ pub struct Credentials {
 pub struct AddUser {
     pub credentials: Credentials,
     pub credentials_recovery: Credentials,
-    pub sealed_private_data: BoSealedPrivateData,
+    pub sealed_private_data: SecretBox<PrivateData>,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddUserRet {
-    pub sealed_session_token: BoSealedSessionToken,
+    pub authed_session_token: AuthBox<SessionToken>,
 }
 impl RpcTrait for AddUser {
     const DISPLAY_NAME: &'static str = "AddUser";
@@ -64,7 +66,7 @@ pub struct NewCredentials {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentialsRet {
-    pub sealed_server_state: BoSealedServerState,
+    pub sealed_server_state: SealedServerState,
     pub opaque_msg: BoOpaqueServerStartMsg,
 }
 impl RpcTrait for NewCredentials {
@@ -79,7 +81,7 @@ impl RpcTrait for NewCredentials {
 pub struct UpdateCredentials {
     pub recovery: bool,
     pub credentials: Credentials,
-    pub sealed_session_token: BoSealedSessionToken, // must have uber rights
+    pub authed_session_token: AuthBox<SessionToken>, // must have uber rights
 }
 impl RpcTrait for UpdateCredentials {
     const DISPLAY_NAME: &'static str = "UpdateCredentials";
@@ -96,7 +98,7 @@ pub struct LoginStart {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginStartRet {
-    pub sealed_server_state: BoSealedServerState,
+    pub sealed_server_state: SealedServerState,
     pub opaque_msg: BoOpaqueServerStartMsg,
 }
 impl RpcTrait for LoginStart {
@@ -108,14 +110,14 @@ impl RpcTrait for LoginStart {
 // LoginFinish
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinish {
-    pub sealed_server_state: BoSealedServerState,
+    pub sealed_server_state: SealedServerState,
     pub opaque_msg: BoOpaqueClientFinishMsg,
     pub uber_clearance: bool,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinishRet {
-    pub sealed_session_token: BoSealedSessionToken,
-    pub sealed_master_key: BoSealedMasterKey,
+    pub authed_session_token: AuthBox<SessionToken>,
+    pub sealed_master_key: SecretBox<MasterKey>,
 }
 impl RpcTrait for LoginFinish {
     const DISPLAY_NAME: &'static str = "LoginFinish";
@@ -126,11 +128,11 @@ impl RpcTrait for LoginFinish {
 // GetUserPrivateData
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserPrivateData {
-    pub sealed_session_token: BoSealedSessionToken,
+    pub authed_session_token: AuthBox<SessionToken>,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserPrivateDataRet {
-    pub sealed_private_data: BoSealedPrivateData,
+    pub sealed_private_data: SecretBox<PrivateData>,
 }
 impl RpcTrait for GetUserPrivateData {
     const DISPLAY_NAME: &'static str = "GetUserPrivateData";
@@ -141,8 +143,8 @@ impl RpcTrait for GetUserPrivateData {
 // SetUserPrivateData
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetUserPrivateData {
-    pub sealed_session_token: BoSealedSessionToken,
-    pub sealed_private_data: BoSealedPrivateData,
+    pub authed_session_token: AuthBox<SessionToken>,
+    pub sealed_private_data: SecretBox<PrivateData>,
 }
 impl RpcTrait for SetUserPrivateData {
     const DISPLAY_NAME: &'static str = "SetUserPrivateData";

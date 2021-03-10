@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use common::api::{self, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoUserId, BoUsername};
+use common::{api::{self, BoUserId, BoUsername, ExportKey, MasterKey, private_data::PrivateData}, crypto::sealed::SecretBox};
 use sqlx::{Database, Executor, MySql, Pool, Row, Transaction, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}, pool::PoolConnection};
 use async_trait::async_trait;
 use tracing::error;
@@ -245,7 +245,7 @@ pub trait Queryable: std::fmt::Debug + Send {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn new_credentials(&mut self, recovery: bool, user_id: &BoUserId, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &BoSealedMasterKey, sealed_export_key: &BoSealedExportKey) -> api::Result<()> {
+    async fn new_credentials(&mut self, recovery: bool, user_id: &BoUserId, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &SecretBox<MasterKey>, sealed_export_key: &SecretBox<ExportKey>) -> api::Result<()> {
         sqlx::query("insert into `credentials` set `recovery` = ?, `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ?, `user_id` = ?")
             .bind(if recovery {1} else {0})
             .bind(username.as_slice())
@@ -267,7 +267,7 @@ pub trait Queryable: std::fmt::Debug + Send {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn update_credentials(&mut self, recovery: bool,  user_id: &BoUserId, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &BoSealedMasterKey, sealed_export_key: &BoSealedExportKey) -> api::Result<()> {
+    async fn update_credentials(&mut self, recovery: bool,  user_id: &BoUserId, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &SecretBox<MasterKey>, sealed_export_key: &SecretBox<ExportKey>) -> api::Result<()> {
         sqlx::query("update `credentials` set `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ? where `recovery` = ?, `user_id` = ?")
         .bind(username.as_slice())
         .bind(opaque_password)
@@ -286,7 +286,7 @@ pub trait Queryable: std::fmt::Debug + Send {
     }
 
     #[tracing::instrument]
-    async fn get_credentials_from_username(&mut self, recovery: bool, username: &BoUsername) -> api::Result<(BoUserId, Vec<u8>, BoSealedMasterKey)> {
+    async fn get_credentials_from_username(&mut self, recovery: bool, username: &BoUsername) -> api::Result<(BoUserId, Vec<u8>, SecretBox<MasterKey>)> {
         let row = sqlx::query("select `user_id`, `opaque_password`, `sealed_master_key` from `credentials` where `recovery` = ? and `username` = ?")
             .bind(if recovery {1} else {0})    
             .bind(username.as_slice())
@@ -300,12 +300,12 @@ pub trait Queryable: std::fmt::Debug + Send {
         Ok((
             BoUserId::from_vec(row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?),
             row.try_get(1).map_err(|e| api::Error::ServerSideError(e.into()))?,
-            BoSealedMasterKey::from_vec(row.try_get(2).map_err(|e| api::Error::ServerSideError(e.into()))?),
+            SecretBox::<MasterKey>::from_vec(row.try_get(2).map_err(|e| api::Error::ServerSideError(e.into()))?),
         ))
     }
 
     #[tracing::instrument]
-    async fn get_user_private_data(&mut self, user_id: &BoUserId) -> api::Result<BoSealedPrivateData> {
+    async fn get_user_private_data(&mut self, user_id: &BoUserId) -> api::Result<SecretBox<PrivateData>> {
         let row: MySqlRow = sqlx::query("select `sealed_private_data` from `users` where `user_id` = ?")
         .bind(user_id.as_slice())
         .fetch_one(self.conn()).await.map_err(|e| {
@@ -315,12 +315,12 @@ pub trait Queryable: std::fmt::Debug + Send {
         })?;
 
         Ok(
-            BoSealedPrivateData::from_vec(row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?),
+            SecretBox::<PrivateData>::from_vec(row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?),
         )
     }
 
     #[tracing::instrument]
-    async fn set_user_private_data(&mut self, user_id: &BoUserId, sealed_private_data: &BoSealedPrivateData) -> api::Result<()> {
+    async fn set_user_private_data(&mut self, user_id: &BoUserId, sealed_private_data: &SecretBox<PrivateData>) -> api::Result<()> {
         sqlx::query("update `users` set `sealed_private_data` = ? where `user_id` = ?")
             .bind(sealed_private_data.as_slice())
             .bind(user_id.as_slice())

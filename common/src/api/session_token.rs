@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::crypto::sealed::Sealed;
 use crate::api;
 
 use eyre::eyre;
 
-use api::{BoSealedSessionToken, BoUserId};
+use api::{BoUserId};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum SessionState {
@@ -65,18 +64,6 @@ impl SessionToken {
             SessionState::LoggedIn { uber: Some(_), .. } => Clearance::Uber,
             SessionState::Invalid => unreachable!("receive a session ticket with an `Invalid` session state"),
         }
-    }
-
-    pub fn seal(&self, key: &[u8]) -> eyre::Result<BoSealedSessionToken> {
-        Sealed::seal(key, &(), &self).map(Into::into)
-    }
-
-    pub fn unseal(key: &[u8], sealed_session_token: &BoSealedSessionToken) -> api::Result<Self> {
-        Ok(Sealed::<(), SessionToken>::unseal(key, sealed_session_token.as_slice())?.1)
-    }
-
-    pub fn unseal_unauthenticated(sealed_session_token: &BoSealedSessionToken) -> api::Result<Self> {
-        Ok(Sealed::<(), SessionToken>::get_ad(sealed_session_token.as_slice())?)
     }
 
     pub fn validate(&self, required_clearance: Clearance) -> api::Result<()> {

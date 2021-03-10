@@ -1,9 +1,10 @@
 use std::iter;
 
-use common::{api::{AddUser, AddUserRet, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoUsername, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, UpdateCredentials, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{AddUser, AddUserRet, BoUsername, Credentials, ExportKey, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, UpdateCredentials, private_data::PrivateData, session_token::{Clearance}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}};
 use sha2::Digest;
+use common::crypto::sealed::Seal;
 
-use crate::{core::private_data::PrivateData, opaque};
+use crate::{opaque};
 use super::{Client, LoggedUser};
 
 fn gen_recovery_credentials() -> (Vec<u8>, Vec<u8>) {
@@ -19,7 +20,7 @@ fn derive_username_recovery(password_recovery: &[u8]) -> Vec<u8> {
 impl Client {
     async fn new_user_impl(&mut self, username: &BoUsername, password: &[u8], username_recovery: &BoUsername, password_recovery: &[u8]) -> eyre::Result<()> {     
         // gen master_key (long-term user private content key)
-        let master_key = iter::repeat_with(rand::random).take(32).collect::<Vec<_>>();
+        let master_key: MasterKey = iter::repeat_with(rand::random).take(32).collect::<Vec<_>>().into();
 
         // instantiate private data
         let private_data = PrivateData {
@@ -27,13 +28,13 @@ impl Client {
         };
 
         // seal private_data with master_key
-        let sealed_private_data = BoSealedPrivateData::from(Sealed::seal(&master_key, &private_data, &())?);
+        let sealed_private_data = private_data.seal(&master_key.as_slice())?;
 
         let credentials = self.new_credentials_impl(&master_key, username, password, false).await?;
         let credentials_recovery = self.new_credentials_impl(&master_key, username_recovery, password_recovery, true).await?;
 
         // request a new user creation
-        let AddUserRet {sealed_session_token} = self.rpc_client.call(
+        let AddUserRet {authed_session_token} = self.rpc_client.call(
             AddUser {
                 credentials,
                 credentials_recovery,
@@ -45,13 +46,13 @@ impl Client {
         self.logged_user = Some( LoggedUser {
             master_key: master_key.to_owned(),
             private_data,
-            sealed_session_token: sealed_session_token.clone(),
+            authed_session_token: authed_session_token.clone(),
         });
 
         Ok(())
     }
 
-    async fn new_credentials_impl(&self, master_key: &[u8], username: &BoUsername, password: &[u8], recovery: bool) -> eyre::Result<Credentials> {
+    async fn new_credentials_impl(&self, master_key: &MasterKey, username: &BoUsername, password: &[u8], recovery: bool) -> eyre::Result<Credentials> {
 
         // start client-side OPAQUE registration
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
@@ -65,13 +66,13 @@ impl Client {
 
         // finish client-side OPAQUE registration
         let (opaque_msg, export_key) = opaque::registration_finish(&opaque_state, &opaque_msg, username, if recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
-        let export_key = export_key[0..32].to_vec(); // trim to the first 32bytes (256bits)
+        let export_key: ExportKey = export_key[0..32].to_vec().into(); // trim to the first 32bytes (256bits)
         
         // seal master_key with export_key
-        let sealed_master_key = BoSealedMasterKey::from(Sealed::seal(&export_key, &master_key, &())?);
+        let sealed_master_key = master_key.seal(export_key.as_slice())?;
 
         // seal export_key with master_key
-        let sealed_export_key = BoSealedExportKey::from(Sealed::seal(master_key, &export_key, &())?);
+        let sealed_export_key = export_key.seal(master_key.as_slice())?;
     
         Ok(Credentials{
             sealed_server_state,
@@ -91,7 +92,7 @@ impl Client {
             UpdateCredentials {
                 recovery,
                 credentials,
-                sealed_session_token: logged_user.sealed_session_token.clone(),
+                authed_session_token: logged_user.authed_session_token.clone(),
             }
         ).await?;
 
@@ -112,27 +113,27 @@ impl Client {
         let (opaque_msg, export_key) = opaque::login_finish(&opaque_state, &opaque_msg, username, if recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
 
         // finish server-side OPAQUE login
-        let LoginFinishRet {sealed_session_token, sealed_master_key} = self.rpc_client.call(
+        let LoginFinishRet {authed_session_token, sealed_master_key} = self.rpc_client.call(
             LoginFinish{sealed_server_state, opaque_msg, uber_clearance}
         ).await?;
 
         // unseal master key
-        let master_key = Sealed::<Vec<u8>, ()>::unseal(&export_key, sealed_master_key.as_slice())?.0;
+        let master_key = sealed_master_key.unseal(export_key.as_slice())?;
 
         // download user private data
         let GetUserPrivateDataRet { sealed_private_data } = self.rpc_client.call(
             GetUserPrivateData {
-                sealed_session_token: sealed_session_token.clone(),
+                authed_session_token: authed_session_token.clone(),
             }
         ).await?;
 
         // recover user's private data
-        let private_data = Sealed::<PrivateData, ()>::unseal(&master_key, sealed_private_data.as_slice())?.0;
+        let private_data = sealed_private_data.unseal(master_key.as_slice())?;
 
         self.logged_user = Some( LoggedUser {
             master_key,
             private_data,
-            sealed_session_token,
+            authed_session_token,
         });
 
         Ok(())
@@ -143,7 +144,7 @@ impl Client {
     pub fn get_clearance(&self) -> eyre::Result<Clearance> {
         let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
-        Ok(SessionToken::unseal_unauthenticated(&logged_user.sealed_session_token)?.get_clearance())
+        Ok(logged_user.authed_session_token.get_unverified()?.get_clearance())
     }
 
    /*  pub async fn change_totp(&mut self, totp_uri: Option<String>) -> eyre::Result<()> { 
@@ -151,7 +152,7 @@ impl Client {
 
         self.rpc_client.call(
             ChangeTotp {
-                sealed_session_token: logged_user.sealed_session_token.clone(),
+                authed_session_token: logged_user.authed_session_token.clone(),
                 totp_uri,
             }
         ).await?;

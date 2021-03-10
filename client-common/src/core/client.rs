@@ -1,8 +1,6 @@
-use common::api::BoSealedSessionToken;
+use common::{api::{MasterKey, private_data::PrivateData, session_token::SessionToken}, crypto::sealed::{AuthBox}};
 
 use crate::rpc_client::RpcClient;
-
-use super::private_data::PrivateData;
 
 mod auth;
 
@@ -16,9 +14,9 @@ pub struct Client {
 
 #[derive(Debug, Clone)]
 pub struct LoggedUser {
-    master_key: Vec<u8>,
+    master_key: MasterKey,
     private_data: PrivateData,
-    sealed_session_token: BoSealedSessionToken,
+    authed_session_token: AuthBox<SessionToken>,
 }
 
 impl Default for Client {

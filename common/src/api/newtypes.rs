@@ -6,11 +6,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer, de::{SeqAccess, Vi
 pub enum Anything {}
 pub type Bytes = BytesOf<Anything>;
 
-pub enum SealedSessionToken {}
-pub type BoSealedSessionToken = BytesOf<SealedSessionToken>;
-
-pub enum SealedServerState {}
-pub type BoSealedServerState = BytesOf<SealedServerState>;
+// we use a generic newtype here because we specificaly want to erase the type of what is being sealed
+pub enum _SealedServerState {}
+pub type SealedServerState = BytesOf<_SealedServerState>;
 
 pub enum OpaqueClientStartMsg {}
 pub type BoOpaqueClientStartMsg = BytesOf<OpaqueClientStartMsg>;
@@ -36,17 +34,15 @@ impl BoUserId {
 pub enum Username {}
 pub type BoUsername = BytesOf<Username>;
 
-pub enum SealedMasterKey {}
-pub type BoSealedMasterKey = BytesOf<SealedMasterKey>;
+pub enum _MasterKey {}
+pub type MasterKey = BytesOf<_MasterKey>;
 
-pub enum SealedExportKey {}
-pub type BoSealedExportKey = BytesOf<SealedExportKey>;
-pub enum SealedPrivateData {}
-pub type BoSealedPrivateData = BytesOf<SealedPrivateData>;
+pub enum _ExportKey {}
+pub type ExportKey = BytesOf<_ExportKey>;
 
 
 //#[derive(Default, Eq, Ord)]
-pub struct BytesOf<P>(Vec<u8>, PhantomData<P>);
+pub struct BytesOf<P: ?Sized>(Vec<u8>, PhantomData<P>);
 
 // maybe that's too generic
 impl<T: Into<Vec<u8>>, P> From<T> for BytesOf<P> {
