@@ -1,8 +1,8 @@
-use common::{api::{self, BytesOfOpaqueClientFinishMsg, BytesOfOpaqueClientStartMsg, BytesOfOpaqueServerStartMsg}, crypto::opaque::OpaqueConf};
+use common::{api::{self, BytesOfOpaqueClientFinishMsg, BytesOfOpaqueClientStartMsg, BytesOfOpaqueServerStartMsg, BytesOfOpaqueState}, crypto::opaque::OpaqueConf};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::Key};
 use eyre::WrapErr;
 
-pub fn registration_start(pk: &Key, msg: &BytesOfOpaqueClientStartMsg) -> api::Result<(Vec<u8>, BytesOfOpaqueServerStartMsg)> {
+pub fn registration_start(pk: &Key, msg: &BytesOfOpaqueClientStartMsg) -> api::Result<(BytesOfOpaqueState, BytesOfOpaqueServerStartMsg)> {
     let mut rng = rand_core::OsRng;
     let opaque = ServerRegistration::<OpaqueConf>::start(
         &mut rng,
@@ -10,11 +10,11 @@ pub fn registration_start(pk: &Key, msg: &BytesOfOpaqueClientStartMsg) -> api::R
         pk,
     ).wrap_err("failed to start opaque registration")?;
     
-    Ok((opaque.state.serialize(), opaque.message.serialize().into()))
+    Ok((opaque.state.serialize().into(), opaque.message.serialize().into()))
 }
 
-pub fn registration_finish(state: &[u8], msg: &BytesOfOpaqueClientFinishMsg) -> api::Result<Vec<u8>> {
-    let state = ServerRegistration::<OpaqueConf>::deserialize(state)
+pub fn registration_finish(state: &BytesOfOpaqueState, msg: &BytesOfOpaqueClientFinishMsg) -> api::Result<Vec<u8>> {
+    let state = ServerRegistration::<OpaqueConf>::deserialize(state.as_slice())
         .wrap_err("failed to deserialize opaque state")?;
 
     let password = state
@@ -25,7 +25,7 @@ pub fn registration_finish(state: &[u8], msg: &BytesOfOpaqueClientFinishMsg) -> 
     Ok(password.serialize())
 }
 
-pub fn login_start(sk: &Key, msg: &BytesOfOpaqueClientStartMsg, username: &[u8], password: &[u8], server_id: &[u8]) -> api::Result<(Vec<u8>, BytesOfOpaqueServerStartMsg)> {
+pub fn login_start(sk: &Key, msg: &BytesOfOpaqueClientStartMsg, username: &[u8], password: &[u8], server_id: &[u8]) -> api::Result<(BytesOfOpaqueState, BytesOfOpaqueServerStartMsg)> {
     let mut rng = rand_core::OsRng;
 
     let password = ServerRegistration::<OpaqueConf>::deserialize(password)
@@ -40,11 +40,11 @@ pub fn login_start(sk: &Key, msg: &BytesOfOpaqueClientStartMsg, username: &[u8],
         ServerLoginStartParameters::WithIdentifiers(username.to_owned(), server_id.to_vec()),
     ).wrap_err("failed to start opaque login")?;
 
-    Ok((opaque.state.serialize(), opaque.message.serialize().into()))
+    Ok((opaque.state.serialize().into(), opaque.message.serialize().into()))
 }
 
-pub fn login_finish(state: &[u8], msg: &BytesOfOpaqueClientFinishMsg) -> api::Result<()> {
-    let state = ServerLogin::<OpaqueConf>::deserialize(state)
+pub fn login_finish(state: &BytesOfOpaqueState, msg: &BytesOfOpaqueClientFinishMsg) -> api::Result<()> {
+    let state = ServerLogin::<OpaqueConf>::deserialize(state.as_slice())
             .wrap_err("failed to deserialize opaque state")?;
     let _log_finish_result = state.finish(CredentialFinalization::deserialize(msg.as_slice())
         .wrap_err("failed to deserialize opaque msg")?)

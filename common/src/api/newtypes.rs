@@ -20,9 +20,13 @@ pub type BytesOfOpaqueServerStartMsg = BytesOf<OpaqueServerStartMsg>;
 pub enum OpaqueClientFinishMsg {}
 pub type BytesOfOpaqueClientFinishMsg = BytesOf<OpaqueClientFinishMsg>;
 
+pub enum OpaqueState {}
+pub type BytesOfOpaqueState = BytesOf<OpaqueState>;
+
 //#[derive(Default, Eq, Ord)]
 pub struct BytesOf<P>(Vec<u8>, PhantomData<P>);
 
+// maybe that's too generic
 impl<T: Into<Vec<u8>>, P> From<T> for BytesOf<P> {
     fn from(b: T) -> Self {
         BytesOf(b.into(), PhantomData)

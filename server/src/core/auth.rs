@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{self, AddUser, AddUserRet, BytesOfOpaqueState, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, Rpc, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use rand::Rng;
 use tracing::{Instrument, debug, info, info_span};
 
@@ -8,14 +8,12 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ServerCredentialsState {
-    #[serde(with = "serde_bytes")]
-    opaque_state: Vec<u8>,
+    opaque_state: BytesOfOpaqueState,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ServerLoginState {
-    #[serde(with = "serde_bytes")]
-    opaque_state: Vec<u8>,
+    opaque_state: BytesOfOpaqueState,
     #[serde(with = "serde_bytes")]
     user_id: Vec<u8>,
     #[serde(with = "serde_bytes")]
@@ -58,7 +56,7 @@ impl State {
 
         async {
             let ServerCredentialsState { opaque_state } = Sealed::<ServerCredentialsState, ()>::unseal(&self.secret_key, args.sealed_server_state.as_slice())?.0;
-            let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
+            let opaque_password = opaque::registration_finish(&opaque_state, &args.opaque_msg)?;
 
             conn.normal().await?.set_credentials(args.recovery, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_export_key, &session_token.user_id).await?;
             
