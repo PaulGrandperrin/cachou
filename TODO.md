@@ -1,6 +1,8 @@
 - move out sealed_session_token outside of each requests
   - and then imbric some requests in others, like for new_user
 
+- add reed-solomon on recovery-key
+
 - fix insertion of new credentials, overriding old ones
 
 - compile both tokio and async stuff on test cfg 
