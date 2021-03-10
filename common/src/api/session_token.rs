@@ -72,11 +72,11 @@ impl SessionToken {
     }
 
     pub fn unseal(key: &[u8], sealed_session_token: &SealedSessionTokenBytes) -> api::Result<Self> {
-        Ok(Sealed::<(), SessionToken>::unseal(key, sealed_session_token)?.1)
+        Ok(Sealed::<(), SessionToken>::unseal(key, sealed_session_token.as_slice())?.1)
     }
 
     pub fn unseal_unauthenticated(sealed_session_token: &SealedSessionTokenBytes) -> api::Result<Self> {
-        Ok(Sealed::<(), SessionToken>::get_ad(sealed_session_token)?)
+        Ok(Sealed::<(), SessionToken>::get_ad(sealed_session_token.as_slice())?)
     }
 
     pub fn validate(&self, required_clearance: Clearance) -> api::Result<()> {

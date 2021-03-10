@@ -1,7 +1,7 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use super::{SealedServerStateBytes, SealedSessionTokenBytes};
+use super::{OpaqueClientFinishMsgBytes, OpaqueClientStartMsgBytes, OpaqueServerStartMsgBytes, SealedServerStateBytes, SealedSessionTokenBytes};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -40,14 +40,12 @@ impl Rpc for AddUser {
 // NewCredentials
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentials {
-    #[serde(with = "serde_bytes")]
-    pub opaque_msg: Vec<u8>,
+    pub opaque_msg: OpaqueClientStartMsgBytes,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentialsRet {
     pub sealed_server_state: SealedServerStateBytes,
-    #[serde(with = "serde_bytes")]
-    pub opaque_msg: Vec<u8>,
+    pub opaque_msg: OpaqueServerStartMsgBytes,
 }
 impl Rpc for NewCredentials {
     const DISPLAY_NAME: &'static str = "NewCredentials";
@@ -61,8 +59,7 @@ impl Rpc for NewCredentials {
 pub struct SetCredentials {
     pub sealed_server_state: SealedServerStateBytes,
     pub recovery: bool,
-    #[serde(with = "serde_bytes")]
-    pub opaque_msg: Vec<u8>,
+    pub opaque_msg: OpaqueClientFinishMsgBytes,
     #[serde(with = "serde_bytes")]
     pub username: Vec<u8>,
     #[serde(with = "serde_bytes")]
@@ -83,14 +80,12 @@ pub struct LoginStart {
     pub recovery: bool,
     #[serde(with = "serde_bytes")]
     pub username: Vec<u8>, // could also be passed in the plaintext info field of opaque
-    #[serde(with = "serde_bytes")]
-    pub opaque_msg: Vec<u8>,
+    pub opaque_msg: OpaqueClientStartMsgBytes,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginStartRet {
     pub sealed_server_state: SealedServerStateBytes,
-    #[serde(with = "serde_bytes")]
-    pub opaque_msg: Vec<u8>,
+    pub opaque_msg: OpaqueServerStartMsgBytes,
 }
 impl Rpc for LoginStart {
     const DISPLAY_NAME: &'static str = "LoginStart";
@@ -102,8 +97,7 @@ impl Rpc for LoginStart {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinish {
     pub sealed_server_state: SealedServerStateBytes,
-    #[serde(with = "serde_bytes")]
-    pub opaque_msg: Vec<u8>,
+    pub opaque_msg: OpaqueClientFinishMsgBytes,
     pub uber_clearance: bool,
 }
 #[derive(Serialize, Deserialize, Debug)]

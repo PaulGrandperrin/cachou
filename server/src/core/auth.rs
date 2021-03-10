@@ -57,7 +57,7 @@ impl State {
         let user_id = bs58::encode(&session_token.user_id).into_string();
 
         async {
-            let ServerCredentialsState { opaque_state } = Sealed::<ServerCredentialsState, ()>::unseal(&self.secret_key, &args.sealed_server_state)?.0;
+            let ServerCredentialsState { opaque_state } = Sealed::<ServerCredentialsState, ()>::unseal(&self.secret_key, args.sealed_server_state.as_slice())?.0;
             let opaque_password = opaque::registration_finish(&opaque_state[..], &args.opaque_msg)?;
 
             conn.normal().await?.set_credentials(args.recovery, &args.username, &opaque_password, &args.sealed_master_key, &args.sealed_export_key, &session_token.user_id).await?;
@@ -86,7 +86,7 @@ impl State {
 
 
     pub async fn login_finish(&self, args: &LoginFinish, _conn: &mut DbConn<'_>) -> api::Result<<LoginFinish as Rpc>::Ret> {
-        let ServerLoginState {opaque_state, user_id, sealed_master_key, version} = Sealed::<ServerLoginState, ()>::unseal(&self.secret_key, &args.sealed_server_state)?.0;
+        let ServerLoginState {opaque_state, user_id, sealed_master_key, version} = Sealed::<ServerLoginState, ()>::unseal(&self.secret_key, args.sealed_server_state.as_slice())?.0;
 
         async {
             // check password

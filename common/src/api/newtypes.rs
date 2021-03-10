@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{cmp::{self, Ordering}, fmt, hash::{Hash, Hasher}, marker::PhantomData, ops::{Deref, DerefMut}};
+use std::{cmp::{self}, fmt, hash::{Hash, Hasher}, marker::PhantomData};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::{SeqAccess, Visitor}};
 
 pub enum Anything {}
@@ -11,7 +11,16 @@ pub type SealedSessionTokenBytes = BytesOf<SealedSessionToken>;
 pub enum SealedServerState {}
 pub type SealedServerStateBytes = BytesOf<SealedServerState>;
 
-#[derive(Default, Eq, Ord)]
+pub enum OpaqueClientStartMsg {}
+pub type OpaqueClientStartMsgBytes = BytesOf<OpaqueClientStartMsg>;
+
+pub enum OpaqueServerStartMsg {}
+pub type OpaqueServerStartMsgBytes = BytesOf<OpaqueServerStartMsg>;
+
+pub enum OpaqueClientFinishMsg {}
+pub type OpaqueClientFinishMsgBytes = BytesOf<OpaqueClientFinishMsg>;
+
+//#[derive(Default, Eq, Ord)]
 pub struct BytesOf<P>(Vec<u8>, PhantomData<P>);
 
 impl<T: Into<Vec<u8>>, P> From<T> for BytesOf<P> {
@@ -26,8 +35,6 @@ impl<P> Clone for BytesOf<P> {
     }
 }
 
-// inspired from https://github.com/serde-rs/bytes/blob/cbae606b9dc225fc094b031cc84eac9493da2058/src/bytebuf.rs#L48-L253
-
 impl<P> BytesOf<P> {
     pub fn new() -> Self {
         BytesOf::from(Vec::new())
@@ -37,25 +44,24 @@ impl<P> BytesOf<P> {
         BytesOf::from(Vec::with_capacity(cap))
     }
 
-    pub fn from<T: Into<Vec<u8>>>(bytes: T) -> Self {
-        BytesOf(bytes.into(), PhantomData)
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+
+    pub fn as_vec(&self) -> &Vec<u8> {
+        &self.0
+    }
+
+    pub fn as_mut_vec(&mut self) -> &mut Vec<u8> {
+        &mut self.0
     }
 
     pub fn into_vec(self) -> Vec<u8> {
         self.0
-    }
-
-/*     pub fn into_boxed_bytes(self) -> Box<BytesConstructor<P>> {
-        self.0.into_boxed_slice().into()
-    } */
-
-    pub fn into_boxed_slice(self) -> Box<[u8]> {
-        self.0.into_boxed_slice()
-    }
-
-    #[allow(clippy::should_implement_trait)]
-    pub fn into_iter(self) -> <Vec<u8> as IntoIterator>::IntoIter {
-        self.0.into_iter()
     }
 }
 
@@ -65,7 +71,7 @@ impl<P> fmt::Debug for BytesOf<P> {
     }
 }
 
-impl<P> AsRef<[u8]> for BytesOf<P> {
+/* impl<P> AsRef<[u8]> for BytesOf<P> {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
@@ -75,9 +81,9 @@ impl<P> AsMut<[u8]> for BytesOf<P> {
     fn as_mut(&mut self) -> &mut [u8] {
         &mut self.0
     }
-}
+} */
 
-impl<P> Deref for BytesOf<P> {
+/* impl<P> Deref for BytesOf<P> {
     type Target = Vec<u8>;
 
     fn deref(&self) -> &Self::Target {
@@ -89,21 +95,9 @@ impl<P> DerefMut for BytesOf<P> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
-}
-
-/* impl<P> Borrow<BytesConstructor<P>> for BytesConstructor<P> {
-    fn borrow(&self) -> &BytesConstructor<P> {
-        BytesConstructor::new(&self.0)
-    }
-}
-
-impl<P> BorrowMut<BytesConstructor<P>> for BytesConstructor<P> {
-    fn borrow_mut(&mut self) -> &mut BytesConstructor<P> {
-        unsafe { &mut *(&mut self.0 as &mut [u8] as *mut [u8] as *mut BytesConstructor<P>) }
-    }
 } */
 
-impl<Rhs, P> PartialEq<Rhs> for BytesOf<P>
+/* impl<Rhs, P> PartialEq<Rhs> for BytesOf<P>
 where
     Rhs: ?Sized + AsRef<[u8]>,
 {
@@ -119,7 +113,7 @@ where
     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering> {
         self.as_ref().partial_cmp(other.as_ref())
     }
-}
+} */
 
 impl<P> Hash for BytesOf<P> {
     fn hash<H: Hasher>(&self, state: &mut H) {
