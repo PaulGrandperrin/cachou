@@ -33,13 +33,13 @@ impl<C, A> AeadBox<C, A> {
         let nonce = iter::repeat_with(rand::random).take(<<XChaCha8Blake3Siv as AeadInPlace>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
         let nonce = Nonce::from_slice(&nonce);
 
-        let mut plaintext = rmp_serde::encode::to_vec_named(plaindata)?;
-        let associated_data = rmp_serde::encode::to_vec_named(associated_data)?;
+        let mut plaintext = rmp_serde::encode::to_vec(plaindata)?;
+        let associated_data = rmp_serde::encode::to_vec(associated_data)?;
 
         let tag = cipher.encrypt_in_place_detached(&nonce, &associated_data, &mut plaintext)
             .map_err(|e| eyre::eyre!(e))?;
 
-        Ok( rmp_serde::encode::to_vec_named(&Self {
+        Ok( rmp_serde::encode::to_vec(&Self {
             ciphertext: plaintext,
             associated_data,
             tag: tag.to_vec(),
