@@ -1,7 +1,7 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use super::{OpaqueClientFinishMsgBytes, OpaqueClientStartMsgBytes, OpaqueServerStartMsgBytes, SealedServerStateBytes, SealedSessionTokenBytes};
+use super::{BytesOfOpaqueClientFinishMsg, BytesOfOpaqueClientStartMsg, BytesOfOpaqueServerStartMsg, BytesOfSealedServerState, BytesOfSealedSessionToken};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -28,7 +28,7 @@ pub trait Rpc: Serialize {
 pub struct AddUser;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddUserRet {
-    pub sealed_session_token: SealedSessionTokenBytes,
+    pub sealed_session_token: BytesOfSealedSessionToken,
 }
 impl Rpc for AddUser {
     const DISPLAY_NAME: &'static str = "AddUser";
@@ -40,12 +40,12 @@ impl Rpc for AddUser {
 // NewCredentials
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentials {
-    pub opaque_msg: OpaqueClientStartMsgBytes,
+    pub opaque_msg: BytesOfOpaqueClientStartMsg,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentialsRet {
-    pub sealed_server_state: SealedServerStateBytes,
-    pub opaque_msg: OpaqueServerStartMsgBytes,
+    pub sealed_server_state: BytesOfSealedServerState,
+    pub opaque_msg: BytesOfOpaqueServerStartMsg,
 }
 impl Rpc for NewCredentials {
     const DISPLAY_NAME: &'static str = "NewCredentials";
@@ -57,16 +57,16 @@ impl Rpc for NewCredentials {
 // SetCredentialsToUser
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetCredentials {
-    pub sealed_server_state: SealedServerStateBytes,
+    pub sealed_server_state: BytesOfSealedServerState,
     pub recovery: bool,
-    pub opaque_msg: OpaqueClientFinishMsgBytes,
+    pub opaque_msg: BytesOfOpaqueClientFinishMsg,
     #[serde(with = "serde_bytes")]
     pub username: Vec<u8>,
     #[serde(with = "serde_bytes")]
     pub sealed_master_key: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     #[serde(with = "serde_bytes")]
     pub sealed_export_key: Vec<u8>, // sealed with masterkey. useful when we want to rotate the masterkey
-    pub sealed_session_token: SealedSessionTokenBytes, // must have uber rights
+    pub sealed_session_token: BytesOfSealedSessionToken, // must have uber rights
 }
 impl Rpc for SetCredentials {
     const DISPLAY_NAME: &'static str = "SetCredentials";
@@ -80,12 +80,12 @@ pub struct LoginStart {
     pub recovery: bool,
     #[serde(with = "serde_bytes")]
     pub username: Vec<u8>, // could also be passed in the plaintext info field of opaque
-    pub opaque_msg: OpaqueClientStartMsgBytes,
+    pub opaque_msg: BytesOfOpaqueClientStartMsg,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginStartRet {
-    pub sealed_server_state: SealedServerStateBytes,
-    pub opaque_msg: OpaqueServerStartMsgBytes,
+    pub sealed_server_state: BytesOfSealedServerState,
+    pub opaque_msg: BytesOfOpaqueServerStartMsg,
 }
 impl Rpc for LoginStart {
     const DISPLAY_NAME: &'static str = "LoginStart";
@@ -96,13 +96,13 @@ impl Rpc for LoginStart {
 // LoginFinish
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinish {
-    pub sealed_server_state: SealedServerStateBytes,
-    pub opaque_msg: OpaqueClientFinishMsgBytes,
+    pub sealed_server_state: BytesOfSealedServerState,
+    pub opaque_msg: BytesOfOpaqueClientFinishMsg,
     pub uber_clearance: bool,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinishRet {
-    pub sealed_session_token: SealedSessionTokenBytes,
+    pub sealed_session_token: BytesOfSealedSessionToken,
     #[serde(with = "serde_bytes")]
     pub sealed_master_key: Vec<u8>,
 }
@@ -115,7 +115,7 @@ impl Rpc for LoginFinish {
 // GetUserPrivateData
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserPrivateData {
-    pub sealed_session_token: SealedSessionTokenBytes,
+    pub sealed_session_token: BytesOfSealedSessionToken,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserPrivateDataRet {
@@ -130,7 +130,7 @@ impl Rpc for GetUserPrivateData {
 // SetUserPrivateData
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetUserPrivateData {
-    pub sealed_session_token: SealedSessionTokenBytes,
+    pub sealed_session_token: BytesOfSealedSessionToken,
     #[serde(with = "serde_bytes")]
     pub sealed_private_data: Vec<u8>,
 }

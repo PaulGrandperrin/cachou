@@ -6,19 +6,19 @@ pub enum Anything {}
 pub type Bytes = BytesOf<Anything>;
 
 pub enum SealedSessionToken {}
-pub type SealedSessionTokenBytes = BytesOf<SealedSessionToken>;
+pub type BytesOfSealedSessionToken = BytesOf<SealedSessionToken>;
 
 pub enum SealedServerState {}
-pub type SealedServerStateBytes = BytesOf<SealedServerState>;
+pub type BytesOfSealedServerState = BytesOf<SealedServerState>;
 
 pub enum OpaqueClientStartMsg {}
-pub type OpaqueClientStartMsgBytes = BytesOf<OpaqueClientStartMsg>;
+pub type BytesOfOpaqueClientStartMsg = BytesOf<OpaqueClientStartMsg>;
 
 pub enum OpaqueServerStartMsg {}
-pub type OpaqueServerStartMsgBytes = BytesOf<OpaqueServerStartMsg>;
+pub type BytesOfOpaqueServerStartMsg = BytesOf<OpaqueServerStartMsg>;
 
 pub enum OpaqueClientFinishMsg {}
-pub type OpaqueClientFinishMsgBytes = BytesOf<OpaqueClientFinishMsg>;
+pub type BytesOfOpaqueClientFinishMsg = BytesOf<OpaqueClientFinishMsg>;
 
 //#[derive(Default, Eq, Ord)]
 pub struct BytesOf<P>(Vec<u8>, PhantomData<P>);
