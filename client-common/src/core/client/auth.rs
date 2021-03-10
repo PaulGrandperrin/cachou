@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{api::{AddUser, AddUserRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{AddUser, AddUserRet, BytesOfUsername, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use sha2::Digest;
 
 use crate::{core::private_data::PrivateData, opaque};
@@ -17,7 +17,7 @@ fn derive_username_recovery(password_recovery: &[u8]) -> Vec<u8> {
 }
 
 impl Client {
-    async fn new_user_impl(&mut self, username: &[u8], password: &[u8], username_recovery: &[u8], password_recovery: &[u8]) -> eyre::Result<()> {     
+    async fn new_user_impl(&mut self, username: &BytesOfUsername, password: &[u8], username_recovery: &BytesOfUsername, password_recovery: &[u8]) -> eyre::Result<()> {     
         // gen master_key (long-term user private content key)
         let master_key = iter::repeat_with(rand::random).take(32).collect::<Vec<_>>();
 
@@ -56,7 +56,7 @@ impl Client {
         Ok(())
     }
 
-    async fn set_credentials_impl(&mut self, username: &[u8], password: &[u8], recovery: bool) -> eyre::Result<()> {
+    async fn set_credentials_impl(&mut self, username: &BytesOfUsername, password: &[u8], recovery: bool) -> eyre::Result<()> {
         let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
         // start client-side OPAQUE registration
@@ -96,13 +96,13 @@ impl Client {
     }
 
     // TODO handle auto-logout
-    async fn login_impl(&mut self, username: &[u8], password: &[u8], uber_clearance: bool, recovery: bool) -> eyre::Result<()> {
+    async fn login_impl(&mut self, username: &BytesOfUsername, password: &[u8], uber_clearance: bool, recovery: bool) -> eyre::Result<()> {
         // start client-side OPAQUE login
         let (opaque_state, opaque_msg) = opaque::login_start(password)?;
 
         // start server-side OPAQUE login
         let LoginStartRet { sealed_server_state, opaque_msg } = self.rpc_client.call(
-            LoginStart{username: username.to_vec(), opaque_msg, recovery}
+            LoginStart{username: username.clone(), opaque_msg, recovery}
         ).await?;
 
         // finish client-side OPAQUE login
@@ -158,35 +158,35 @@ impl Client {
  */
     pub async fn signup(&mut self, username: &str, password: &str, totp_uri: Option<String>) -> eyre::Result<String> {
         let (username_recovery, password_recovery) = gen_recovery_credentials();
-        self.new_user_impl(username.as_bytes(), password.as_bytes(), &username_recovery, &password_recovery).await?;
+        self.new_user_impl(&BytesOfUsername::from(username), password.as_bytes(), &BytesOfUsername::from(username_recovery), &password_recovery).await?;
         
         let recovery_key = bs58::encode( &password_recovery).into_string();
         Ok(recovery_key)
     }
 
     pub async fn change_username_password(&mut self, username: &str, password: &str) -> eyre::Result<()> {
-        self.set_credentials_impl(username.as_bytes(), password.as_bytes(), false).await?;
+        self.set_credentials_impl(&BytesOfUsername::from(username), password.as_bytes(), false).await?;
 
         Ok(())
     }
 
     pub async fn change_recovery_key(&mut self) -> eyre::Result<String> {
         let (username_recovery, password_recovery) = gen_recovery_credentials();
-        self.set_credentials_impl(&username_recovery, &password_recovery, true).await?;
+        self.set_credentials_impl(&BytesOfUsername::from(username_recovery), &password_recovery, true).await?;
 
         let recovery_key = bs58::encode( &password_recovery).into_string();
         Ok(recovery_key)
     }
 
     pub async fn login(&mut self, username: &str, password: &str, uber_clearance: bool) -> eyre::Result<Clearance> {
-        self.login_impl(username.as_bytes(), password.as_bytes(), uber_clearance, false).await?;
+        self.login_impl(&BytesOfUsername::from(username), password.as_bytes(), uber_clearance, false).await?;
         self.get_clearance()
     }
 
     pub async fn login_recovery(&mut self, recovery_key: &str, uber_clearance: bool) -> eyre::Result<Clearance> {
         let password_recovery = bs58::decode(recovery_key).into_vec()?;
         let username_recovery = derive_username_recovery(&password_recovery);
-        self.login_impl(&username_recovery, &password_recovery, uber_clearance, true).await?;
+        self.login_impl(&BytesOfUsername::from(username_recovery), &password_recovery, uber_clearance, true).await?;
         self.get_clearance()
     }
 

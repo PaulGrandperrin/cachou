@@ -1,7 +1,7 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use super::{BytesOfOpaqueClientFinishMsg, BytesOfOpaqueClientStartMsg, BytesOfOpaqueServerStartMsg, BytesOfSealedServerState, BytesOfSealedSessionToken};
+use super::{BytesOfOpaqueClientFinishMsg, BytesOfOpaqueClientStartMsg, BytesOfOpaqueServerStartMsg, BytesOfSealedServerState, BytesOfSealedSessionToken, BytesOfUsername};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Call {
@@ -60,8 +60,7 @@ pub struct SetCredentials {
     pub sealed_server_state: BytesOfSealedServerState,
     pub recovery: bool,
     pub opaque_msg: BytesOfOpaqueClientFinishMsg,
-    #[serde(with = "serde_bytes")]
-    pub username: Vec<u8>,
+    pub username: BytesOfUsername,
     #[serde(with = "serde_bytes")]
     pub sealed_master_key: Vec<u8>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     #[serde(with = "serde_bytes")]
@@ -78,8 +77,7 @@ impl Rpc for SetCredentials {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginStart {
     pub recovery: bool,
-    #[serde(with = "serde_bytes")]
-    pub username: Vec<u8>, // could also be passed in the plaintext info field of opaque
+    pub username: BytesOfUsername, // could also be passed in the plaintext info field of opaque
     pub opaque_msg: BytesOfOpaqueClientStartMsg,
 }
 #[derive(Serialize, Deserialize, Debug)]

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use common::api::{self, BytesOfUserId};
+use common::api::{self, BytesOfUserId, BytesOfUsername};
 use sqlx::{Database, Executor, MySql, Pool, Row, Transaction, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}, pool::PoolConnection};
 use async_trait::async_trait;
 use tracing::error;
@@ -245,10 +245,10 @@ pub trait Queryable: std::fmt::Debug {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn set_credentials(&mut self, recovery: bool, username: &[u8], opaque_password: &[u8], sealed_master_key: &[u8], sealed_export_key: &[u8], user_id: &BytesOfUserId) -> api::Result<()> {
+    async fn set_credentials(&mut self, recovery: bool, username: &BytesOfUsername, opaque_password: &[u8], sealed_master_key: &[u8], sealed_export_key: &[u8], user_id: &BytesOfUserId) -> api::Result<()> {
         sqlx::query("replace into `credentials` set `recovery` = ?, `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ?, `user_id` = ?")
             .bind(if recovery {1} else {0})
-            .bind(username)
+            .bind(username.as_slice())
             .bind(opaque_password)
             .bind(sealed_master_key)
             .bind(sealed_export_key)
@@ -266,10 +266,10 @@ pub trait Queryable: std::fmt::Debug {
     }
 
     #[tracing::instrument]
-    async fn get_credentials_from_username(&mut self, recovery: bool, username: &[u8]) -> api::Result<(BytesOfUserId, Vec<u8>, Vec<u8>)> {
+    async fn get_credentials_from_username(&mut self, recovery: bool, username: &BytesOfUsername) -> api::Result<(BytesOfUserId, Vec<u8>, Vec<u8>)> {
         let row = sqlx::query("select `user_id`, `opaque_password`, `sealed_master_key` from `credentials` where `recovery` = ? and `username` = ?")
             .bind(if recovery {1} else {0})    
-            .bind(username)
+            .bind(username.as_slice())
             .fetch_one(self.conn()).await.map_err(|e| {
                 match e {
                     sqlx::Error::RowNotFound => api::Error::NotFound,

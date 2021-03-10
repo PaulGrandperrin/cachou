@@ -33,6 +33,10 @@ impl BytesOfUserId {
     }
 }
 
+pub enum Username {}
+pub type BytesOfUsername = BytesOf<Username>;
+
+
 //#[derive(Default, Eq, Ord)]
 pub struct BytesOf<P>(Vec<u8>, PhantomData<P>);
 

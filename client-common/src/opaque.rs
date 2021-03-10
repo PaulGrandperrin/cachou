@@ -1,4 +1,4 @@
-use common::{api::{self, BytesOfOpaqueClientFinishMsg, BytesOfOpaqueClientStartMsg, BytesOfOpaqueServerStartMsg, BytesOfOpaqueState}, crypto::opaque::OpaqueConf};
+use common::{api::{self, BytesOfOpaqueClientFinishMsg, BytesOfOpaqueClientStartMsg, BytesOfOpaqueServerStartMsg, BytesOfOpaqueState, BytesOfUsername}, crypto::opaque::OpaqueConf};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use eyre::eyre;
 
@@ -13,14 +13,14 @@ pub fn registration_start(password: &[u8]) -> api::Result<(BytesOfOpaqueState, B
     Ok((reg_start.state.serialize().into(), reg_start.message.serialize().into()))
 }
 
-pub fn registration_finish(state: &BytesOfOpaqueState, msg: &BytesOfOpaqueServerStartMsg, username: &[u8], server_id: &[u8]) -> api::Result<(BytesOfOpaqueClientFinishMsg, Vec<u8>)> {
+pub fn registration_finish(state: &BytesOfOpaqueState, msg: &BytesOfOpaqueServerStartMsg, username: &BytesOfUsername, server_id: &[u8]) -> api::Result<(BytesOfOpaqueClientFinishMsg, Vec<u8>)> {
     let mut rng = rand_core::OsRng;
 
     let reg_finish = ClientRegistration::<OpaqueConf>::deserialize(state.as_slice()).map_err(|e| eyre!(e))?
     .finish(
         &mut rng,
         RegistrationResponse::deserialize(msg.as_slice()).map_err(|e| eyre!(e))?,
-        ClientRegistrationFinishParameters::WithIdentifiers(username.to_vec(), server_id.to_vec()),
+        ClientRegistrationFinishParameters::WithIdentifiers(username.clone().into_vec(), server_id.to_vec()),
     ).map_err(|e| eyre!(e))?;
 
     Ok((reg_finish.message.serialize().into(), reg_finish.export_key.to_vec()))
@@ -38,10 +38,10 @@ pub fn login_start(password: &[u8]) -> api::Result<(BytesOfOpaqueState, BytesOfO
     Ok((login_start.state.serialize().into(), login_start.message.serialize().into()))
 }
 
-pub fn login_finish(state: &BytesOfOpaqueState, msg: &BytesOfOpaqueServerStartMsg, username: &[u8], server_id: &[u8]) -> api::Result<(BytesOfOpaqueClientFinishMsg, Vec<u8>)> {
+pub fn login_finish(state: &BytesOfOpaqueState, msg: &BytesOfOpaqueServerStartMsg, username: &BytesOfUsername, server_id: &[u8]) -> api::Result<(BytesOfOpaqueClientFinishMsg, Vec<u8>)> {
     let login_finish = ClientLogin::<OpaqueConf>::deserialize(state.as_slice()).map_err(|e| eyre!(e))?.finish(
         CredentialResponse::deserialize(msg.as_slice()).map_err(|e| eyre!(e))?, 
-        ClientLoginFinishParameters::WithIdentifiers(username.to_owned(), server_id.to_owned()),
+        ClientLoginFinishParameters::WithIdentifiers(username.clone().into_vec(), server_id.to_owned()),
     ).map_err(|_| api::Error::InvalidPassword)?;
 
     Ok((login_finish.message.serialize().into(), login_finish.export_key.to_vec()))
