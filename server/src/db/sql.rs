@@ -245,8 +245,8 @@ pub trait Queryable: std::fmt::Debug + Send {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn set_credentials(&mut self, recovery: bool, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &BoSealedMasterKey, sealed_export_key: &BoSealedExportKey, user_id: &BoUserId) -> api::Result<()> {
-        sqlx::query("replace into `credentials` set `recovery` = ?, `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ?, `user_id` = ?")
+    async fn new_credentials(&mut self, recovery: bool, user_id: &BoUserId, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &BoSealedMasterKey, sealed_export_key: &BoSealedExportKey) -> api::Result<()> {
+        sqlx::query("insert into `credentials` set `recovery` = ?, `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ?, `user_id` = ?")
             .bind(if recovery {1} else {0})
             .bind(username.as_slice())
             .bind(opaque_password)
@@ -261,6 +261,26 @@ pub trait Queryable: std::fmt::Debug + Send {
                     _ => api::Error::ServerSideError(e.into()),
                 }
             })?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument]
+    async fn update_credentials(&mut self, recovery: bool,  user_id: &BoUserId, username: &BoUsername, opaque_password: &[u8], sealed_master_key: &BoSealedMasterKey, sealed_export_key: &BoSealedExportKey) -> api::Result<()> {
+        sqlx::query("update `credentials` set `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ? where `recovery` = ?, `user_id` = ?")
+        .bind(username.as_slice())
+        .bind(opaque_password)
+        .bind(sealed_master_key.as_slice())
+        .bind(sealed_export_key.as_slice())
+        .bind(if recovery {1} else {0})
+        .bind(user_id.as_slice())
+        .execute(self.conn()).await.map_err(|e| {
+            match e {
+                sqlx::Error::RowNotFound => api::Error::NotFound,
+                _ => api::Error::ServerSideError(e.into()),
+            }
+        })?;
 
         Ok(())
     }

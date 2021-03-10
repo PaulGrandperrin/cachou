@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{api::{AddUser, AddUserRet, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoUsername, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{AddUser, AddUserRet, BoSealedExportKey, BoSealedMasterKey, BoSealedPrivateData, BoUsername, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, UpdateCredentials, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use sha2::Digest;
 
 use crate::{core::private_data::PrivateData, opaque};
@@ -88,7 +88,7 @@ impl Client {
 
         // finish server-side OPAQUE registration and set credentials to user
         self.rpc_client.call(
-            SetCredentials {
+            UpdateCredentials {
                 recovery,
                 credentials,
                 sealed_session_token: logged_user.sealed_session_token.clone(),

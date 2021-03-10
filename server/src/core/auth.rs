@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoSealedMasterKey, BoSealedServerState, BoUserId, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, RpcTrait, SetCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
+use common::{api::{self, AddUser, AddUserRet, BoOpaqueState, BoSealedMasterKey, BoSealedServerState, BoUserId, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, NewCredentials, NewCredentialsRet, RpcTrait, UpdateCredentials, SetUserPrivateData, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::sealed::Sealed};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::DbConn, opaque, state::State};
@@ -30,8 +30,8 @@ impl State {
             tx.new_user(&user_id).await?;
             
             // save normal and recovery credentials
-            self.set_credentials_impl(tx, &args.credentials, false, &user_id).await?;
-            self.set_credentials_impl(tx, &args.credentials_recovery, true, &user_id).await?;
+            self.set_credentials_impl(tx, true, &args.credentials, false, &user_id).await?;
+            self.set_credentials_impl(tx, true, &args.credentials_recovery, true, &user_id).await?;
             
             // save private data
             tx.set_user_private_data(&user_id, &args.sealed_private_data).await?;
@@ -57,21 +57,25 @@ impl State {
         })
     }
 
-    async fn set_credentials_impl(&self, conn: &mut impl Queryable, credentials: &Credentials, recovery: bool, user_id: &BoUserId) -> api::Result<()> {
+    async fn set_credentials_impl(&self, conn: &mut impl Queryable, new: bool, credentials: &Credentials, recovery: bool, user_id: &BoUserId) -> api::Result<()> {
         let ServerCredentialsState { opaque_state } = Sealed::<ServerCredentialsState, ()>::unseal(&self.secret_key, credentials.sealed_server_state.as_slice())?.0;
         let opaque_password = opaque::registration_finish(&opaque_state, &credentials.opaque_msg)?;
 
-        conn.set_credentials(recovery, &credentials.username, &opaque_password, &credentials.sealed_master_key, &credentials.sealed_export_key, &user_id).await?;
+        if new {
+            conn.new_credentials(recovery, &user_id, &credentials.username, &opaque_password, &credentials.sealed_master_key, &credentials.sealed_export_key).await?;
+        } else {
+            conn.update_credentials(recovery, &user_id, &credentials.username, &opaque_password, &credentials.sealed_master_key, &credentials.sealed_export_key).await?;
+        }
         Ok(())
     }
 
-    pub async fn set_credentials(&self, args: &SetCredentials, conn: &mut DbConn<'_>) -> api::Result<<SetCredentials as RpcTrait>::Ret> {
+    pub async fn update_credentials(&self, args: &UpdateCredentials, conn: &mut DbConn<'_>) -> api::Result<<UpdateCredentials as RpcTrait>::Ret> {
         // get user's user_id and check that token has uber rights
         let session_token = self.session_token_unseal_refreshed_and_validated(&args.sealed_session_token, Clearance::Uber).await?;
         let user_id = bs58::encode(session_token.user_id.as_slice()).into_string();
 
         async {
-            self.set_credentials_impl(conn.std().await?, &args.credentials, args.recovery, &session_token.user_id).await?;
+            self.set_credentials_impl(conn.std().await?, false, &args.credentials, args.recovery, &session_token.user_id).await?;
 
             debug!("ok");
             

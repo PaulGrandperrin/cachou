@@ -1,7 +1,5 @@
 - add reed-solomon on recovery-key
 
-- fix insertion of new credentials, overriding old ones
-
 - server/auth: trace more args fields
 
 - compile both tokio and async stuff on test cfg 

@@ -9,7 +9,7 @@ use super::{BoOpaqueClientFinishMsg, BoOpaqueClientStartMsg, BoOpaqueServerStart
 pub enum Rpc {
     AddUser(AddUser),
     NewCredentials(NewCredentials),
-    SetCredentials(SetCredentials),
+    UpdateCredentials(UpdateCredentials),
 
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
@@ -74,17 +74,17 @@ impl RpcTrait for NewCredentials {
 }
 
 
-// SetCredentials
+// UpdateCredentials
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SetCredentials {
+pub struct UpdateCredentials {
     pub recovery: bool,
     pub credentials: Credentials,
     pub sealed_session_token: BoSealedSessionToken, // must have uber rights
 }
-impl RpcTrait for SetCredentials {
-    const DISPLAY_NAME: &'static str = "SetCredentials";
+impl RpcTrait for UpdateCredentials {
+    const DISPLAY_NAME: &'static str = "UpdateCredentials";
     type Ret = ();
-    fn into_call(self) -> Rpc { Rpc::SetCredentials(self) }
+    fn into_call(self) -> Rpc { Rpc::UpdateCredentials(self) }
 }
 
 // LoginStart
