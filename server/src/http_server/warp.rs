@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "_use-rt-tokio"), allow(dead_code))]
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
 use eyre::eyre;

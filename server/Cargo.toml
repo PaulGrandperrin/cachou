@@ -9,15 +9,19 @@ default-run = "server"
 
 [features]
 
-default = ["exec-tokio-rt-tokio"]
+default = ["exec-tokio-rt-tokio", "build-all-rt"]
 
-exec-tokio-rt-tokio = ["_ex-tokio", "_rt-tokio"]
-exec-tokio-rt-async = ["_ex-tokio", "_rt-async"]
-exec-async-rt-tokio = ["_ex-async", "_rt-tokio", "async-global-executor/tokio"]
-exec-async-rt-async = ["_ex-async", "_rt-async", "async-global-executor/async-io"]
+exec-tokio-rt-tokio = ["_ex-tokio", "_use-rt-tokio"]
+exec-tokio-rt-async = ["_ex-tokio", "_use-rt-async"]
+exec-async-rt-tokio = ["_ex-async", "_use-rt-tokio", "async-global-executor/tokio"]
+exec-async-rt-async = ["_ex-async", "_use-rt-async", "async-global-executor/async-io"]
 
-_rt-tokio = ["sqlx/runtime-tokio-rustls", "warp"]
-_rt-async = ["sqlx/runtime-async-std-rustls", "tide"]
+build-all-rt = ["_build-rt-tokio", "_build-rt-async"]
+
+_use-rt-tokio = ["sqlx/runtime-tokio-rustls", "_build-rt-tokio"]
+_use-rt-async = ["sqlx/runtime-async-std-rustls", "_build-rt-async"]
+_build-rt-tokio = ["warp"]
+_build-rt-async = ["tide"]
 _ex-tokio = ["tokio/rt-multi-thread"]
 _ex-async = ["async-global-executor"]
 

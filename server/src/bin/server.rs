@@ -20,7 +20,7 @@ fn main() -> eyre::Result<()> {
 
     #[cfg(feature = "_ex-tokio")]
     let mut builder = tokio::runtime::Builder::new_multi_thread();
-    #[cfg(all(feature = "_ex-tokio", feature = "_rt-tokio"))]
+    #[cfg(all(feature = "_ex-tokio", feature = "_use-rt-tokio"))]
     builder.enable_all();
     #[cfg(feature = "_ex-tokio")]
     builder.build()?.block_on(f)?;

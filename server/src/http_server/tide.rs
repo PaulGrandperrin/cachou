@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "_use-rt-async"), allow(dead_code))]
 use std::{net::SocketAddr, sync::Arc};
 
 use tide::{Body, Request, http::headers::HeaderValue, security::{CorsMiddleware, Origin}};
