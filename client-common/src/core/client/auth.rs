@@ -1,6 +1,6 @@
 use std::iter;
 
-use common::{api::{AddUser, AddUserRet, Username, Credentials, ExportKey, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, UpdateCredentials, private_data::PrivateData, session_token::{Clearance}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}};
+use common::{api::{AddUser, AddUserRet, Credentials, ExportKey, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, SetCredentials, Username, private_data::PrivateData, session_token::{Clearance}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}};
 use sha2::Digest;
 use common::crypto::crypto_boxes::Seal;
 
@@ -89,7 +89,7 @@ impl Client {
 
         // finish server-side OPAQUE registration and set credentials to user
         self.rpc_client.call(
-            UpdateCredentials {
+            SetCredentials {
                 recovery,
                 credentials,
                 authed_session_token: logged_user.authed_session_token.clone(),
@@ -168,7 +168,7 @@ impl Client {
         Ok(recovery_key)
     }
 
-    pub async fn change_username_password(&mut self, username: &str, password: &str) -> eyre::Result<()> {
+    pub async fn set_username_password(&mut self, username: &str, password: &str) -> eyre::Result<()> {
         self.set_credentials_impl(&Username::from(username), password.as_bytes(), false).await?;
 
         Ok(())

@@ -34,9 +34,9 @@ pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> 
             .instrument(info_span!(api::NewCredentials::DISPLAY_NAME))
             .await),
 
-        Rpc::UpdateCredentials(args) => rmp_serde::encode::to_vec_named(&state.update_credentials(&args, &mut conn)
+        Rpc::SetCredentials(args) => rmp_serde::encode::to_vec_named(&state.set_credentials(&args, &mut conn)
             .inspect_err(log_error)
-            .instrument(info_span!(api::UpdateCredentials::DISPLAY_NAME))
+            .instrument(info_span!(api::SetCredentials::DISPLAY_NAME))
             .await),
         
         Rpc::LoginStart(args) => rmp_serde::encode::to_vec_named(&state.login_start(&args, &mut conn)

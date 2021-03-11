@@ -11,7 +11,7 @@ use super::{OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, U
 pub enum Rpc {
     AddUser(AddUser),
     NewCredentials(NewCredentials),
-    UpdateCredentials(UpdateCredentials),
+    SetCredentials(SetCredentials),
 
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
@@ -76,17 +76,17 @@ impl RpcTrait for NewCredentials {
 }
 
 
-// UpdateCredentials
+// SetCredentials
 #[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateCredentials {
+pub struct SetCredentials {
     pub recovery: bool,
     pub credentials: Credentials,
     pub authed_session_token: AuthBox<SessionToken>, // must have uber rights
 }
-impl RpcTrait for UpdateCredentials {
-    const DISPLAY_NAME: &'static str = "UpdateCredentials";
+impl RpcTrait for SetCredentials {
+    const DISPLAY_NAME: &'static str = "SetCredentials";
     type Ret = ();
-    fn into_call(self) -> Rpc { Rpc::UpdateCredentials(self) }
+    fn into_call(self) -> Rpc { Rpc::SetCredentials(self) }
 }
 
 // LoginStart

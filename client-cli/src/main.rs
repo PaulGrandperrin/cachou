@@ -52,7 +52,7 @@ fn main() -> eyre::Result<()>{
                     ["login_uber", username, password] => client.login(username, password, true).await.map(|e| format!("{:?}", e)),
                     ["login_recovery", recovery_key] => client.login_recovery(recovery_key, false).await.map(|e| format!("{:?}", e)),
                     ["login_recovery_uber", recovery_key] => client.login_recovery(recovery_key, true).await.map(|e| format!("{:?}", e)),
-                    ["change_username_password", username, password] => client.change_username_password(username, password).await.map(|e| format!("{:?}", e)),
+                    ["set_username_password", username, password] => client.set_username_password(username, password).await.map(|e| format!("{:?}", e)),
                     ["change_recovery_key"] => client.change_recovery_key().await.map(|e| format!("{:?}", e)),
                     ["logout"] => Ok(format!("{:?}", client.logout())),
                     ["hibp", password] => client_common::hibp(password).await.map(|e| format!("{:?}", e)),

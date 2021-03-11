@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, OpaqueState, UserId, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RpcTrait, SecretServerState, SetUserPrivateData, UpdateCredentials, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
+use common::{api::{self, AddUser, AddUserRet, OpaqueState, UserId, Credentials, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RpcTrait, SecretServerState, SetUserPrivateData, SetCredentials, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::DbConn, opaque, state::State};
@@ -69,7 +69,7 @@ impl State {
         Ok(())
     }
 
-    pub async fn update_credentials(&self, args: &UpdateCredentials, conn: &mut DbConn<'_>) -> api::Result<<UpdateCredentials as RpcTrait>::Ret> {
+    pub async fn set_credentials(&self, args: &SetCredentials, conn: &mut DbConn<'_>) -> api::Result<<SetCredentials as RpcTrait>::Ret> {
         // get user's user_id and check that token has uber rights
         let session_token = self.session_token_unseal_refreshed_and_validated(&args.authed_session_token, Clearance::Uber).await?;
         let user_id = bs58::encode(session_token.user_id.as_slice()).into_string();
