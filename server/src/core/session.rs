@@ -4,12 +4,12 @@ use common::crypto::crypto_boxes::Auth;
 use crate::state::State;
 
 impl State {
-    pub fn session_token_new_need_second_factor_sealed(&self, user_id: UserId, version: u64) -> eyre::Result<AuthBox<SessionToken>> {
-        SessionToken::new_need_second_factor(user_id, version).authenticate(&self.secret_key[..])
+    pub fn session_token_new_need_second_factor_sealed(&self, user_id: UserId, version_master_key: u32) -> eyre::Result<AuthBox<SessionToken>> {
+        SessionToken::new_need_second_factor(user_id, version_master_key).authenticate(&self.secret_key[..])
     }
 
-    pub fn session_token_new_logged_in_sealed(&self, user_id: UserId, version: u64, auto_logout: bool, uber: bool) -> eyre::Result<AuthBox<SessionToken>> {
-        SessionToken::new_logged_in(user_id, version, auto_logout, uber).authenticate(&self.secret_key[..])
+    pub fn session_token_new_logged_in_sealed(&self, user_id: UserId, version_master_key: u32, auto_logout: bool, uber: bool) -> eyre::Result<AuthBox<SessionToken>> {
+        SessionToken::new_logged_in(user_id, version_master_key, auto_logout, uber).authenticate(&self.secret_key[..])
     }
 
     pub async fn session_token_unseal_refreshed_and_validated(&self, auth_session_token: &AuthBox<SessionToken>, required_clearance: Clearance) -> api::Result<SessionToken> {

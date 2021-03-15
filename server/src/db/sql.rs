@@ -166,7 +166,8 @@ impl DbPool {
         conn.execute("
             create table if not exists `users` (
                 `user_id`             binary(16)      not null,
-                `sealed_private_data` varbinary(1024)         ,
+                `version_master_key`  int unsigned    not null,
+                `secret_private_data` varbinary(1024)         ,
                 `totp`                varchar(256)            ,
                 primary key (`user_id`)
             )
@@ -174,13 +175,14 @@ impl DbPool {
 
         conn.execute("
             create table if not exists `credentials` (
-                `recovery`          tinyint unsigned not null,
-                `username`          varbinary(32)    not null,
-                `opaque_password`   varbinary(1024)  not null,
-                `sealed_master_key` varbinary(256)   not null,
-                `sealed_export_key` varbinary(256)   not null,
-                `user_id`           binary(16)       not null,
-                primary key (`recovery`, `username`)
+                `recovery`                tinyint unsigned not null,
+                `username`                varbinary(32)    not null,
+                `opaque_password`         varbinary(1024)  not null,
+                `secret_master_key`       varbinary(256)   not null,
+                `secret_export_key`       varbinary(256)   not null,
+                `user_id`                 binary(16)       not null,
+                primary key (`recovery`, `username`),
+                unique index `unique-user_id-recovery` (`user_id`, `recovery`)
             )
     ").await?;
 
@@ -196,15 +198,55 @@ impl TxConn {
         let row: MySqlRow = sqlx::query("select `data` from `tmp` where `session_id` = ? and `field` = ?")
             .bind(session_id)
             .bind(field)
-            .fetch_one(&mut self.0).await.map_err(|e| api::Error::ServerSideError(e.into()))?;
+            .fetch_one(self.conn()).await.map_err(|e| api::Error::ServerSideError(e.into()))?;
         let state: Vec<u8> = row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))?;
 
         sqlx::query("delete from `tmp` where `session_id` = ? and `field` = ?")
             .bind(session_id)
             .bind(field)
-            .execute(&mut self.0).await.map_err(|e| api::Error::ServerSideError(e.into()))?;
+            .execute(self.conn()).await.map_err(|e| api::Error::ServerSideError(e.into()))?;
 
         Ok(state)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument]
+    pub async fn rotate_master_key(&mut self, user_id: &UserId, version_master_key: u32, secret_private_data: &SecretBox<PrivateData>, secret_master_key: &SecretBox<MasterKey>, secret_export_key: &SecretBox<ExportKey>, secret_master_key_recovery: &SecretBox<MasterKey>, secret_export_key_recovery: &SecretBox<ExportKey>) -> api::Result<()> {
+        sqlx::query("update `users` set `version_master_key` = ?, `secret_private_data` = ? where `user_id` = ? and `version_master_key` = ?")
+        .bind(version_master_key + 1)
+        .bind(secret_private_data.as_slice())
+        .bind(user_id.as_slice())
+        .bind(version_master_key)
+        .execute(self.conn()).await.map_err(|e| {
+            match e {
+                sqlx::Error::RowNotFound => api::Error::NotFound,
+                _ => api::Error::ServerSideError(e.into()),
+            }
+        })?;
+
+        sqlx::query("update `credentials` set `secret_master_key` = ?, `secret_export_key` = ? where `recovery` = false and `user_id` = ?")
+        .bind(secret_master_key.as_slice())
+        .bind(secret_export_key.as_slice())
+        .bind(user_id.as_slice())
+        .execute(self.conn()).await.map_err(|e| {
+            match e {
+                sqlx::Error::RowNotFound => api::Error::NotFound,
+                _ => api::Error::ServerSideError(e.into()),
+            }
+        })?;
+
+        sqlx::query("update `credentials` set `secret_master_key` = ?, `secret_export_key` = ? where `recovery` = true and `user_id` = ?")
+        .bind(secret_master_key_recovery.as_slice())
+        .bind(secret_export_key_recovery.as_slice())
+        .bind(user_id.as_slice())
+        .execute(self.conn()).await.map_err(|e| {
+            match e {
+                sqlx::Error::RowNotFound => api::Error::NotFound,
+                _ => api::Error::ServerSideError(e.into()),
+            }
+        })?;
+
+        Ok(())
     }
 }
 
@@ -228,9 +270,10 @@ pub trait Queryable: std::fmt::Debug + Send {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn new_user(&mut self, user_id: &UserId) -> api::Result<()> {
-        sqlx::query("insert into `users` (`user_id`) values (?)")
+    async fn new_user(&mut self, user_id: &UserId, version_master_key: u32) -> api::Result<()> {
+        sqlx::query("insert into `users` (`user_id`, `version_master_key`) values (?, ?)")
             .bind(user_id.as_slice())
+            .bind(version_master_key)
             .execute(self.conn()).await.map_err(|e| {
                 match e {
                     sqlx::Error::Database(e)
@@ -245,14 +288,14 @@ pub trait Queryable: std::fmt::Debug + Send {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn new_credentials(&mut self, recovery: bool, user_id: &UserId, username: &Username, opaque_password: &[u8], sealed_master_key: &SecretBox<MasterKey>, sealed_export_key: &SecretBox<ExportKey>) -> api::Result<()> {
-        sqlx::query("insert into `credentials` set `recovery` = ?, `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ?, `user_id` = ?")
-            .bind(if recovery {1} else {0})
-            .bind(username.as_slice())
-            .bind(opaque_password)
-            .bind(sealed_master_key.as_slice())
-            .bind(sealed_export_key.as_slice())
-            .bind(user_id.as_slice())
+    async fn new_credentials(&mut self, recovery: bool, user_id: &UserId, username: &Username, opaque_password: &[u8], secret_master_key: &SecretBox<MasterKey>, secret_export_key: &SecretBox<ExportKey>) -> api::Result<()> {
+        sqlx::query("insert into `credentials` (`recovery`, `username`, `opaque_password`, `secret_master_key`, `secret_export_key`, `user_id`) values (?, ?, ?, ?, ?, ?)")
+        .bind(if recovery {1} else {0})
+        .bind(username.as_slice())
+        .bind(opaque_password)
+        .bind(secret_master_key.as_slice())
+        .bind(secret_export_key.as_slice())
+        .bind(user_id.as_slice())    
             .execute(self.conn()).await.map_err(|e| {
                 match e {
                     sqlx::Error::Database(e)
@@ -267,12 +310,12 @@ pub trait Queryable: std::fmt::Debug + Send {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument]
-    async fn update_credentials(&mut self, recovery: bool,  user_id: &UserId, username: &Username, opaque_password: &[u8], sealed_master_key: &SecretBox<MasterKey>, sealed_export_key: &SecretBox<ExportKey>) -> api::Result<()> {
-        sqlx::query("update `credentials` set `username` = ?, `opaque_password` = ?, `sealed_master_key` = ?, `sealed_export_key` = ? where `recovery` = ?, `user_id` = ?")
+    async fn set_credentials(&mut self, recovery: bool,  user_id: &UserId, username: &Username, opaque_password: &[u8], secret_master_key: &SecretBox<MasterKey>, secret_export_key: &SecretBox<ExportKey>) -> api::Result<()> {
+        sqlx::query("update `credentials` set `username` = ?, `opaque_password` = ?, `secret_master_key` = ?, `secret_export_key` = ? where `recovery` = ? and `user_id` = ?")
         .bind(username.as_slice())
         .bind(opaque_password)
-        .bind(sealed_master_key.as_slice())
-        .bind(sealed_export_key.as_slice())
+        .bind(secret_master_key.as_slice())
+        .bind(secret_export_key.as_slice())
         .bind(if recovery {1} else {0})
         .bind(user_id.as_slice())
         .execute(self.conn()).await.map_err(|e| {
@@ -287,7 +330,7 @@ pub trait Queryable: std::fmt::Debug + Send {
 
     #[tracing::instrument]
     async fn get_credentials_from_username(&mut self, recovery: bool, username: &Username) -> api::Result<(UserId, Vec<u8>, SecretBox<MasterKey>)> {
-        let row = sqlx::query("select `user_id`, `opaque_password`, `sealed_master_key` from `credentials` where `recovery` = ? and `username` = ?")
+        let row = sqlx::query("select `user_id`, `opaque_password`, `secret_master_key` from `credentials` where `recovery` = ? and `username` = ?")
             .bind(if recovery {1} else {0})    
             .bind(username.as_slice())
             .fetch_one(self.conn()).await.map_err(|e| {
@@ -306,7 +349,7 @@ pub trait Queryable: std::fmt::Debug + Send {
 
     #[tracing::instrument]
     async fn get_user_private_data(&mut self, user_id: &UserId) -> api::Result<SecretBox<PrivateData>> {
-        let row: MySqlRow = sqlx::query("select `sealed_private_data` from `users` where `user_id` = ?")
+        let row: MySqlRow = sqlx::query("select `secret_private_data` from `users` where `user_id` = ?")
         .bind(user_id.as_slice())
         .fetch_one(self.conn()).await.map_err(|e| {
             match e {
@@ -320,9 +363,9 @@ pub trait Queryable: std::fmt::Debug + Send {
     }
 
     #[tracing::instrument]
-    async fn set_user_private_data(&mut self, user_id: &UserId, sealed_private_data: &SecretBox<PrivateData>) -> api::Result<()> {
-        sqlx::query("update `users` set `sealed_private_data` = ? where `user_id` = ?")
-            .bind(sealed_private_data.as_slice())
+    async fn set_user_private_data(&mut self, user_id: &UserId, secret_private_data: &SecretBox<PrivateData>) -> api::Result<()> {
+        sqlx::query("update `users` set `secret_private_data` = ? where `user_id` = ?")
+            .bind(secret_private_data.as_slice())
             .bind(user_id.as_slice())
             .execute(self.conn()).await.map_err(|e| {
                 match e {
@@ -331,6 +374,32 @@ pub trait Queryable: std::fmt::Debug + Send {
             })?;
 
         Ok(())
+    }
+
+    #[tracing::instrument]
+    async fn get_export_keys(&mut self, user_id: &UserId) -> api::Result<(SecretBox<ExportKey>, SecretBox<ExportKey>)> {
+        let rows: Vec<MySqlRow> = sqlx::query("select `secret_export_key` from `credentials` where `user_id` = ? order by `recovery`")
+        .bind(user_id.as_slice())
+        .fetch_all(self.conn()).await.map_err(|e| {
+            match e {
+                _ => api::Error::ServerSideError(e.into()),
+            }
+        })?;
+
+        Ok((
+            SecretBox::<ExportKey>::from_vec(
+                rows.get(0)
+                    .ok_or_else(|| eyre::eyre!("secret_export_key not found in database"))?
+                .try_get(0)
+                .map_err(|e| api::Error::ServerSideError(e.into()))?
+            ),
+            SecretBox::<ExportKey>::from_vec(
+                rows.get(1)
+                    .ok_or_else(|| eyre::eyre!("secret_export_key_recovery not found in database"))?
+                .try_get(0)
+                .map_err(|e| api::Error::ServerSideError(e.into()))?
+            ),
+        ))
     }
 }
 

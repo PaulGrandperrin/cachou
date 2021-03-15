@@ -1,3 +1,7 @@
+- server: when validating token, check user_id and version_master_key
+
+- sql: crate user in one go
+
 - add reed-solomon on recovery-key
 
 - server/auth: trace more args fields

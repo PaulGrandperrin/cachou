@@ -34,6 +34,12 @@ pub type Username = Bytes<_Username>;
 pub enum _MasterKey {}
 pub type MasterKey = Bytes<_MasterKey>;
 
+impl MasterKey {
+    pub fn gen() -> Self {
+        rand::thread_rng().gen::<[u8; 32]>().into()
+    }
+}
+
 pub enum _ExportKey {}
 pub type ExportKey = Bytes<_ExportKey>;
 

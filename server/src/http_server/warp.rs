@@ -22,7 +22,7 @@ pub async fn run(state: State) -> eyre::Result<()> {
         // TODO trace unsolicitated requests
 
     warp::serve(filter) // TODO use try_bind instead
-        .run(SocketAddr::from_str("[::1]:8081")?) // TODO add ipv4+6
+        .run(SocketAddr::from_str("127.0.0.1:8081")?) // TODO add ipv4+6
         .await;
 
     todo!()

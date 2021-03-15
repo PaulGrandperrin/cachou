@@ -38,6 +38,16 @@ pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> 
             .inspect_err(log_error)
             .instrument(info_span!(api::SetCredentials::DISPLAY_NAME))
             .await),
+
+        Rpc::GetExportKeys(args) => rmp_serde::encode::to_vec_named(&state.get_export_keys(&args, &mut conn)
+            .inspect_err(log_error)
+            .instrument(info_span!(api::GetExportKeys::DISPLAY_NAME))
+            .await),
+
+        Rpc::RotateMasterKey(args) => rmp_serde::encode::to_vec_named(&state.rotate_master_key(&args, &mut conn)
+            .inspect_err(log_error)
+            .instrument(info_span!(api::RotateMasterKey::DISPLAY_NAME))
+            .await),
         
         Rpc::LoginStart(args) => rmp_serde::encode::to_vec_named(&state.login_start(&args, &mut conn)
             .inspect_err(log_error)
@@ -71,6 +81,8 @@ pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> 
             Err(eyre!(e).into())
         }
     }
+
+    
 }
 
 pub struct Req {

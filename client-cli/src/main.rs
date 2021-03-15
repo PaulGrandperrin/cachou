@@ -54,6 +54,7 @@ fn main() -> eyre::Result<()>{
                     ["login_recovery_uber", recovery_key] => client.login_recovery(recovery_key, true).await.map(|e| format!("{:?}", e)),
                     ["set_username_password", username, password] => client.set_username_password(username, password).await.map(|e| format!("{:?}", e)),
                     ["change_recovery_key"] => client.change_recovery_key().await.map(|e| format!("{:?}", e)),
+                    ["rotate_master_key"] => client.rotate_master_key().await.map(|e| format!("{:?}", e)),
                     ["logout"] => Ok(format!("{:?}", client.logout())),
                     ["hibp", password] => client_common::hibp(password).await.map(|e| format!("{:?}", e)),
                     //["set_totp", uri] => client.change_totp(Some(uri.to_string())).await.map(|e| format!("{:?}", e)),

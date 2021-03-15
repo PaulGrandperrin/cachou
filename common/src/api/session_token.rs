@@ -22,7 +22,7 @@ enum SessionState {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionToken {
     pub user_id: UserId,
-    pub version: u64,
+    pub version_master_key: u32,
 
     session_state: SessionState,
 }
@@ -35,20 +35,20 @@ pub enum Clearance {
 }
 
 impl SessionToken {
-    pub fn new_need_second_factor(user_id: UserId, version: u64) -> Self {   
+    pub fn new_need_second_factor(user_id: UserId, version_master_key: u32) -> Self {   
         SessionToken {
             user_id,
-            version,
+            version_master_key,
             session_state: SessionState::NeedSecondFactor {
                 timestamp: chrono::Utc::now().timestamp(),
             },
         }
     }
 
-    pub fn new_logged_in(user_id: UserId, version: u64, auto_logout: bool, uber: bool) -> Self {   
+    pub fn new_logged_in(user_id: UserId, version_master_key: u32, auto_logout: bool, uber: bool) -> Self {   
         SessionToken {
             user_id,
-            version,
+            version_master_key,
             session_state: SessionState::LoggedIn {
                 timestamp: chrono::Utc::now().timestamp(),
                 auto_logout: if auto_logout { Some(0) } else { None },

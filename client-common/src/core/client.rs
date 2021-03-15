@@ -1,4 +1,4 @@
-use common::{api::{MasterKey, private_data::PrivateData, session_token::SessionToken}, crypto::crypto_boxes::{AuthBox}};
+use common::{api::{ExportKey, MasterKey, private_data::PrivateData, session_token::SessionToken}, crypto::crypto_boxes::{AuthBox}};
 
 use crate::rpc_client::RpcClient;
 
@@ -15,6 +15,8 @@ pub struct Client {
 #[derive(Debug, Clone)]
 pub struct LoggedUser {
     master_key: MasterKey,
+/*     export_key: ExportKey,
+    export_key_recovery: ExportKey, */
     private_data: PrivateData,
     authed_session_token: AuthBox<SessionToken>,
 }
@@ -22,7 +24,7 @@ pub struct LoggedUser {
 impl Default for Client {
     fn default() -> Self {
         Self {
-            rpc_client: RpcClient::new("http://[::1]:8081/api"),
+            rpc_client: RpcClient::new("http://127.0.0.1:8081/api"),
             logged_user: None,
         }
     }

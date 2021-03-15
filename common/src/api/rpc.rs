@@ -13,6 +13,9 @@ pub enum Rpc {
     NewCredentials(NewCredentials),
     SetCredentials(SetCredentials),
 
+    GetExportKeys(GetExportKeys),
+    RotateMasterKey(RotateMasterKey),
+
     LoginStart(LoginStart),
     LoginFinish(LoginFinish),
 
@@ -87,6 +90,44 @@ impl RpcTrait for SetCredentials {
     const DISPLAY_NAME: &'static str = "SetCredentials";
     type Ret = ();
     fn into_call(self) -> Rpc { Rpc::SetCredentials(self) }
+}
+
+// GetExportKeys
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetExportKeys {
+    pub authed_session_token: AuthBox<SessionToken>, // must have uber rights
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetExportKeysRet {
+    pub secret_export_key: SecretBox<ExportKey>,
+    pub secret_export_key_recovery: SecretBox<ExportKey>,
+}
+impl RpcTrait for GetExportKeys {
+    const DISPLAY_NAME: &'static str = "GetExportKeys";
+    type Ret = GetExportKeysRet;
+    fn into_call(self) -> Rpc { Rpc::GetExportKeys(self) }
+}
+
+// RotateMasterKey
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RotateMasterKey {
+    pub authed_session_token: AuthBox<SessionToken>, // must have uber rights
+
+    pub secret_private_data: SecretBox<PrivateData>,
+
+    pub secret_master_key: SecretBox<MasterKey>,
+    pub secret_export_key: SecretBox<ExportKey>,
+
+    pub secret_master_key_recovery: SecretBox<MasterKey>,
+    pub secret_export_key_recovery: SecretBox<ExportKey>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RotateMasterKeyRet {
+}
+impl RpcTrait for RotateMasterKey {
+    const DISPLAY_NAME: &'static str = "RotateMasterKey";
+    type Ret = RotateMasterKeyRet;
+    fn into_call(self) -> Rpc { Rpc::RotateMasterKey(self) }
 }
 
 // LoginStart
