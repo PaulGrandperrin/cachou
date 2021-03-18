@@ -1,6 +1,6 @@
 use std::mem;
 
-use common::{api::{self, MasterKey, private_data::PrivateData, session_token::SessionToken}, crypto::crypto_boxes::{AuthBox}};
+use common::{api::{self, MasterKey, private_data::PrivateData, session_token::{Clearance, SessionToken}}, crypto::crypto_boxes::{AuthBox}};
 
 use crate::rpc_client::RpcClient;
 
@@ -17,7 +17,7 @@ pub struct Client {
 #[derive(Debug)]
 pub enum User {
     None,
-    NeedSecondFactor,
+    NeedSecondFactor(AuthBox<SessionToken>),
     LoggedIn(LoggedIn),
 }
 
@@ -54,5 +54,15 @@ impl User {
                 Err(eyre::eyre!("not logged in").into())
             },
         }
+    }
+
+    fn get_clearance(&self) -> api::Result<Clearance> {
+        Ok(
+            match self {
+                User::None => Clearance::None,
+                User::NeedSecondFactor(ast) => ast.get_unverified()?.get_clearance(), 
+                User::LoggedIn(li) => li.authed_session_token.get_unverified()?.get_clearance(),
+            }
+        )
     }
 }

@@ -144,20 +144,20 @@ impl State {
     }
 
 
-    pub async fn login_finish(&self, args: &LoginFinish, _conn: &mut DbConn<'_>) -> api::Result<<LoginFinish as RpcTrait>::Ret> {
+    pub async fn login_finish(&self, args: &LoginFinish, conn: &mut DbConn<'_>) -> api::Result<<LoginFinish as RpcTrait>::Ret> {
         let ServerLoginState {opaque_state, user_id, secret_master_key, version_master_key} = AeadBox::<ServerLoginState, ()>::unseal(&self.secret_key, args.secret_server_state.as_slice())?.0;
 
         async {
             // check password
             opaque::login_finish(&opaque_state, &args.opaque_msg)?;
 
-            //let totp_uri = conn.normal().await?.get_totp_from_userid(&user_id).await?;
+            let totp = conn.std().await?.get_user_totp(&user_id).await?;
 
-            let authed_session_token = /*if totp_uri.is_some() {
-                let r = self.session_token_new_need_second_factor_sealed(user_id.clone(), version)?;
+            let authed_session_token = if totp.is_some() {
+                let r = self.session_token_new_need_second_factor_sealed(user_id.clone(), version_master_key)?;
                 debug!("ok - need second factor");
                 r
-            } else*/ {
+            } else {
                 let r = self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, args.auto_logout, args.uber_clearance)?;
                 debug!("ok - logged in");
                 r

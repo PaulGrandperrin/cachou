@@ -29,6 +29,7 @@ pub struct SessionToken {
 
 #[derive(Debug)]
 pub enum Clearance {
+    None,
     NeedSecondFactor, // the user identified with one factor but his account requires a second one
     LoggedIn,
     Uber, // allows changing credentials and masterkey

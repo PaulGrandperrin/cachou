@@ -1,9 +1,10 @@
 use std::time::Duration;
 
-use common::{api::{self, ExportKey, MasterKey, Totp, UserId, Username, private_data::PrivateData}, crypto::crypto_boxes::SecretBox};
+use common::{api::{self, ExportKey, MasterKey, Totp, TotpAlgo, TotpSecret, UserId, Username, private_data::PrivateData}, crypto::crypto_boxes::SecretBox};
 use sqlx::{Database, Executor, MySql, Pool, Row, Transaction, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}, pool::PoolConnection};
 use async_trait::async_trait;
 use tracing::error;
+use std::str::FromStr;
 
 // making things generic over the Db implementation doesn't seem very useful at this point, but NewType are nices
 #[derive(Debug)]
@@ -436,6 +437,30 @@ pub trait Queryable: std::fmt::Debug + Send {
             row.try_get(1).map_err(|e| api::Error::ServerSideError(e.into()))?,
             SecretBox::<MasterKey>::from_vec(row.try_get(2).map_err(|e| api::Error::ServerSideError(e.into()))?),
         ))
+    }
+
+    #[tracing::instrument]
+    async fn get_user_totp(&mut self, user_id: &UserId) -> api::Result<Option<Totp>> {
+        let row = sqlx::query("select `totp_secret`, `totp_digits`, `totp_algo`, `totp_period` from `users` where `user_id` = ?")
+            .bind(user_id.as_slice())
+            .fetch_one(self.conn()).await.map_err(|e| {
+                match e {
+                    _ => api::Error::ServerSideError(e.into()),
+                }
+            })?;
+
+        let r = if let Some(secret) = row.try_get(0).map_err(|e| api::Error::ServerSideError(e.into()))? {
+            Some(Totp {
+                secret: TotpSecret::from_vec(secret),
+                digits: row.try_get(1).map_err(|e| api::Error::ServerSideError(e.into()))?,
+                algo:   TotpAlgo::from_str(row.try_get(2).map_err(|e| api::Error::ServerSideError(e.into()))?).map_err(|e| api::Error::ServerSideError(e.into()))?,
+                period: row.try_get(3).map_err(|e| api::Error::ServerSideError(e.into()))?,
+            })
+        } else {
+            None
+        };
+
+        Ok(r)
     }
        
 }

@@ -1,6 +1,7 @@
 use std::{iter};
 
 use common::{api::{AddUser, AddUserRet, Credentials, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RotateMasterKey, RotateMasterKeyRet, SetCredentials, SetTotp, Totp, TotpAlgo, Username, private_data::PrivateData, session_token::{Clearance}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}};
+use eyre::bail;
 use sha2::Digest;
 use common::crypto::crypto_boxes::Seal;
 use std::str::FromStr;
@@ -173,34 +174,41 @@ impl Client {
             LoginFinish{secret_server_state, opaque_msg, uber_clearance, auto_logout}
         ).await?;
 
-        // unseal master key
-        let master_key = secret_master_key.unseal(export_key_current.as_slice())?;
-
-        // download user private data
-        let GetUserPrivateDataRet { secret_private_data } = self.rpc_client.call(
-            GetUserPrivateData {
-                authed_session_token: authed_session_token.clone(),
+        // check if we are logged or if we need a second factor
+        self.user = match authed_session_token.get_unverified()?.get_clearance() {
+            Clearance::NeedSecondFactor => {
+                User::NeedSecondFactor( authed_session_token )
             }
-        ).await?;
+            Clearance::LoggedIn | Clearance::Uber => {
+                // unseal master key
+                let master_key = secret_master_key.unseal(export_key_current.as_slice())?;
 
-        // recover user's private data
-        let private_data = secret_private_data.unseal(master_key.as_slice())?;
+                // download user private data
+                let GetUserPrivateDataRet { secret_private_data } = self.rpc_client.call(
+                    GetUserPrivateData {
+                        authed_session_token: authed_session_token.clone(),
+                    }
+                ).await?;
 
-        self.user = User::LoggedIn( LoggedIn {
-            master_key,
-            private_data,
-            authed_session_token,
-        });
+                // recover user's private data
+                let private_data = secret_private_data.unseal(master_key.as_slice())?;
 
+                User::LoggedIn( LoggedIn {
+                    master_key,
+                    private_data,
+                    authed_session_token,
+                })
+            }
+            _ => bail!("invalid clearance")
+        };
+        
         Ok(())
     }
 
     // --- public functions
 
     pub fn get_clearance(&self) -> eyre::Result<Clearance> {
-        let logged_user  = self.user.get_ref_logged()?;
-
-        Ok(logged_user.authed_session_token.get_unverified()?.get_clearance())
+        Ok(self.user.get_clearance()?)
     }
 
     pub async fn set_totp(&mut self, totp_secret: &[u8], totp_digits: u8, totp_algo: &str, totp_period: u32) -> eyre::Result<()> { 
