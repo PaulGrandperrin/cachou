@@ -1,4 +1,4 @@
-use common::{api::{ExportKey, MasterKey, private_data::PrivateData, session_token::SessionToken}, crypto::crypto_boxes::{AuthBox}};
+use common::{api::{MasterKey, private_data::PrivateData, session_token::SessionToken}, crypto::crypto_boxes::{AuthBox}};
 
 use crate::rpc_client::RpcClient;
 

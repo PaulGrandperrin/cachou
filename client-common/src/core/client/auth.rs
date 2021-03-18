@@ -1,6 +1,6 @@
 use std::{iter};
 
-use common::{api::{AddUser, AddUserRet, Credentials, ExportKey, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RotateMasterKey, RotateMasterKeyRet, SetCredentials, SetTotp, Totp, TotpAlgo, Username, private_data::PrivateData, session_token::{Clearance}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}};
+use common::{api::{AddUser, AddUserRet, Credentials, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RotateMasterKey, RotateMasterKeyRet, SetCredentials, SetTotp, Totp, TotpAlgo, Username, private_data::PrivateData, session_token::{Clearance}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}};
 use sha2::Digest;
 use common::crypto::crypto_boxes::Seal;
 use std::str::FromStr;
@@ -31,8 +31,8 @@ impl Client {
         // seal private_data with master_key
         let secret_private_data = private_data.seal(&master_key.as_slice())?;
 
-        let (credentials, export_key) = self.new_credentials_impl(&master_key, username, password, false).await?;
-        let (credentials_recovery, export_key_recovery) = self.new_credentials_impl(&master_key, username_recovery, password_recovery, true).await?;
+        let credentials = self.new_credentials_impl(&master_key, username, password, false).await?;
+        let credentials_recovery = self.new_credentials_impl(&master_key, username_recovery, password_recovery, true).await?;
 
         // request a new user creation
         let AddUserRet {authed_session_token} = self.rpc_client.call(
@@ -46,8 +46,6 @@ impl Client {
         // client is logged
         self.logged_user = Some( LoggedUser {
             master_key: master_key.to_owned(),
-/*             export_key,
-            export_key_recovery, */
             private_data,
             authed_session_token: authed_session_token.clone(),
         });
@@ -55,7 +53,7 @@ impl Client {
         Ok(())
     }
 
-    async fn new_credentials_impl(&self, master_key: &MasterKey, username: &Username, password: &[u8], recovery: bool) -> eyre::Result<(Credentials, ExportKey)> {
+    async fn new_credentials_impl(&self, master_key: &MasterKey, username: &Username, password: &[u8], recovery: bool) -> eyre::Result<Credentials> {
 
         // start client-side OPAQUE registration
         let (opaque_state, opaque_msg) = opaque::registration_start(password)?;
@@ -76,13 +74,13 @@ impl Client {
         // seal export_key with master_key
         let secret_export_key = export_key.seal(master_key.as_slice())?;
     
-        Ok((Credentials{
+        Ok(Credentials{
             secret_server_state,
             opaque_msg,
             username: username.clone(),
             secret_export_key,
             secret_master_key,
-        }, export_key))
+        })
     }
 
     pub async fn rotate_master_key(&mut self) -> eyre::Result<()> {
@@ -136,8 +134,8 @@ impl Client {
     async fn set_credentials_impl(&mut self, username: &Username, password: &[u8], recovery: bool) -> eyre::Result<()> {
         // IMPORTANT NOTE: we `take()` the logged user because if some RPC fails, we won't know if the new keys have correctly been uploaded or not.
         // this would risk writting new data encrypted with the wrong key, which would irreversibly corrupt the data...
-        let mut logged_user  = self.logged_user.take().ok_or_else(|| eyre::eyre!("not logged in"))?;
-        let (credentials, export_key) = self.new_credentials_impl(&logged_user.master_key, username, password, recovery).await?;
+        let logged_user  = self.logged_user.take().ok_or_else(|| eyre::eyre!("not logged in"))?;
+        let credentials = self.new_credentials_impl(&logged_user.master_key, username, password, recovery).await?;
 
         // finish server-side OPAQUE registration and set credentials to user
         self.rpc_client.call(
@@ -253,7 +251,7 @@ impl Client {
         Ok(())
     }
  
-    pub async fn signup(&mut self, username: &str, password: &str, totp_uri: Option<String>) -> eyre::Result<String> {
+    pub async fn signup(&mut self, username: &str, password: &str) -> eyre::Result<String> {
         let (username_recovery, password_recovery) = gen_recovery_credentials();
         self.new_user_impl(&Username::from(username), password.as_bytes(), &Username::from(username_recovery), &password_recovery).await?;
         

@@ -48,7 +48,7 @@ fn main() -> eyre::Result<()>{
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
                 let f = async { match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
-                    ["signup", username, password] => client.signup(username, password, None).await.map(|e| format!("{:?}", e)),
+                    ["signup", username, password] => client.signup(username, password).await.map(|e| format!("{:?}", e)),
                     ["login", username, password] => client.login(username, password, false, false).await.map(|e| format!("{:?}", e)),
                     ["login_uber", username, password] => client.login(username, password, true, false).await.map(|e| format!("{:?}", e)),
                     ["login_recovery", recovery_key] => client.login_recovery(recovery_key, false, false).await.map(|e| format!("{:?}", e)),
