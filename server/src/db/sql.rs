@@ -32,7 +32,6 @@ impl<'pool> DbConn<'pool> {
     }
 
     pub async fn commit(mut self) -> api::Result<()> {
-        println!("commit");
         if let Some(tx) = self.tx.take() {
             tx.0.commit().await.map_err(|e| api::Error::ServerSideError(e.into()))?;
         }
@@ -40,7 +39,6 @@ impl<'pool> DbConn<'pool> {
     }
 
     pub async fn rollback(mut self) -> api::Result<()> {
-        println!("rollback");
         if let Some(tx) = self.tx.take() {
             tx.0.rollback().await.map_err(|e| api::Error::ServerSideError(e.into()))?;
         }
@@ -150,7 +148,7 @@ impl DbPool {
         let mut conn = self.0.acquire().await?;
 
         // https://docs.pingcap.com/tidb/dev/clustered-indexes
-        conn.execute("set session tidb_enable_clustered_index = 1").await?;
+        //conn.execute("set session tidb_enable_clustered_index = 1").await?;
 
         conn.execute("
             create table if not exists `tmp` (
