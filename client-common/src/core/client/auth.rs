@@ -222,7 +222,7 @@ impl Client {
         let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
         let totp = Totp {
-            secret: totp_secret.to_owned(),
+            secret: totp_secret.into(),
             digits: totp_digits,
             algo: TotpAlgo::from_str(totp_algo)?,
             period: totp_period,

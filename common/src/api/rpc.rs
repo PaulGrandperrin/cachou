@@ -76,6 +76,9 @@ impl MasterKey {
 pub enum _ExportKey {}
 pub type ExportKey = Bytes<_ExportKey>;
 
+pub enum _TotpSecret {}
+pub type TotpSecret = Bytes<_TotpSecret>;
+
 
 // --- Standalone Structs and Enums
 
@@ -90,7 +93,7 @@ pub struct Credentials {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Totp {
-    pub secret: Vec<u8>,
+    pub secret: TotpSecret,
     pub digits: u8,
     pub algo: TotpAlgo,
     pub period: u32,

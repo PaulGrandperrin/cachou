@@ -386,7 +386,7 @@ impl TxConn {
     #[tracing::instrument]
     pub async fn set_user_totp(&mut self, user_id: &UserId, totp: &Option<Totp>) -> api::Result<()> {
         sqlx::query("update `users` set `totp_secret` = ?, `totp_digits` = ?, `totp_algo` = ?, `totp_period` = ? where `user_id` = ?")
-            .bind(totp.as_ref().map(|t| &t.secret))
+            .bind(totp.as_ref().map(|t| t.secret.as_slice()))
             .bind(totp.as_ref().map(|t| t.digits))
             .bind(totp.as_ref().map(|t| t.algo.as_ref()))
             .bind(totp.as_ref().map(|t| t.period))
