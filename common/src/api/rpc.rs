@@ -187,6 +187,7 @@ pub struct RotateMasterKey {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RotateMasterKeyRet {
+    pub authed_session_token: AuthBox<SessionToken>,
 }
 impl RpcTrait for RotateMasterKey {
     const DISPLAY_NAME: &'static str = "RotateMasterKey";

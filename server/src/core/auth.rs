@@ -104,13 +104,15 @@ impl State {
 
     pub async fn rotate_master_key(&self, args: &RotateMasterKey, conn: &mut DbConn<'_>) -> api::Result<<RotateMasterKey as RpcTrait>::Ret> {
         // get user's user_id and check that token has uber rights
-        let session_token = self.session_token_unseal_refreshed_and_validated(conn.tx().await?, &args.authed_session_token, Clearance::Uber).await?;
+        let mut session_token = self.session_token_unseal_refreshed_and_validated(conn.tx().await?, &args.authed_session_token, Clearance::Uber).await?;
         let user_id = bs58::encode(session_token.user_id.as_slice()).into_string();
 
         async {
+            session_token.version_master_key += 1;
+
             conn.tx().await?.rotate_master_key(
                 &session_token.user_id,
-                session_token.version_master_key + 1,
+                session_token.version_master_key,
                 &args.secret_private_data,
                 &args.secret_master_key,
                 &args.secret_export_key,
@@ -118,7 +120,9 @@ impl State {
                 &args.secret_export_key_recovery).await?;
             debug!("ok");
             
-            Ok(RotateMasterKeyRet{})
+            Ok(RotateMasterKeyRet{
+                authed_session_token: self.session_token_seal(&session_token)?,
+            })
         }.instrument(info_span!("id", %user_id)).await
     }
 

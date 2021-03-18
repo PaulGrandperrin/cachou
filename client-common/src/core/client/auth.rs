@@ -114,7 +114,7 @@ impl Client {
         // this would risk writting new data encrypted with the wrong key, which would irreversibly corrupt the data...
         let logged_user  = self.logged_user.take().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
-        let RotateMasterKeyRet { /* TODO  */} = self.rpc_client.call(
+        let RotateMasterKeyRet { authed_session_token } = self.rpc_client.call(
             RotateMasterKey {
                 authed_session_token: logged_user.authed_session_token.clone(),
                 secret_private_data,
@@ -126,7 +126,11 @@ impl Client {
         ).await?;
 
         // everything went well, we can restore our logged user data
-        self.logged_user = None; // TODO contruct from new session
+        self.logged_user = Some(LoggedUser {
+            master_key,
+            private_data: logged_user.private_data,
+            authed_session_token,
+        });
 
         Ok(())
     }
