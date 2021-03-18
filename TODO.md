@@ -1,24 +1,14 @@
-- server: when validating token, check user_id and version_master_key
-
-- sql: crate user in one go
-
 - add reed-solomon on recovery-key
 
 - server/auth: trace more args fields
 
-- compile both tokio and async stuff on test cfg 
-
-- reimplement totp
-
-- finish implementing auto_logout
+- finish reimplement totp
 
 - validate username client-side and server-side (alphanum only)
 
 - TOTP: 1 pass should allow only one login!
 
 - implement ServerSideWarn
-
-- refactor client and logged_user. and ensure to never save to disk uber token
 
 - prevent user enumeration: https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22
 
@@ -33,7 +23,7 @@
 
 - implement votes
 
-- create a new newtype generic for constant-sized vectors / keys
+- create a new newtype generic for constant-sized vectors / keys, and for bool too
 - use subtle (for constant-time cmp), zeroize and other type system tricks when useful
 - unicode/ utf8 normalization
 
