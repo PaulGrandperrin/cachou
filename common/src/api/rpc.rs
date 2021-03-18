@@ -20,7 +20,6 @@ pub enum Rpc {
     LoginFinish(LoginFinish),
 
     GetUserPrivateData(GetUserPrivateData),
-
     SetUserPrivateData(SetUserPrivateData),
 }
 
@@ -32,7 +31,7 @@ pub trait RpcTrait: Serialize {
     fn into_call(self) -> Rpc;
 }
 
-// --- Standalone Structs
+// --- Standalone Structs and Enums
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Credentials {
@@ -41,6 +40,21 @@ pub struct Credentials {
     pub username: Username,
     pub secret_master_key: SecretBox<MasterKey>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     pub secret_export_key: SecretBox<ExportKey>, // sealed with masterkey. useful when we want to rotate the masterkey
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Totp {
+    pub secret: Vec<u8>,
+    pub digits: u8,
+    pub algo: TotpAlgo,
+    pub period: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum TotpAlgo {
+    Sha1,
+    Sha256,
+    Sha512,
 }
 
 // --- Rpc Structs

@@ -14,6 +14,7 @@ pub fn log_error(e: &api::Error) {
         _ => info!("{}", e)
     }
 }
+
 // TODO call a generic method instead
 pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> {
     // deserialize request
