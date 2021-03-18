@@ -5,6 +5,8 @@ use crate::crypto::crypto_boxes::{AuthBox, SecretBox};
 
 use super::{OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username, ExportKey, MasterKey, SecretServerState, private_data::PrivateData, session_token::SessionToken};
 
+use strum_macros::{AsRefStr, EnumString};
+
 // --- Enum
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,6 +23,8 @@ pub enum Rpc {
 
     GetUserPrivateData(GetUserPrivateData),
     SetUserPrivateData(SetUserPrivateData),
+
+    SetTotp(SetTotp),
 }
 
 // --- Trait
@@ -50,7 +54,8 @@ pub struct Totp {
     pub period: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, AsRefStr, EnumString)]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum TotpAlgo {
     Sha1,
     Sha256,
@@ -168,6 +173,7 @@ pub struct LoginFinish {
     pub secret_server_state: SecretServerState,
     pub opaque_msg: OpaqueClientFinishMsg,
     pub uber_clearance: bool,
+    pub auto_logout: bool,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinishRet {
@@ -205,4 +211,16 @@ impl RpcTrait for SetUserPrivateData {
     const DISPLAY_NAME: &'static str = "SetUserPrivateData";
     type Ret = ();
     fn into_call(self) -> Rpc { Rpc::SetUserPrivateData(self) }
+}
+
+// SetTotp
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SetTotp {
+    pub authed_session_token: AuthBox<SessionToken>,
+    pub totp: Totp,
+}
+impl RpcTrait for SetTotp {
+    const DISPLAY_NAME: &'static str = "SetTotp";
+    type Ret = ();
+    fn into_call(self) -> Rpc { Rpc::SetTotp(self) }
 }

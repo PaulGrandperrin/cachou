@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, Credentials, ExportKey, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, OpaqueState, RotateMasterKey, RotateMasterKeyRet, RpcTrait, SecretServerState, SetCredentials, SetUserPrivateData, UserId, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
+use common::{api::{self, AddUser, AddUserRet, Credentials, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, OpaqueState, RotateMasterKey, RotateMasterKeyRet, RpcTrait, SecretServerState, SetCredentials, SetTotp, SetUserPrivateData, UserId, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::{DbConn, sql::TxConn}, opaque, state::State};
@@ -38,7 +38,7 @@ impl State {
             // save private data
             tx.set_user_private_data(&user_id, &args.secret_private_data).await?;
 
-            let authed_session_token = self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, false, true)?;
+            let authed_session_token = self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, true, false)?;
 
             info!("ok");
             
@@ -154,7 +154,7 @@ impl State {
                 debug!("ok - need second factor");
                 r
             } else*/ {
-                let r = self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, false, args.uber_clearance)?;
+                let r = self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, args.auto_logout, args.uber_clearance)?;
                 debug!("ok - logged in");
                 r
             };
@@ -191,18 +191,13 @@ impl State {
     }
 
 
-/*     pub async fn change_totp(&self, args: &ChangeTotp, conn: &mut DbConn<'_>) -> api::Result<<ChangeTotp as Rpc>::Ret> {
-        // get user's user_id and check that token has uber rights
-        let SessionToken{user_id, version, ..} = self.session_token_unseal_refreshed_and_validated(&args.authed_session_token, Clearance::Uber).await?;
-
-        if let Some(uri) = &args.totp_uri {
-            common::crypto::totp::parse_totp_uri(uri)?; // TODO send back error not obscurated
-        }
+    pub async fn set_totp(&self, args: &SetTotp, conn: &mut DbConn<'_>) -> api::Result<<SetTotp as RpcTrait>::Ret> {
+        let SessionToken{user_id, .. } = self.session_token_unseal_refreshed_and_validated(conn.tx().await?, &args.authed_session_token, Clearance::Uber).await?;
 
         async {
-            conn.normal().await?.change_totp(&user_id, version, &args.totp_uri).await?;
+            conn.tx().await?.set_user_totp(&user_id, &args.totp).await?;
             debug!("ok");
             Ok(())
-        }.instrument(info_span!("id", user_id = %bs58::encode(&user_id).into_string())).await
-    } */
+        }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
+    }
 }

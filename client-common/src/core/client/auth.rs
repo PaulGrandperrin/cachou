@@ -1,8 +1,9 @@
 use std::{iter};
 
-use common::{api::{AddUser, AddUserRet, Credentials, ExportKey, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RotateMasterKey, RotateMasterKeyRet, SetCredentials, Username, private_data::PrivateData, session_token::{Clearance}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}};
+use common::{api::{AddUser, AddUserRet, Credentials, ExportKey, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RotateMasterKey, RotateMasterKeyRet, SetCredentials, SetTotp, Totp, TotpAlgo, Username, private_data::PrivateData, session_token::{Clearance}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}};
 use sha2::Digest;
 use common::crypto::crypto_boxes::Seal;
+use std::str::FromStr;
 
 use crate::{opaque};
 use super::{Client, LoggedUser};
@@ -160,8 +161,7 @@ impl Client {
         Ok(())
     }
 
-    // TODO handle auto-logout
-    async fn login_impl(&mut self, username: &Username, password: &[u8], uber_clearance: bool, recovery: bool) -> eyre::Result<()> {
+    async fn login_impl(&mut self, username: &Username, password: &[u8], uber_clearance: bool, recovery: bool, auto_logout: bool) -> eyre::Result<()> {
         // start client-side OPAQUE login
         let (opaque_state, opaque_msg) = opaque::login_start(password)?;
 
@@ -175,7 +175,7 @@ impl Client {
 
         // finish server-side OPAQUE login
         let LoginFinishRet {authed_session_token, secret_master_key} = self.rpc_client.call(
-            LoginFinish{secret_server_state, opaque_msg, uber_clearance}
+            LoginFinish{secret_server_state, opaque_msg, uber_clearance, auto_logout}
         ).await?;
 
         // unseal master key
@@ -220,19 +220,26 @@ impl Client {
         Ok(logged_user.authed_session_token.get_unverified()?.get_clearance())
     }
 
-   /*  pub async fn change_totp(&mut self, totp_uri: Option<String>) -> eyre::Result<()> { 
+    pub async fn set_totp(&mut self, totp_secret: &[u8], totp_digits: u8, totp_algo: &str, totp_period: u32) -> eyre::Result<()> { 
         let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
 
+        let totp = Totp {
+            secret: totp_secret.to_owned(),
+            digits: totp_digits,
+            algo: TotpAlgo::from_str(totp_algo)?,
+            period: totp_period,
+        };
+
         self.rpc_client.call(
-            ChangeTotp {
+            SetTotp {
                 authed_session_token: logged_user.authed_session_token.clone(),
-                totp_uri,
+                totp,
             }
         ).await?;
 
         Ok(())
     }
- */
+ 
     pub async fn signup(&mut self, username: &str, password: &str, totp_uri: Option<String>) -> eyre::Result<String> {
         let (username_recovery, password_recovery) = gen_recovery_credentials();
         self.new_user_impl(&Username::from(username), password.as_bytes(), &Username::from(username_recovery), &password_recovery).await?;
@@ -255,15 +262,15 @@ impl Client {
         Ok(recovery_key)
     }
 
-    pub async fn login(&mut self, username: &str, password: &str, uber_clearance: bool) -> eyre::Result<Clearance> {
-        self.login_impl(&Username::from(username), password.as_bytes(), uber_clearance, false).await?;
+    pub async fn login(&mut self, username: &str, password: &str, uber_clearance: bool, auto_logout: bool) -> eyre::Result<Clearance> {
+        self.login_impl(&Username::from(username), password.as_bytes(), uber_clearance, false, auto_logout).await?;
         self.get_clearance()
     }
 
-    pub async fn login_recovery(&mut self, recovery_key: &str, uber_clearance: bool) -> eyre::Result<Clearance> {
+    pub async fn login_recovery(&mut self, recovery_key: &str, uber_clearance: bool, auto_logout: bool) -> eyre::Result<Clearance> {
         let password_recovery = bs58::decode(recovery_key).into_vec()?;
         let username_recovery = derive_username_recovery(&password_recovery);
-        self.login_impl(&Username::from(username_recovery), &password_recovery, uber_clearance, true).await?;
+        self.login_impl(&Username::from(username_recovery), &password_recovery, uber_clearance, true, auto_logout).await?;
         self.get_clearance()
     }
 

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use common::{api::{self, UserId, Username, ExportKey, MasterKey, private_data::PrivateData}, crypto::crypto_boxes::SecretBox};
+use common::{api::{self, ExportKey, MasterKey, Totp, UserId, Username, private_data::PrivateData}, crypto::crypto_boxes::SecretBox};
 use sqlx::{Database, Executor, MySql, Pool, Row, Transaction, mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlRow}, pool::PoolConnection};
 use async_trait::async_trait;
 use tracing::error;
@@ -166,7 +166,10 @@ impl DbPool {
                 `user_id`             binary(16)      not null,
                 `version_master_key`  int unsigned    not null, -- needed to guarantee data coherency, but also used to invalidate all session tokens
                 `secret_private_data` varbinary(1024)         , -- sealed with master_key
-                `totp`                varchar(256)            ,
+                `totp_secret`         varbinary(32)           ,
+                `totp_digits`         tinyint unsigned        , -- u8
+                `totp_algo`           varchar(16)             ,
+                `totp_period`         int unsigned            , -- u32
                 primary key (`user_id`)
             )
         ").await?;
@@ -379,6 +382,23 @@ impl TxConn {
             ),
         ))
     }
+
+    #[tracing::instrument]
+    pub async fn set_user_totp(&mut self, user_id: &UserId, totp: &Totp) -> api::Result<()> {
+        sqlx::query("update `users` set `totp_secret` = ?, `totp_digits` = ?, `totp_algo` = ?, `totp_period` = ? where `user_id` = ?")
+            .bind(&totp.secret)
+            .bind(totp.digits)
+            .bind(totp.algo.as_ref())
+            .bind(totp.period)
+            .bind(user_id.as_slice())
+            .execute(self.conn()).await.map_err(|e| {
+                match e {
+                    _ => api::Error::ServerSideError(e.into()),
+                }
+            })?;
+
+        Ok(())
+    }
 }
 
 // queries that are defined on any kind of connection (transactionnal or not)
@@ -416,7 +436,8 @@ pub trait Queryable: std::fmt::Debug + Send {
             row.try_get(1).map_err(|e| api::Error::ServerSideError(e.into()))?,
             SecretBox::<MasterKey>::from_vec(row.try_get(2).map_err(|e| api::Error::ServerSideError(e.into()))?),
         ))
-    }    
+    }
+       
 }
 
 

@@ -72,6 +72,11 @@ pub async fn rpc(state: &State, req: &Req, body: &[u8]) -> api::Result<Vec<u8>> 
             .inspect_err(|e| {log_error(e); got_error = true})
             .instrument(info_span!(api::SetUserPrivateData::DISPLAY_NAME))
             .await),
+
+        Rpc::SetTotp(args) => rmp_serde::encode::to_vec_named(&state.set_totp(&args, &mut conn)
+            .inspect_err(|e| {log_error(e); got_error = true})
+            .instrument(info_span!(api::SetTotp::DISPLAY_NAME))
+            .await),
     }}.instrument(info_span!("rpc", %req.ip, req.port)).await.map_err(|e| eyre!(e).into());
 
     // commit or rollback to DbConn

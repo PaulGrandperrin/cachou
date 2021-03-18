@@ -1,5 +1,6 @@
 //#![allow(unused_imports)]
 use client_common::core::client::Client;
+use common::crypto::totp::parse_totp_uri;
 use eyre::WrapErr;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -48,16 +49,19 @@ fn main() -> eyre::Result<()>{
                 rl.add_history_entry(line.as_str());
                 let f = async { match *line.split_ascii_whitespace().collect::<Vec<_>>().as_slice() {
                     ["signup", username, password] => client.signup(username, password, None).await.map(|e| format!("{:?}", e)),
-                    ["login", username, password] => client.login(username, password, false).await.map(|e| format!("{:?}", e)),
-                    ["login_uber", username, password] => client.login(username, password, true).await.map(|e| format!("{:?}", e)),
-                    ["login_recovery", recovery_key] => client.login_recovery(recovery_key, false).await.map(|e| format!("{:?}", e)),
-                    ["login_recovery_uber", recovery_key] => client.login_recovery(recovery_key, true).await.map(|e| format!("{:?}", e)),
+                    ["login", username, password] => client.login(username, password, false, false).await.map(|e| format!("{:?}", e)),
+                    ["login_uber", username, password] => client.login(username, password, true, false).await.map(|e| format!("{:?}", e)),
+                    ["login_recovery", recovery_key] => client.login_recovery(recovery_key, false, false).await.map(|e| format!("{:?}", e)),
+                    ["login_recovery_uber", recovery_key] => client.login_recovery(recovery_key, true, false).await.map(|e| format!("{:?}", e)),
                     ["set_username_password", username, password] => client.set_username_password(username, password).await.map(|e| format!("{:?}", e)),
                     ["change_recovery_key"] => client.change_recovery_key().await.map(|e| format!("{:?}", e)),
                     ["rotate_master_key"] => client.rotate_master_key().await.map(|e| format!("{:?}", e)),
                     ["logout"] => Ok(format!("{:?}", client.logout())),
                     ["hibp", password] => client_common::hibp(password).await.map(|e| format!("{:?}", e)),
-                    //["set_totp", uri] => client.change_totp(Some(uri.to_string())).await.map(|e| format!("{:?}", e)),
+                    ["set_totp", uri] => {
+                        let (secret, digits, algo, period) = parse_totp_uri(uri)?;
+                        client.set_totp(&secret, digits, &algo, period).await.map(|e| format!("{:?}", e))
+                    },
                     //["unset_totp"] => client.change_totp(None).await.map(|e| format!("{:?}", e)),
                     ["check_totp", uri, input] => common::crypto::totp::check_totp (uri, input).map(|e| format!("{:?}", e)),
                     _ => Err(eyre::eyre!("invalid command")),
