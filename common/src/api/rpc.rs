@@ -224,7 +224,7 @@ pub struct LoginFinish {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginFinishRet {
     pub authed_session_token: AuthBox<SessionToken>,
-    pub secret_master_key: SecretBox<MasterKey>,
+    pub secret_master_key: Option<SecretBox<MasterKey>>,
 }
 impl RpcTrait for LoginFinish {
     const DISPLAY_NAME: &'static str = "LoginFinish";

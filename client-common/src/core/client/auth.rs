@@ -181,7 +181,9 @@ impl Client {
             }
             Clearance::LoggedIn | Clearance::Uber => {
                 // unseal master key
-                let master_key = secret_master_key.unseal(export_key_current.as_slice())?;
+                let master_key = secret_master_key
+                    .ok_or_else(|| eyre::eyre!("no master key received"))?
+                    .unseal(export_key_current.as_slice())?;
 
                 // download user private data
                 let GetUserPrivateDataRet { secret_private_data } = self.rpc_client.call(

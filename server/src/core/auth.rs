@@ -153,20 +153,22 @@ impl State {
 
             let totp = conn.std().await?.get_user_totp(&user_id).await?;
 
-            let authed_session_token = if totp.is_some() {
-                let r = self.session_token_new_need_second_factor_sealed(user_id.clone(), version_master_key)?;
+            Ok(if totp.is_some() {
                 debug!("ok - need second factor");
-                r
+
+                LoginFinishRet {
+                    authed_session_token: self.session_token_new_need_second_factor_sealed(user_id.clone(), version_master_key)?,
+                    secret_master_key: None,
+                }
             } else {
-                let r = self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, args.auto_logout, args.uber_clearance)?;
                 debug!("ok - logged in");
-                r
-            };
-            
-            Ok( LoginFinishRet {
-                authed_session_token,
-                secret_master_key,
+
+                LoginFinishRet {
+                    authed_session_token: self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, args.auto_logout, args.uber_clearance)?,
+                    secret_master_key: Some(secret_master_key),
+                }
             })
+            
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
     }
 
