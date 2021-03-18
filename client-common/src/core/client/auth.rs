@@ -6,7 +6,7 @@ use common::crypto::crypto_boxes::Seal;
 use std::str::FromStr;
 
 use crate::{opaque};
-use super::{Client, LoggedUser};
+use super::{Client, LoggedIn, User};
 
 fn gen_recovery_credentials() -> (Vec<u8>, Vec<u8>) {
     let password_recovery = iter::repeat_with(rand::random).take(16).collect::<Vec<_>>();
@@ -44,7 +44,7 @@ impl Client {
         ).await?;
 
         // client is logged
-        self.logged_user = Some( LoggedUser {
+        self.user = User::LoggedIn ( LoggedIn {
             master_key: master_key.to_owned(),
             private_data,
             authed_session_token: authed_session_token.clone(),
@@ -84,7 +84,7 @@ impl Client {
     }
 
     pub async fn rotate_master_key(&mut self) -> eyre::Result<()> {
-        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
+        let logged_user = self.user.get_ref_logged()?;
 
         let GetExportKeysRet {
             secret_export_key,
@@ -112,7 +112,7 @@ impl Client {
 
         // IMPORTANT NOTE: we `take()` the logged user because if some RPC fails, we won't know if the new keys have correctly been uploaded or not.
         // this would risk writting new data encrypted with the wrong key, which would irreversibly corrupt the data...
-        let logged_user  = self.logged_user.take().ok_or_else(|| eyre::eyre!("not logged in"))?;
+        let logged_user  = self.user.take_logged()?;
 
         let RotateMasterKeyRet { authed_session_token } = self.rpc_client.call(
             RotateMasterKey {
@@ -126,7 +126,7 @@ impl Client {
         ).await?;
 
         // everything went well, we can restore our logged user data
-        self.logged_user = Some(LoggedUser {
+        self.user = User::LoggedIn( LoggedIn {
             master_key,
             private_data: logged_user.private_data,
             authed_session_token,
@@ -138,7 +138,7 @@ impl Client {
     async fn set_credentials_impl(&mut self, username: &Username, password: &[u8], recovery: bool) -> eyre::Result<()> {
         // IMPORTANT NOTE: we `take()` the logged user because if some RPC fails, we won't know if the new keys have correctly been uploaded or not.
         // this would risk writting new data encrypted with the wrong key, which would irreversibly corrupt the data...
-        let logged_user  = self.logged_user.take().ok_or_else(|| eyre::eyre!("not logged in"))?;
+        let logged_user  = self.user.take_logged()?;
         let credentials = self.new_credentials_impl(&logged_user.master_key, username, password, recovery).await?;
 
         // finish server-side OPAQUE registration and set credentials to user
@@ -150,15 +150,8 @@ impl Client {
             }
         ).await?;
 
-/*         // save the updated export_key
-        if recovery {
-            logged_user.export_key_recovery = export_key;
-        } else {
-            logged_user.export_key = export_key;
-        } */
-
         // everything went well, we can restore our logged user data
-        self.logged_user = Some(logged_user);
+        self.user = User::LoggedIn(logged_user);
 
         Ok(())
     }
@@ -183,16 +176,6 @@ impl Client {
         // unseal master key
         let master_key = secret_master_key.unseal(export_key_current.as_slice())?;
 
-/*         // unseal other export_key (for normal logins, this means the recovery export_key, for recovery logins, the normal export_key)
-        let export_key_other = secret_export_key.unseal(master_key.as_slice())?;
-
-        // rebind according to which is the recovery export key, and which is not
-        let (export_key, export_key_recovery) = if recovery {
-            (export_key_other, export_key_current)
-        } else {
-            (export_key_current, export_key_other)
-        }; */
-
         // download user private data
         let GetUserPrivateDataRet { secret_private_data } = self.rpc_client.call(
             GetUserPrivateData {
@@ -203,10 +186,8 @@ impl Client {
         // recover user's private data
         let private_data = secret_private_data.unseal(master_key.as_slice())?;
 
-        self.logged_user = Some( LoggedUser {
+        self.user = User::LoggedIn( LoggedIn {
             master_key,
-/*             export_key,
-            export_key_recovery, */
             private_data,
             authed_session_token,
         });
@@ -217,13 +198,13 @@ impl Client {
     // --- public functions
 
     pub fn get_clearance(&self) -> eyre::Result<Clearance> {
-        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
+        let logged_user  = self.user.get_ref_logged()?;
 
         Ok(logged_user.authed_session_token.get_unverified()?.get_clearance())
     }
 
     pub async fn set_totp(&mut self, totp_secret: &[u8], totp_digits: u8, totp_algo: &str, totp_period: u32) -> eyre::Result<()> { 
-        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
+        let logged_user  = self.user.get_ref_logged()?;
 
         let totp = Totp {
             secret: totp_secret.into(),
@@ -243,7 +224,7 @@ impl Client {
     }
 
     pub async fn unset_totp(&mut self) -> eyre::Result<()> { 
-        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
+        let logged_user  = self.user.get_ref_logged()?;
 
         self.rpc_client.call(
             SetTotp {
@@ -290,6 +271,6 @@ impl Client {
     }
 
     pub fn logout(&mut self) {
-        self.logged_user = None;
+        self.user = User::None;
     }
 }
