@@ -233,7 +233,20 @@ impl Client {
         self.rpc_client.call(
             SetTotp {
                 authed_session_token: logged_user.authed_session_token.clone(),
-                totp,
+                totp: Some(totp),
+            }
+        ).await?;
+
+        Ok(())
+    }
+
+    pub async fn unset_totp(&mut self) -> eyre::Result<()> { 
+        let logged_user  = self.logged_user.as_ref().ok_or_else(|| eyre::eyre!("not logged in"))?;
+
+        self.rpc_client.call(
+            SetTotp {
+                authed_session_token: logged_user.authed_session_token.clone(),
+                totp: None,
             }
         ).await?;
 

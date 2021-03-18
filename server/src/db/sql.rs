@@ -384,12 +384,12 @@ impl TxConn {
     }
 
     #[tracing::instrument]
-    pub async fn set_user_totp(&mut self, user_id: &UserId, totp: &Totp) -> api::Result<()> {
+    pub async fn set_user_totp(&mut self, user_id: &UserId, totp: &Option<Totp>) -> api::Result<()> {
         sqlx::query("update `users` set `totp_secret` = ?, `totp_digits` = ?, `totp_algo` = ?, `totp_period` = ? where `user_id` = ?")
-            .bind(&totp.secret)
-            .bind(totp.digits)
-            .bind(totp.algo.as_ref())
-            .bind(totp.period)
+            .bind(totp.as_ref().map(|t| &t.secret))
+            .bind(totp.as_ref().map(|t| t.digits))
+            .bind(totp.as_ref().map(|t| t.algo.as_ref()))
+            .bind(totp.as_ref().map(|t| t.period))
             .bind(user_id.as_slice())
             .execute(self.conn()).await.map_err(|e| {
                 match e {

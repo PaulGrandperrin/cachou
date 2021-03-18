@@ -43,7 +43,7 @@ fn main() -> eyre::Result<()>{
     }
     loop {
         //let readline = rl.readline(&format!("{}> ", client.get_username()?.unwrap_or_default()));
-        let readline = rl.readline(">");
+        let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
@@ -62,7 +62,7 @@ fn main() -> eyre::Result<()>{
                         let (secret, digits, algo, period) = parse_totp_uri(uri)?;
                         client.set_totp(&secret, digits, &algo, period).await.map(|e| format!("{:?}", e))
                     },
-                    //["unset_totp"] => client.change_totp(None).await.map(|e| format!("{:?}", e)),
+                    ["unset_totp"] => client.unset_totp().await.map(|e| format!("{:?}", e)),
                     ["check_totp", uri, input] => common::crypto::totp::check_totp (uri, input).map(|e| format!("{:?}", e)),
                     _ => Err(eyre::eyre!("invalid command")),
                 }};

@@ -217,7 +217,7 @@ impl RpcTrait for SetUserPrivateData {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetTotp {
     pub authed_session_token: AuthBox<SessionToken>,
-    pub totp: Totp,
+    pub totp: Option<Totp>,
 }
 impl RpcTrait for SetTotp {
     const DISPLAY_NAME: &'static str = "SetTotp";
