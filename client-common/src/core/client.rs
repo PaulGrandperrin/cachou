@@ -15,8 +15,6 @@ pub struct Client {
 #[derive(Debug, Clone)]
 pub struct LoggedUser {
     master_key: MasterKey,
-/*     export_key: ExportKey,
-    export_key_recovery: ExportKey, */
     private_data: PrivateData,
     authed_session_token: AuthBox<SessionToken>,
 }

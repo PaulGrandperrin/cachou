@@ -1,6 +1,9 @@
-use common::{api::{self, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, OpaqueState, Username}, crypto::opaque::OpaqueConf};
+use common::{api::{self, Bytes, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username}, crypto::opaque::OpaqueConf};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::Key};
 use eyre::WrapErr;
+
+pub enum _OpaqueState {}
+pub type OpaqueState = Bytes<_OpaqueState>;
 
 pub fn registration_start(pk: &Key, msg: &OpaqueClientStartMsg) -> api::Result<(OpaqueState, OpaqueServerStartMsg)> {
     let mut rng = rand_core::OsRng;

@@ -1,6 +1,9 @@
-use common::{api::{self, ExportKey, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, OpaqueState, Username}, crypto::opaque::OpaqueConf};
+use common::{api::{self, Bytes, ExportKey, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username}, crypto::opaque::OpaqueConf};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use eyre::eyre;
+
+pub enum _OpaqueState {}
+pub type OpaqueState = Bytes<_OpaqueState>;
 
 pub fn registration_start(password: &[u8]) -> api::Result<(OpaqueState, OpaqueClientStartMsg)> {
     let mut rng = rand_core::OsRng;

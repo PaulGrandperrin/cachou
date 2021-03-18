@@ -1,7 +1,7 @@
-use common::{api::{self, AddUser, AddUserRet, Credentials, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, OpaqueState, RotateMasterKey, RotateMasterKeyRet, RpcTrait, SecretServerState, SetCredentials, SetTotp, SetUserPrivateData, UserId, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
+use common::{api::{self, AddUser, AddUserRet, Credentials, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RotateMasterKey, RotateMasterKeyRet, RpcTrait, SecretServerState, SetCredentials, SetTotp, SetUserPrivateData, UserId, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
 use tracing::{Instrument, debug, info, info_span};
 
-use crate::{db::{DbConn, sql::TxConn}, opaque, state::State};
+use crate::{db::{DbConn, sql::TxConn}, opaque::{self, OpaqueState}, state::State};
 use crate::db::sql::Queryable;
 use serde::{Serialize, Deserialize};
 

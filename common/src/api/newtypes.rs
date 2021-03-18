@@ -1,47 +1,6 @@
 #![allow(dead_code)]
 use std::{cmp::{self}, fmt, hash::{Hash, Hasher}, marker::PhantomData};
-use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::{SeqAccess, Visitor}};
-
-// we use a generic newtype here because we specificaly want to erase the type of what is being sealed
-pub enum _SecretServerState {}
-pub type SecretServerState = Bytes<_SecretServerState>;
-
-pub enum _OpaqueClientStartMsg {}
-pub type OpaqueClientStartMsg = Bytes<_OpaqueClientStartMsg>;
-
-pub enum _OpaqueServerStartMsg {}
-pub type OpaqueServerStartMsg = Bytes<_OpaqueServerStartMsg>;
-
-pub enum _OpaqueClientFinishMsg {}
-pub type OpaqueClientFinishMsg = Bytes<_OpaqueClientFinishMsg>;
-
-pub enum _OpaqueState {}
-pub type OpaqueState = Bytes<_OpaqueState>;
-
-pub enum _UserId {}
-pub type UserId = Bytes<_UserId>;
-
-impl UserId {
-    pub fn gen() -> Self {
-        rand::thread_rng().gen::<[u8; 16]>().into()
-    }
-}
-
-pub enum _Username {}
-pub type Username = Bytes<_Username>;
-
-pub enum _MasterKey {}
-pub type MasterKey = Bytes<_MasterKey>;
-
-impl MasterKey {
-    pub fn gen() -> Self {
-        rand::thread_rng().gen::<[u8; 32]>().into()
-    }
-}
-
-pub enum _ExportKey {}
-pub type ExportKey = Bytes<_ExportKey>;
 
 
 //#[derive(Default, Eq, Ord)]

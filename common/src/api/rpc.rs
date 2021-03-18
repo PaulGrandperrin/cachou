@@ -1,9 +1,10 @@
 
+use rand::Rng;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::crypto::crypto_boxes::{AuthBox, SecretBox};
 
-use super::{OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username, ExportKey, MasterKey, SecretServerState, private_data::PrivateData, session_token::SessionToken};
+use super::{Bytes, private_data::PrivateData, session_token::SessionToken};
 
 use strum_macros::{AsRefStr, EnumString};
 
@@ -34,6 +35,47 @@ pub trait RpcTrait: Serialize {
     type Ret: DeserializeOwned; /// our deserialized structs will need to be self owned to be easily given back from rpc calls
     fn into_call(self) -> Rpc;
 }
+
+// --- Newtypes
+
+// Vec<u8> based
+pub enum _OpaqueClientStartMsg {}
+pub type OpaqueClientStartMsg = Bytes<_OpaqueClientStartMsg>;
+
+pub enum _OpaqueServerStartMsg {}
+pub type OpaqueServerStartMsg = Bytes<_OpaqueServerStartMsg>;
+
+pub enum _OpaqueClientFinishMsg {}
+pub type OpaqueClientFinishMsg = Bytes<_OpaqueClientFinishMsg>;
+
+// we use a generic newtype here because we specificaly want to erase the type of what is being sealed
+pub enum _SecretServerState {}
+pub type SecretServerState = Bytes<_SecretServerState>;
+
+pub enum _UserId {}
+pub type UserId = Bytes<_UserId>;
+
+impl UserId {
+    pub fn gen() -> Self {
+        rand::thread_rng().gen::<[u8; 16]>().into()
+    }
+}
+
+pub enum _Username {}
+pub type Username = Bytes<_Username>;
+
+pub enum _MasterKey {}
+pub type MasterKey = Bytes<_MasterKey>;
+
+impl MasterKey {
+    pub fn gen() -> Self {
+        rand::thread_rng().gen::<[u8; 32]>().into()
+    }
+}
+
+pub enum _ExportKey {}
+pub type ExportKey = Bytes<_ExportKey>;
+
 
 // --- Standalone Structs and Enums
 
