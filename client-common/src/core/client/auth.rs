@@ -175,7 +175,7 @@ impl Client {
         ).await?;
 
         // check if we are logged or if we need a second factor
-        self.user = match authed_session_token.get_unverified()?.get_clearance() {
+        self.user = match authed_session_token.get_unverified()?.get_clearance_at_emission() {
             Clearance::NeedSecondFactor => {
                 User::NeedSecondFactor( authed_session_token )
             }

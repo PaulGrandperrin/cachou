@@ -6,28 +6,22 @@ use eyre::eyre;
 
 use api::{UserId};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-enum SessionState {
-    Invalid,
-    NeedSecondFactor {
-        timestamp: i64,
-    },
-    LoggedIn {
-        timestamp: i64, // user logged in at timestamp
-        auto_logout: Option<u32>, // user want to auto logout and last connected their session at timestamp + auto_logout.0
-        uber: Option<u32>, // got uber rights at timestamp + uber.0
-    },
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionToken {
     pub user_id: UserId,
     pub version_master_key: u32,
+    
+    
+    timestamp: i64, // user validated first factor at timestamp
+    age: u32, // last refreshed N seconds after timestamp
+    
+    auto_logout: bool, // user want to auto logout
+    lack_second_factor: bool,
+    uber: Option<u32>, // got uber rights at timestamp + uber.0
 
-    session_state: SessionState,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Clearance {
     None,
     NeedSecondFactor, // the user identified with one factor but his account requires a second one
@@ -36,122 +30,72 @@ pub enum Clearance {
 }
 
 impl SessionToken {
-    pub fn new_need_second_factor(user_id: UserId, version_master_key: u32) -> Self {   
+    pub fn new(user_id: UserId, version_master_key: u32, lack_second_factor: bool, auto_logout: bool, uber: bool) -> Self {   
         SessionToken {
             user_id,
             version_master_key,
-            session_state: SessionState::NeedSecondFactor {
-                timestamp: chrono::Utc::now().timestamp(),
-            },
+            lack_second_factor,
+            timestamp: chrono::Utc::now().timestamp(),
+            age: 0,
+            auto_logout,
+            uber: if uber { Some(0) } else { None },
         }
     }
 
-    pub fn new_logged_in(user_id: UserId, version_master_key: u32, auto_logout: bool, uber: bool) -> Self {   
-        SessionToken {
-            user_id,
-            version_master_key,
-            session_state: SessionState::LoggedIn {
-                timestamp: chrono::Utc::now().timestamp(),
-                auto_logout: if auto_logout { Some(0) } else { None },
-                uber: if uber { Some(0) } else { None },
-            },
+    pub fn get_clearance_at(&self, time: i64, one_factor_duration: u32, logged_duration: u32, auto_logout_duration: u32, uber_duration: u32) -> api::Result<Clearance> {
+        Ok( match (self.auto_logout , self.lack_second_factor, self.uber    ) {
+                  (true             , _                      , _            ) if time > self.timestamp + self.age as i64 + auto_logout_duration as i64 => Clearance::None,
+
+                  (_                , true                   , _            ) if time > self.timestamp + one_factor_duration as i64                    => Clearance::None,
+                  (_                , true                   , _            )                                                                          => Clearance::NeedSecondFactor,
+
+                  (_                , false                  , _            ) if time > self.timestamp + logged_duration as i64                        => Clearance::None,
+                  (_                , false                  , None         )                                                                          => Clearance::LoggedIn,
+
+                  (_                , false                  , Some(offset) ) if time > self.timestamp + offset as i64 + uber_duration as i64          => Clearance::LoggedIn,
+                  (_                , false                  , Some(_     ) )                                                                          => Clearance::Uber,
+        })
+    }
+
+    pub fn validate_at(&self, time: i64, required_clearance: Clearance, one_factor_duration: u32, logged_duration: u32, auto_logout_duration: u32, uber_duration: u32) -> api::Result<()> {
+        match (required_clearance, &self.get_clearance_at(time, one_factor_duration, logged_duration, auto_logout_duration, uber_duration)?) {
+              (Clearance::NeedSecondFactor, Clearance::NeedSecondFactor)
+            | (Clearance::NeedSecondFactor, Clearance::LoggedIn)
+            | (Clearance::NeedSecondFactor, Clearance::Uber)
+            | (Clearance::LoggedIn,         Clearance::LoggedIn)
+            | (Clearance::LoggedIn,         Clearance::Uber)
+            | (Clearance::Uber,             Clearance::Uber) => Ok(()),
+            _ => Err(api::Error::InvalidSessionToken)
         }
     }
 
-    pub fn get_clearance(&self) -> Clearance {
-        match self.session_state {
-            SessionState::NeedSecondFactor { .. } => Clearance::NeedSecondFactor,
-            SessionState::LoggedIn { uber: None, .. } => Clearance::LoggedIn,
-            SessionState::LoggedIn { uber: Some(_), .. } => Clearance::Uber,
-            SessionState::Invalid => unreachable!("receive a session ticket with an `Invalid` session state"),
+    pub fn refresh_to(&mut self, time: i64, uber_duration: u32) {
+        self.age = (time - self.timestamp) as u32;
+
+        self.uber.filter(|offset| { (self.timestamp + *offset as i64 + uber_duration as i64) < time });
+    }
+
+    pub fn adjusted_now(&self) -> api::Result<i64> {
+        let now = chrono::Utc::now().timestamp();
+        if now + 5 > self.timestamp { // allow up to 5 seconds of desynchronization between servers
+            Ok(now.max(self.timestamp)) // adjust to avoid negative offsets
+        } else {
+            Err(api::Error::ServerSideError(eyre!("Session ticket is too much in the future: {} seconds", self.timestamp - now)))
         }
     }
 
-    pub fn validate(&self, required_clearance: Clearance) -> api::Result<()> {
-        match self.session_state {
-            SessionState::Invalid => Err(api::Error::InvalidSessionToken),
-            SessionState::NeedSecondFactor{ .. } =>  {
-                match required_clearance {
-                    Clearance::NeedSecondFactor => Ok(()),
-                    _ => Err(api::Error::InvalidSessionToken),
-                }
-            }
-            SessionState::LoggedIn {uber, ..} => {
-                match (required_clearance, uber) {
-                      (Clearance::NeedSecondFactor, _)
-                    | (Clearance::LoggedIn , _) => Ok(()),
-                      (Clearance::Uber, Some(_)) => Ok(()),
-                      _ => Err(api::Error::InvalidSessionToken),
-                }
-            }
+    pub fn get_clearance_at_emission(&self) -> Clearance {
+        match (self.lack_second_factor, self.uber) {
+              (true                   , _        ) => Clearance::NeedSecondFactor,
+              (false                  , None     ) => Clearance::LoggedIn,
+              (false                  , Some(_)  ) => Clearance::Uber,
         }
-    }
-
-    pub fn refresh(&mut self, one_factor_duration: u32, logged_duration: u32, auto_logout_duration: u32, uber_duration: u32) -> api::Result<()> {
-
-        // TODO write tests...
-
-        self.session_state = match self.session_state {
-            SessionState::Invalid => {return Ok(())},
-            SessionState::NeedSecondFactor{timestamp} => {
-                let now = adjusted_now(timestamp)?; // adjust now to avoid negative offsets in the following code
-
-                if timestamp + one_factor_duration as i64 > now {
-                    return Ok(())
-                } else {
-                    SessionState::Invalid
-                }
-            }
-            SessionState::LoggedIn{timestamp, auto_logout, uber} => {
-                let now = adjusted_now(timestamp)?; // adjust now to avoid negative offsets in the following code
-
-                if timestamp + logged_duration as i64 > now {
-                    let uber = uber.filter(|offset| { timestamp + *offset as i64 + uber_duration as i64 > now });
-
-                    match auto_logout {
-                        Some(offset) => {
-                            if timestamp + offset as i64 + auto_logout_duration as i64 > now {
-                                SessionState::LoggedIn {
-                                    timestamp,
-                                    auto_logout: Some((now - timestamp) as u32),
-                                    uber,
-                                }
-                            } else {
-                                SessionState::Invalid
-                            }
-                        }
-                        None => {
-                            SessionState::LoggedIn {
-                                timestamp,
-                                auto_logout,
-                                uber,
-                            }
-                        }
-                    }
-                } else {
-                    SessionState::Invalid
-                }
-            }
-        };
-
-        Ok(())
     }
 
     pub fn add_uber(&mut self) -> api::Result<()> {
-        if let SessionState::LoggedIn { uber, .. } = &mut self.session_state {
-            uber.replace(0);
-            Ok(())
-        } else {
-            Err(api::Error::ServerSideError(eyre!("Tried to add uber rights to a session not logged")))
-        }
+        let elapsed_time = self.adjusted_now()? - self.timestamp;
+        self.uber = Some(elapsed_time as u32);
+        Ok(())
     }
 }
 
-fn adjusted_now(timestamp: i64) -> api::Result<i64> {
-    let now = chrono::Utc::now().timestamp();
-    if now + 5 > timestamp { // allow up to 5 seconds of desynchronization between servers
-        Ok(now.max(timestamp)) // adjust to avoid negative offsets
-    } else {
-        Err(api::Error::ServerSideError(eyre!("Session ticket is too much in the future: {} seconds", timestamp - now)))
-    }
-}

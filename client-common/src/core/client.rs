@@ -60,8 +60,8 @@ impl User {
         Ok(
             match self {
                 User::None => Clearance::None,
-                User::NeedSecondFactor(ast) => ast.get_unverified()?.get_clearance(), 
-                User::LoggedIn(li) => li.authed_session_token.get_unverified()?.get_clearance(),
+                User::NeedSecondFactor(ast) => ast.get_unverified()?.get_clearance_at_emission(), 
+                User::LoggedIn(li) => li.authed_session_token.get_unverified()?.get_clearance_at_emission(),
             }
         )
     }

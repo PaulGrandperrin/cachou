@@ -38,7 +38,7 @@ impl State {
             // save private data
             tx.set_user_private_data(&user_id, &args.secret_private_data).await?;
 
-            let authed_session_token = self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, true, false)?;
+            let authed_session_token = self.session_token_new_sealed(user_id.clone(), version_master_key, false, true, false)?;
 
             info!("ok");
             
@@ -153,20 +153,15 @@ impl State {
 
             let totp = conn.std().await?.get_user_totp(&user_id).await?;
 
-            Ok(if totp.is_some() {
+            if totp.is_some() {
                 debug!("ok - need second factor");
-
-                LoginFinishRet {
-                    authed_session_token: self.session_token_new_need_second_factor_sealed(user_id.clone(), version_master_key)?,
-                    secret_master_key: None,
-                }
             } else {
-                debug!("ok - logged in");
+                debug!("ok - logged in"); 
+            }
 
-                LoginFinishRet {
-                    authed_session_token: self.session_token_new_logged_in_sealed(user_id.clone(), version_master_key, args.auto_logout, args.uber_clearance)?,
-                    secret_master_key: Some(secret_master_key),
-                }
+            Ok( LoginFinishRet {
+                authed_session_token: self.session_token_new_sealed(user_id.clone(), version_master_key, totp.is_some(), args.auto_logout, args.uber_clearance)?,
+                secret_master_key: Some(secret_master_key),
             })
             
         }.instrument(info_span!("id", user_id = %bs58::encode(user_id.as_slice()).into_string())).await
