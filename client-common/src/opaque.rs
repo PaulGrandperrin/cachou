@@ -1,4 +1,4 @@
-use common::{api::{self, Bytes, ExportKey, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username}, crypto::opaque::OpaqueConf};
+use common::{api::{self, ExportKey, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username, newtypes::Bytes}, crypto::opaque::OpaqueConf};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
 use eyre::eyre;
 

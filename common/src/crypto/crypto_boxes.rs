@@ -5,7 +5,7 @@ use generic_array::typenum::Unsigned;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use xchacha8blake3siv::XChaCha8Blake3Siv;
 
-use crate::api::Bytes;
+use crate::api::newtypes::Bytes;
 
 #[derive(Serialize, Deserialize, derivative::Derivative)]
 #[derivative(Debug)]

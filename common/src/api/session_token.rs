@@ -11,14 +11,12 @@ pub struct SessionToken {
     pub user_id: UserId,
     pub version_master_key: u32,
     
-    
     timestamp: i64, // user validated first factor at timestamp
     age: u32, // last refreshed N seconds after timestamp
     
     auto_logout: bool, // user want to auto logout
     lack_second_factor: bool,
     uber: Option<u32>, // got uber rights at timestamp + uber.0
-
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::crypto::crypto_boxes::{AuthBox, SecretBox};
 
-use super::{Bytes, private_data::PrivateData, session_token::SessionToken};
+use super::{newtypes::Bytes, private_data::PrivateData, session_token::SessionToken};
 
 use strum_macros::{AsRefStr, EnumString};
 

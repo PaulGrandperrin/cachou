@@ -1,4 +1,4 @@
-use common::{api::{self, Bytes, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username}, crypto::opaque::OpaqueConf};
+use common::{api::{self, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username, newtypes::Bytes}, crypto::opaque::OpaqueConf};
 use opaque_ke::{CredentialFinalization, CredentialRequest, RegistrationRequest, RegistrationUpload, ServerLogin, ServerLoginStartParameters, ServerRegistration, keypair::Key};
 use eyre::WrapErr;
 

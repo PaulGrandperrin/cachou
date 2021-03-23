@@ -6,4 +6,3 @@ pub mod private_data;
 
 pub use error::*;
 pub use rpc::*;
-pub use newtypes::*;
