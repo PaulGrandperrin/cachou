@@ -18,9 +18,9 @@ eyre = "0.6"
 #js-sys = "0.3"
 cfg-if = "1.0"
 #console_log = { version = "0.2", optional = true }
-yew = "0.17"
-yewtil = "0.3"
-yew-router = "0.14"
+yew = "0.18"
+yewtil = "0.4"
+yew-router = "0.15"
 
 client-common = {path = "../client-common"}
 
