@@ -1,6 +1,6 @@
 use std::{iter, marker::PhantomData};
 
-use aead::{AeadInPlace, Key, NewAead, Nonce, Tag};
+use aead::{AeadCore, AeadInPlace, Key, NewAead, Nonce, Tag};
 use generic_array::typenum::Unsigned;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use xchacha8blake3siv::XChaCha8Blake3Siv;
@@ -30,8 +30,8 @@ impl<C, A> AeadBox<C, A> {
         Aead: NewAead + AeadInPlace {
         let cipher = XChaCha8Blake3Siv::new(Key::<Aead>::from_slice(&key[0..32]));
         //let nonce = Nonce::from(rand::random::<[u8; <<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE]>()); // FIXME when const_generic are stable
-        let nonce = iter::repeat_with(rand::random).take(<<XChaCha8Blake3Siv as AeadInPlace>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
-        let nonce = Nonce::from_slice(&nonce);
+        let nonce = iter::repeat_with(rand::random).take(<<XChaCha8Blake3Siv as AeadCore>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
+        let nonce = Nonce::<Aead>::from_slice(&nonce);
 
         let mut plaintext = rmp_serde::encode::to_vec(plaindata)?;
         let associated_data = rmp_serde::encode::to_vec(associated_data)?;
@@ -53,8 +53,8 @@ impl<C, A> AeadBox<C, A> {
           Aead: NewAead + AeadInPlace {
         let mut me = rmp_serde::decode::from_slice::<Self>(this)?;
         let cipher = XChaCha8Blake3Siv::new(Key::<Aead>::from_slice(&key[0..32]));
-        let tag = Tag::from_slice(&me.tag);
-        let nonce = Nonce::from_slice(&me.nonce);
+        let tag = Tag::<Aead>::from_slice(&me.tag);
+        let nonce = Nonce::<Aead>::from_slice(&me.nonce);
 
         cipher.decrypt_in_place_detached(nonce, &me.associated_data, &mut me.ciphertext, tag).map_err(|e| eyre::eyre!(e))?;
 

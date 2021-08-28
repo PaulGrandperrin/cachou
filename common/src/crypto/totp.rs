@@ -39,7 +39,7 @@ pub fn hotp<M: NewMac + Mac>(secret: &[u8], digits: u8, counter: u64) -> eyre::R
 {
     // hash the counter with the secret key
     let counter = counter.to_be_bytes();
-    let mut hasher = M::new_varkey(&secret).map_err(|_| eyre!("invalid secret length"))?;
+    let mut hasher = M::new_from_slice(&secret).map_err(|_| eyre!("invalid secret length"))?;
     hasher.update(&counter);
     let hash = hasher.finalize().into_bytes().to_vec();
 

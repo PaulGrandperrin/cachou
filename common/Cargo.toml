@@ -33,9 +33,9 @@ xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Si
 ed25519-dalek = { git = "https://github.com/PaulGrandperrin/ed25519-dalek.git" }
 sha-1 = "0.9"
 sha2 = "0.9"
-hmac = "0.10"
+hmac = "0.11"
 data-encoding = "2"
-aead = "0.3"
+aead = "0.4"
 digest = "0.9"
 url = "2"
 chrono = { version = "0.4", default-features = false }
