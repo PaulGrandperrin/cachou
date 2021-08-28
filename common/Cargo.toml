@@ -17,8 +17,8 @@ rand_core = "0.6"
 eyre = "0.6"
 generic-array = "0.14"
 thiserror = "1"
-strum = "0.20"
-strum_macros = "0.20"
+strum = "0.21"
+strum_macros = "0.21"
 
 
 # logging / tracing
