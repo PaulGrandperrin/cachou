@@ -86,7 +86,6 @@ pub type TotpSecret = Bytes<_TotpSecret>;
 pub struct Credentials {
     pub secret_server_state: SecretServerState,
     pub opaque_msg: OpaqueClientFinishMsg,
-    pub username: Username,
     pub secret_master_key: SecretBox<MasterKey>, // sealed with OPAQUE's export_key which is ultimatly derived from the user password
     pub secret_export_key: SecretBox<ExportKey>, // sealed with masterkey. useful when we want to rotate the masterkey
 }
@@ -130,6 +129,7 @@ impl RpcTrait for AddUser {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentials {
     pub opaque_msg: OpaqueClientStartMsg,
+    pub username: Username,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewCredentialsRet {

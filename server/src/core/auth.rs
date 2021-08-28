@@ -1,4 +1,4 @@
-use common::{api::{self, AddUser, AddUserRet, Credentials, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RotateMasterKey, RotateMasterKeyRet, RpcTrait, SecretServerState, SetCredentials, SetTotp, SetUserPrivateData, UserId, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
+use common::{api::{self, AddUser, AddUserRet, Credentials, GetExportKeys, GetExportKeysRet, GetUserPrivateData, GetUserPrivateDataRet, LoginFinish, LoginFinishRet, LoginStart, LoginStartRet, MasterKey, NewCredentials, NewCredentialsRet, RotateMasterKey, RotateMasterKeyRet, RpcTrait, SecretServerState, SetCredentials, SetTotp, SetUserPrivateData, UserId, Username, session_token::{Clearance, SessionToken}}, consts::{OPAQUE_S_ID, OPAQUE_S_ID_RECOVERY}, crypto::crypto_boxes::{AeadBox, SecretBox}};
 use tracing::{Instrument, debug, info, info_span};
 
 use crate::{db::{DbConn, sql::TxConn}, opaque::{self, OpaqueState}, state::State};
@@ -7,7 +7,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ServerCredentialsState {
-    opaque_state: OpaqueState,
+    username: Username,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -49,8 +49,8 @@ impl State {
     }
 
     pub async fn new_credentials(&self, args: &NewCredentials, _conn: &mut DbConn<'_>) -> api::Result<<NewCredentials as RpcTrait>::Ret> {
-        let (opaque_state, opaque_msg) = opaque::registration_start(self.opaque_kp.public(), &args.opaque_msg)?;
-        let secret_server_state: SecretServerState = AeadBox::seal(&self.secret_key[..], &ServerCredentialsState{opaque_state}, &())?.into(); // TODO add TTL
+        let opaque_msg = opaque::registration_start(&self.opaque_setup, &args.opaque_msg, &args.username)?;
+        let secret_server_state: SecretServerState = AeadBox::seal(&self.secret_key[..], &ServerCredentialsState{username: args.username.clone()}, &())?.into(); // TODO add TTL
 
         debug!("ok");
         Ok( NewCredentialsRet {
@@ -60,13 +60,13 @@ impl State {
     }
 
     async fn set_credentials_impl(&self, conn: &mut TxConn, new: bool, credentials: &Credentials, recovery: bool, user_id: &UserId) -> api::Result<()> {
-        let ServerCredentialsState { opaque_state } = AeadBox::<ServerCredentialsState, ()>::unseal(&self.secret_key, credentials.secret_server_state.as_slice())?.0;
-        let opaque_password = opaque::registration_finish(&opaque_state, &credentials.opaque_msg)?;
+        let ServerCredentialsState { username } = AeadBox::<ServerCredentialsState, ()>::unseal(&self.secret_key, credentials.secret_server_state.as_slice())?.0;
+        let opaque_password = opaque::registration_finish(&credentials.opaque_msg)?;
 
         if new {
-            conn.new_credentials(recovery, &user_id, &credentials.username, &opaque_password, &credentials.secret_master_key, &credentials.secret_export_key).await?;
+            conn.new_credentials(recovery, &user_id, &username, &opaque_password, &credentials.secret_master_key, &credentials.secret_export_key).await?;
         } else {
-            conn.set_credentials(recovery, &user_id, &credentials.username, &opaque_password, &credentials.secret_master_key, &credentials.secret_export_key).await?;
+            conn.set_credentials(recovery, &user_id, &username, &opaque_password, &credentials.secret_master_key, &credentials.secret_export_key).await?;
         }
         Ok(())
     }
@@ -132,7 +132,7 @@ impl State {
         async {
             // TODO if recovery, alert user (by mail) and block request for a few days
             let version_master_key = conn.tx().await?.get_user_version_master_key(&user_id).await?;
-            let (opaque_state, opaque_msg) = opaque::login_start(self.opaque_kp.private(), &args.opaque_msg, &args.username, &opaque_password, if args.recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
+            let (opaque_state, opaque_msg) = opaque::login_start(&self.opaque_setup, &args.opaque_msg, &args.username, &opaque_password, if args.recovery { &OPAQUE_S_ID_RECOVERY } else { &OPAQUE_S_ID })?;
             let secret_server_state: SecretServerState = AeadBox::seal(&self.secret_key[..], &ServerLoginState{opaque_state, user_id: user_id.clone(), secret_master_key, version_master_key}, &())?.into(); // TODO add TTL
 
             info!("ok");

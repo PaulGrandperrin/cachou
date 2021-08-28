@@ -62,7 +62,8 @@ impl Client {
         // start server-side OPAQUE registration
         let NewCredentialsRet { secret_server_state, opaque_msg } = self.rpc_client.call(
             NewCredentials {
-                opaque_msg
+                opaque_msg,
+                username: username.clone(),
             }
         ).await?;
 
@@ -78,7 +79,6 @@ impl Client {
         Ok(Credentials{
             secret_server_state,
             opaque_msg,
-            username: username.clone(),
             secret_export_key,
             secret_master_key,
         })

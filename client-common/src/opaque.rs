@@ -1,5 +1,5 @@
 use common::{api::{self, ExportKey, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username, newtypes::Bytes}, crypto::opaque::OpaqueConf};
-use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse};
+use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, Identifiers, RegistrationResponse};
 use eyre::eyre;
 
 pub enum _OpaqueState {}
@@ -23,7 +23,7 @@ pub fn registration_finish(state: &OpaqueState, msg: &OpaqueServerStartMsg, user
     .finish(
         &mut rng,
         RegistrationResponse::deserialize(msg.as_slice()).map_err(|e| eyre!(e))?,
-        ClientRegistrationFinishParameters::WithIdentifiers(username.clone().into_vec(), server_id.to_vec()),
+        ClientRegistrationFinishParameters::WithIdentifiers(Identifiers::ClientAndServerIdentifiers(username.clone().into_vec(), server_id.to_vec())),
     ).map_err(|e| eyre!(e))?;
 
     let export_key = reg_finish.export_key[0..32].to_vec(); // trim to the first 32bytes (256bits)
@@ -37,16 +37,15 @@ pub fn login_start(password: &[u8]) -> api::Result<(OpaqueState, OpaqueClientSta
     let login_start = ClientLogin::<OpaqueConf>::start (
         &mut rng,
         password,
-        ClientLoginStartParameters::default(),
     ).map_err(|e| eyre!(e))?;
 
-    Ok((login_start.state.serialize().into(), login_start.message.serialize().into()))
+    Ok((login_start.state.serialize().unwrap().into(), login_start.message.serialize().into())) // FIXME unwrap
 }
 
 pub fn login_finish(state: &OpaqueState, msg: &OpaqueServerStartMsg, username: &Username, server_id: &[u8]) -> api::Result<(OpaqueClientFinishMsg, ExportKey)> {
     let login_finish = ClientLogin::<OpaqueConf>::deserialize(state.as_slice()).map_err(|e| eyre!(e))?.finish(
         CredentialResponse::deserialize(msg.as_slice()).map_err(|e| eyre!(e))?, 
-        ClientLoginFinishParameters::WithIdentifiers(username.clone().into_vec(), server_id.to_owned()),
+        ClientLoginFinishParameters::WithIdentifiers(Identifiers::ClientAndServerIdentifiers(username.clone().into_vec(), server_id.to_vec())),
     ).map_err(|_| api::Error::InvalidPassword)?;
 
     Ok((login_finish.message.serialize().into(), login_finish.export_key.to_vec().into()))

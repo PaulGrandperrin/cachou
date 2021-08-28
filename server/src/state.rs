@@ -1,13 +1,13 @@
 use std::{fs::File, io::Read};
 use common::crypto::opaque::OpaqueConf;
 use eyre::WrapErr;
-use opaque_ke::{ciphersuite::CipherSuite, keypair::KeyPair};
+use opaque_ke::ServerSetup;
 use crate::db::DbPool;
 use crate::config::Config;
 
 #[derive(Debug)]
 pub struct State {
-    pub opaque_kp: KeyPair::<<OpaqueConf as CipherSuite>::Group>,
+    pub opaque_setup: ServerSetup<OpaqueConf>,
     pub secret_key: [u8; 32],
     pub config: Config,
     pub db_pool: DbPool,
@@ -16,10 +16,10 @@ pub struct State {
 impl State {
     pub async fn new() -> eyre::Result<Self> {
         // load opaque private key
-        let mut f = File::open(common::consts::OPAQUE_PRIVATE_KEY_PATH)?;
-        let mut pk = Vec::new();
-        f.read_to_end(&mut pk)?;
-        let opaque_kp = KeyPair::from_private_key_slice(&pk)?;
+        let mut f = File::open(common::consts::OPAQUE_SETUP_PATH)?;
+        let mut c = Vec::new();
+        f.read_to_end(&mut c)?;
+        let opaque_setup = toml::from_slice(&c)?;
 
         // load secret key
         let mut f = File::open(common::consts::SECRET_KEY_PATH)?;
@@ -34,7 +34,7 @@ impl State {
         let db = DbPool::new().await.wrap_err("failed to connect and initialize DB")?;
 
         Ok(Self {
-            opaque_kp,
+            opaque_setup,
             secret_key,
             config,
             db_pool: db,

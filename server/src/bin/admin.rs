@@ -1,7 +1,7 @@
 //#![allow(unused_imports)]
 
 use common::crypto::opaque::OpaqueConf;
-use opaque_ke::{ciphersuite::CipherSuite};
+use opaque_ke::ServerSetup;
 use rand::Rng;
 use std::{io::Write};
 use structopt::StructOpt;
@@ -26,9 +26,9 @@ fn main() -> eyre::Result<()> {
     let opt = Opt::from_args();
     match opt.command {
         Command::CreateIdentityKey => {
-            let kp = <OpaqueConf as CipherSuite>::generate_random_keypair(&mut rng);
-            let mut f = std::fs::File::create(common::consts::OPAQUE_PRIVATE_KEY_PATH)?;
-            f.write_all(kp.private())?;
+            let opaque_setup = ServerSetup::<OpaqueConf>::new(&mut rng);
+            let mut f = std::fs::File::create(common::consts::OPAQUE_SETUP_PATH)?;
+            f.write_all(&toml::to_vec(&opaque_setup)?)?;
         }
         Command::CreateSecretKey => {
             let secret_key: [u8; 32] = rand::thread_rng().gen(); // 256bits

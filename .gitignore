@@ -4,7 +4,7 @@ Cargo.lock
 */target/
 **/*.rs.bk
 
-server/opaque_private_key.bin
+server/opaque_setup.toml
 server/secret_key.bin
 client-cli/history.txt
 client-web/dist/
