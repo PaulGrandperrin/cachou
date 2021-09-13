@@ -2,10 +2,12 @@ use digest::Digest;
 use generic_array::GenericArray;
 use opaque_ke::{ciphersuite::CipherSuite, errors::InternalError, slow_hash::SlowHash};
 
+#[derive(Default)]
 pub struct SlowHashArgon;
 
 impl<D: opaque_ke::hash::Hash> SlowHash<D> for SlowHashArgon {
     fn hash(
+        &self,
         input: GenericArray<u8, <D as Digest>::OutputSize>,
     ) -> Result<Vec<u8>, InternalError> {
         let config = argon2::Config { // TODO adapt
