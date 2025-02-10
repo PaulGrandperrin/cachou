@@ -28,7 +28,7 @@ fn main() -> eyre::Result<()> {
         Command::CreateIdentityKey => {
             let opaque_setup = ServerSetup::<OpaqueConf>::new(&mut rng);
             let mut f = std::fs::File::create(common::consts::OPAQUE_SETUP_PATH)?;
-            f.write_all(&toml::to_vec(&opaque_setup)?)?;
+            f.write_all(toml::to_string(&opaque_setup)?.as_bytes())?;
         }
         Command::CreateSecretKey => {
             let secret_key: [u8; 32] = rand::thread_rng().gen(); // 256bits

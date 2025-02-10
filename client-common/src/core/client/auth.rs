@@ -26,7 +26,7 @@ impl Client {
 
         // instantiate private data
         let private_data = PrivateData {
-            ident_keypair: ed25519_dalek::Keypair::generate(&mut rand::thread_rng()),
+            ident_signing_key: ed25519_dalek::SigningKey::generate(&mut rand::thread_rng()),
         };
 
         // seal private_data with master_key

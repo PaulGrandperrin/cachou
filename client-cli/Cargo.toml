@@ -8,8 +8,8 @@ edition = "2018"
 common = {path = "../common"}
 client-common = {path = "../client-common"}
 tracing = "0.1"
-tracing-subscriber = "0.2"
-rustyline = "9"
+tracing-subscriber = { version = "0.3", features = [ "env-filter" ]}
+rustyline = "15"
 tokio = "1"
 eyre = "0.6"
-color-eyre = "0.5"
+color-eyre = "0.6"

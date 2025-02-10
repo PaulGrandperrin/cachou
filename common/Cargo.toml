@@ -8,42 +8,42 @@ edition = "2018"
 
 [dependencies]
 serde = {version = "1.0", features = ["derive"]}
-rmp-serde = "0.15"
-hex-literal = "0.3"
-derive_more = "0.99"
+rmp-serde = "1"
+hex-literal = "0.4"
+derive_more = { version = "2", features= [ "full" ]} # TODO strip features
 derivative = "2"
-rand = "0.8"
-rand_core = "0.6"
+rand = "0.8" # can't update because of opaque
+rand_core = "0.6" # can't update because of opaque
 eyre = "0.6"
-generic-array = "0.14"
-thiserror = "1"
-strum = "0.21"
-strum_macros = "0.21"
+generic-array = "1"
+thiserror = "2"
+strum = "0.27"
+strum_macros = "0.27"
 
 
 # logging / tracing
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.3"
 
 # crypto
-opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}
-#curve25519-dalek-ng = "4"
-curve25519-dalek = "3"
-xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git" }
-ed25519-dalek = { git = "https://github.com/PaulGrandperrin/ed25519-dalek.git" }
-sha-1 = "0.9"
-sha2 = "0.9"
-hmac = "0.11"
+opaque-ke = { version = "3", features = [ "argon2" ]}
+# xchacha8blake3siv = { git = "https://github.com/PaulGrandperrin/XChacha8Blake3Siv.git" }
+aes-gcm-siv = "0.11"
+ed25519-dalek = "2"
+sha-1 = "0.10"
+sha2 = "0.10"
+hmac = "0.12"
 data-encoding = "2"
-aead = "0.4"
-digest = "0.9"
+aead = "0.5"
+crypto-common = "0.1.6"
+digest = "0.10"
 url = "2"
-chrono = { version = "0.4", default-features = false }
+chrono = "0.4"
 serde_bytes = "0.11"
 
 # key derivation
 #blake2b_simd = "0.5"
-rust-argon2 = "0.8"
+argon2 = { version = "0.5", default-features = false, features= [ "alloc" ]}
 
 [features]
 client = []

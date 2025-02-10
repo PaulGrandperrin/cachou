@@ -19,7 +19,7 @@ impl State {
         let mut f = File::open(common::consts::OPAQUE_SETUP_PATH)?;
         let mut c = Vec::new();
         f.read_to_end(&mut c)?;
-        let opaque_setup = toml::from_slice(&c)?;
+        let opaque_setup = toml::from_str(&String::from_utf8(c)?)?;
 
         // load secret key
         let mut f = File::open(common::consts::SECRET_KEY_PATH)?;

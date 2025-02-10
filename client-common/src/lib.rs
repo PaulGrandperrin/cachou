@@ -5,15 +5,13 @@ mod opaque;
 mod hibp;
 
 pub fn check_email(email: &str) -> bool {
-    validator::validate_email(email)
+    // validator::validate_email(email)
+    panic!("missing")
 }
 
 pub fn check_password_strength(password: &str, email: &str) -> u8 {
     let user_inputs: Vec<_> = email.split(|c| c == '@' || c == '.').collect();
-    match zxcvbn::zxcvbn(password, &user_inputs) {
-        Ok(e) => e.score(),
-        Err(_) => 0,
-    }
+    zxcvbn::zxcvbn(password, &user_inputs).score().into()
 }
 
 pub async fn hibp(password: &str) -> eyre::Result<u64> {

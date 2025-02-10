@@ -7,55 +7,34 @@ edition = "2018"
 default-run = "server"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-
-default = ["exec-tokio-rt-tokio", "build-all-rt"]
-
-exec-tokio-rt-tokio = ["_ex-tokio", "_use-rt-tokio"]
-exec-tokio-rt-async = ["_ex-tokio", "_use-rt-async"]
-exec-async-rt-tokio = ["_ex-async", "_use-rt-tokio", "async-global-executor/tokio"]
-exec-async-rt-async = ["_ex-async", "_use-rt-async", "async-global-executor/async-io"]
-
-build-all-rt = ["_build-rt-tokio", "_build-rt-async"]
-
-_use-rt-tokio = ["sqlx/runtime-tokio-rustls", "_build-rt-tokio"]
-_use-rt-async = ["sqlx/runtime-async-std-rustls", "_build-rt-async"]
-_build-rt-tokio = ["warp"]
-_build-rt-async = ["tide"]
-_ex-tokio = ["tokio/rt-multi-thread"]
-_ex-async = ["async-global-executor"]
-
 [dependencies]
 common = { path = "../common/", features = ["server"]}
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = { version = "0.3", features = [ "env-filter" ]}
 #tracing-futures = "0.2"
 
-rmp-serde = "0.15"
+rmp-serde = "1"
 rand = "0.8"
 rand_core = "0.6"
 eyre = "0.6"
-color-eyre = "0.5"
+color-eyre = "0.6"
 
 #chrono = "0.4"
 structopt = "0.3"
-generic-bytes = "0.1"
-generic-array = "0.14"
+generic-bytes = "0.2"
+generic-array = "1"
 serde = {version = "1.0", features = ["derive"]}
 serde_bytes = "0.11"
 #sha2 = "0.9"
 futures-util = "0.3"
-toml = "0.5"
-bs58 = "0.4"
+toml = "0.8"
+bs58 = "0.5"
 chrono = "0.4"
 async-trait = "0.1"
 
-opaque-ke = { git = "https://github.com/novifinancial/opaque-ke.git"}
+opaque-ke = { version = "3", features = [ "argon2" ]}
 
-sqlx = { version = "0.5", default-features = false, features = [ "mysql" ] }
+sqlx = { version = "0.8", default-features = false, features = [ "mysql", "runtime-tokio-rustls" ] }
 
-tokio = { version = "1", optional = true, default-features = false, features = []}
-warp = { version = "0.3", optional = true }
-
-async-global-executor = { version = "2", optional = true, default-features = false, features = []}
-tide = { version = "0.16", optional = true }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread"]}
+warp = { version = "0.3"}

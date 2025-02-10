@@ -11,7 +11,7 @@ pub fn registration_start(server_setup: &ServerSetup::<OpaqueConf>, msg: &Opaque
         username.as_slice(),
     ).map_err(|e| {eyre::eyre!("failed to start opaque registration: {:?}", e)})?;
     
-    Ok(opaque.message.serialize().into())
+    Ok(Bytes::from(opaque.message.serialize().to_vec()))
 }
 
 pub fn registration_finish(msg: &OpaqueClientFinishMsg) -> api::Result<Vec<u8>> {
@@ -19,7 +19,7 @@ pub fn registration_finish(msg: &OpaqueClientFinishMsg) -> api::Result<Vec<u8>> 
         RegistrationUpload::deserialize(msg.as_slice())
             .map_err(|e| {eyre::eyre!("failed to deserialize opaque msg: {:?}", e)})?);
 
-    Ok(password.serialize())
+    Ok(password.serialize().to_vec())
 }
 
 pub fn login_start(server_setup: &ServerSetup<OpaqueConf>, msg: &OpaqueClientStartMsg, username: &Username, password: &[u8], server_id: &[u8]) -> api::Result<(OpaqueState, OpaqueServerStartMsg)> {
@@ -35,10 +35,16 @@ pub fn login_start(server_setup: &ServerSetup<OpaqueConf>, msg: &OpaqueClientSta
         CredentialRequest::deserialize(msg.as_slice())
             .map_err(|e| {eyre::eyre!("failed to deserialize opaque msg: {:?}", e)})?,
         username.as_slice(),
-        ServerLoginStartParameters::WithIdentifiers(Identifiers::ClientAndServerIdentifiers(username.clone().into_vec(), server_id.to_vec())),
+        ServerLoginStartParameters {
+            context: Default::default(),
+            identifiers: Identifiers {
+                client: Some(username.as_slice()),
+                server: Some(server_id),
+            }
+        },
     ).map_err(|e| {eyre::eyre!("failed to start opaque login: {:?}", e)})?;
 
-    Ok((opaque.state.serialize().into(), opaque.message.serialize().into()))
+    Ok((opaque.state.serialize().to_vec().into(), opaque.message.serialize().to_vec().into()))
 }
 
 pub fn login_finish(state: &OpaqueState, msg: &OpaqueClientFinishMsg) -> api::Result<()> {

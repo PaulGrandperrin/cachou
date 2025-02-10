@@ -2,11 +2,12 @@ use std::{convert::TryInto, time::SystemTime};
 
 use data_encoding::BASE32_NOPAD;
 use eyre::{eyre, ContextCompat, WrapErr, bail};
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 use url::Url;
 use url::Host::Domain;
+use crypto_common::KeyInit;
 
 // from RFC6238
 pub fn check_totp(uri: &str, input: &str) -> eyre::Result<()> {
@@ -35,11 +36,11 @@ pub fn check_totp(uri: &str, input: &str) -> eyre::Result<()> {
 }
 
 // from RFC4226 and RFC6238
-pub fn hotp<M: NewMac + Mac>(secret: &[u8], digits: u8, counter: u64) -> eyre::Result<String>
+pub fn hotp<M: Mac + KeyInit>(secret: &[u8], digits: u8, counter: u64) -> eyre::Result<String>
 {
     // hash the counter with the secret key
     let counter = counter.to_be_bytes();
-    let mut hasher = M::new_from_slice(&secret).map_err(|_| eyre!("invalid secret length"))?;
+    let mut hasher = <M as Mac>::new_from_slice(&secret).map_err(|_| eyre!("invalid secret length"))?;
     hasher.update(&counter);
     let hash = hasher.finalize().into_bytes().to_vec();
 

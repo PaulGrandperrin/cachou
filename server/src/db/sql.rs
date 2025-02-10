@@ -108,7 +108,7 @@ impl DbPool {
             .username("root");
 
         let pool = MySqlPoolOptions::new()
-            .connect_timeout(Duration::from_secs(1))
+            // .connect_timeout(Duration::from_secs(1))
             .connect_with(options.clone())
             .await?;
 
@@ -116,7 +116,7 @@ impl DbPool {
         drop(pool);
 
         let pool = MySqlPoolOptions::new()
-            .connect_timeout(Duration::from_secs(1))
+            // .connect_timeout(Duration::from_secs(1))
             .connect_with(
                 options.database(common::consts::DATABASE_NAME)
             )
@@ -195,7 +195,7 @@ impl DbPool {
 
 // queries that are only defined on a transactionnal connection
 impl TxConn {
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn restore_tmp(&mut self, session_id: &[u8], field: &str) -> api::Result<Vec<u8>> {        
         let row: MySqlRow = sqlx::query("select `data` from `tmp` where `session_id` = ? and `field` = ?")
             .bind(session_id)
@@ -212,7 +212,7 @@ impl TxConn {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn new_user(&mut self, user_id: &UserId, version_master_key: u32) -> api::Result<()> {
         sqlx::query("insert into `users` (`user_id`, `version_master_key`) values (?, ?)")
             .bind(user_id.as_slice())
@@ -230,7 +230,7 @@ impl TxConn {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn rotate_master_key(&mut self, user_id: &UserId, version_master_key: u32, secret_private_data: &SecretBox<PrivateData>, secret_master_key: &SecretBox<MasterKey>, secret_export_key: &SecretBox<ExportKey>, secret_master_key_recovery: &SecretBox<MasterKey>, secret_export_key_recovery: &SecretBox<ExportKey>) -> api::Result<()> {
         sqlx::query("update `users` set `version_master_key` = ?, `secret_private_data` = ? where `user_id` = ?")
         .bind(version_master_key)
@@ -269,7 +269,7 @@ impl TxConn {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn new_credentials(&mut self, recovery: bool, user_id: &UserId, username: &Username, opaque_password: &[u8], secret_master_key: &SecretBox<MasterKey>, secret_export_key: &SecretBox<ExportKey>) -> api::Result<()> {
         sqlx::query("insert into `credentials` (`recovery`, `username`, `opaque_password`, `secret_master_key`, `secret_export_key`, `user_id`) values (?, ?, ?, ?, ?, ?)")
         .bind(if recovery {1} else {0})
@@ -291,7 +291,7 @@ impl TxConn {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn set_credentials(&mut self, recovery: bool,  user_id: &UserId, username: &Username, opaque_password: &[u8], secret_master_key: &SecretBox<MasterKey>, secret_export_key: &SecretBox<ExportKey>) -> api::Result<()> {
         sqlx::query("update `credentials` set `username` = ?, `opaque_password` = ?, `secret_master_key` = ?, `secret_export_key` = ? where `recovery` = ? and `user_id` = ?")
         .bind(username.as_slice())
@@ -311,7 +311,7 @@ impl TxConn {
     }
 
     // we need a transaction only to get those keys at the same DB snapshot that the version_master_key checked by the session_token
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn get_user_private_data(&mut self, user_id: &UserId) -> api::Result<SecretBox<PrivateData>> {
         let row: MySqlRow = sqlx::query("select `secret_private_data` from `users` where `user_id` = ?")
         .bind(user_id.as_slice())
@@ -326,7 +326,7 @@ impl TxConn {
         )
     }
 
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn set_user_private_data(&mut self, user_id: &UserId, secret_private_data: &SecretBox<PrivateData>) -> api::Result<()> {
         sqlx::query("update `users` set `secret_private_data` = ? where `user_id` = ?")
             .bind(secret_private_data.as_slice())
@@ -342,7 +342,7 @@ impl TxConn {
 
     // subsequent operations in the current transaction might want to be guaranted to be executed at the correct version of version_master_key
     // "select ... for update" is needed to get serializability isolation level with TiDB, it is needed in this case 
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn get_user_version_master_key(&mut self, user_id: &UserId) -> api::Result<u32> {
         let row: MySqlRow = sqlx::query("select `version_master_key` from `users` where `user_id` = ? for update")
         .bind(user_id.as_slice())
@@ -358,7 +358,7 @@ impl TxConn {
     }
 
     // we need a transaction only to get those keys at the same DB snapshot that the version_master_key checked by the session_token
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn get_export_keys(&mut self, user_id: &UserId) -> api::Result<(SecretBox<ExportKey>, SecretBox<ExportKey>)> {
         let rows: Vec<MySqlRow> = sqlx::query("select `secret_export_key` from `credentials` where `user_id` = ? order by `recovery`")
         .bind(user_id.as_slice())
@@ -384,7 +384,7 @@ impl TxConn {
         ))
     }
 
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub async fn set_user_totp(&mut self, user_id: &UserId, totp: &Option<Totp>) -> api::Result<()> {
         sqlx::query("update `users` set `totp_secret` = ?, `totp_digits` = ?, `totp_algo` = ?, `totp_period` = ? where `user_id` = ?")
             .bind(totp.as_ref().map(|t| t.secret.as_slice()))
@@ -403,11 +403,11 @@ impl TxConn {
 }
 
 // queries that are defined on any kind of connection (transactionnal or not)
-#[async_trait]
+// #[async_trait]
 pub trait Queryable: std::fmt::Debug + Send {
     fn conn(&mut self) -> &mut <MySql as Database>::Connection;
 
-    #[tracing::instrument]
+    // #[tracing::instrument]
     async fn save_tmp(&mut self, session_id: &[u8], ip: &str, expiration: i64, field: &str, data: &[u8]) -> api::Result<()> {
         
         sqlx::query("replace into `tmp` values (?, INET_ATON(?), FROM_UNIXTIME(?), ?, ?)")
@@ -420,7 +420,7 @@ pub trait Queryable: std::fmt::Debug + Send {
         Ok(())
     }
 
-    #[tracing::instrument]
+    // #[tracing::instrument]
     async fn get_credentials_from_username(&mut self, recovery: bool, username: &Username) -> api::Result<(UserId, Vec<u8>, SecretBox<MasterKey>)> {
         let row = sqlx::query("select `user_id`, `opaque_password`, `secret_master_key` from `credentials` where `recovery` = ? and `username` = ?")
             .bind(if recovery {1} else {0})    
@@ -439,7 +439,7 @@ pub trait Queryable: std::fmt::Debug + Send {
         ))
     }
 
-    #[tracing::instrument]
+    // #[tracing::instrument]
     async fn get_user_totp(&mut self, user_id: &UserId) -> api::Result<Option<Totp>> {
         let row = sqlx::query("select `totp_secret`, `totp_digits`, `totp_algo`, `totp_period` from `users` where `user_id` = ?")
             .bind(user_id.as_slice())

@@ -2,7 +2,7 @@
 use client_common::core::client::Client;
 use common::crypto::totp::parse_totp_uri;
 use eyre::WrapErr;
-use rustyline::error::ReadlineError;
+use rustyline::{error::ReadlineError, history::DefaultHistory};
 use rustyline::Editor;
 
 use tracing::{error, info};
@@ -37,10 +37,10 @@ fn main() -> eyre::Result<()>{
     let mut client = Client::default();
 
     // `()` can be used when no completer is required
-    let mut rl = Editor::<()>::new();
-    if rl.load_history("history.txt").is_err() {
-        println!("No previous history.");
-    }
+    let mut rl = rustyline::DefaultEditor::new()?;
+    // if rl.load_history("history.txt").is_err() {
+    //     println!("No previous history.");
+    // }
     loop {
         //let readline = rl.readline(&format!("{}> ", client.get_username()?.unwrap_or_default()));
         let readline = rl.readline("> ");

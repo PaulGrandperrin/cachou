@@ -1,4 +1,5 @@
-use common::{api::{self, ExportKey, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username, newtypes::Bytes}, crypto::opaque::{OpaqueConf, SlowHashArgon}};
+use argon2::Argon2;
+use common::{api::{self, ExportKey, OpaqueClientFinishMsg, OpaqueClientStartMsg, OpaqueServerStartMsg, Username, newtypes::Bytes}, crypto::opaque::{OpaqueConf}};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse, Identifiers, RegistrationResponse};
 use eyre::eyre;
 
@@ -13,7 +14,7 @@ pub fn registration_start(password: &[u8]) -> api::Result<(OpaqueState, OpaqueCl
         password,
     ).map_err(|e| eyre!(e))?;
 
-    Ok((reg_start.state.serialize().into(), reg_start.message.serialize().into()))
+    Ok((reg_start.state.serialize().to_vec().into(), reg_start.message.serialize().to_vec().into()))
 }
 
 pub fn registration_finish(state: &OpaqueState, msg: &OpaqueServerStartMsg, username: &Username, server_id: &[u8]) -> api::Result<(OpaqueClientFinishMsg, ExportKey)> {
@@ -22,13 +23,18 @@ pub fn registration_finish(state: &OpaqueState, msg: &OpaqueServerStartMsg, user
     let reg_finish = ClientRegistration::<OpaqueConf>::deserialize(state.as_slice()).map_err(|e| eyre!(e))?
     .finish(
         &mut rng,
+        panic!("WTF"),
         RegistrationResponse::deserialize(msg.as_slice()).map_err(|e| eyre!(e))?,
-        ClientRegistrationFinishParameters::new(Some(Identifiers::ClientAndServerIdentifiers(username.clone().into_vec(), server_id.to_vec())), Some(&SlowHashArgon)),
+        ClientRegistrationFinishParameters::new(Identifiers {
+            client: Some(username.as_slice()),
+            server: Some(server_id),
+        },
+        Some(&Argon2::default())), // TODO personalize
     ).map_err(|e| eyre!(e))?;
 
     let export_key = reg_finish.export_key[0..32].to_vec(); // trim to the first 32bytes (256bits)
 
-    Ok((reg_finish.message.serialize().into(), export_key.into()))
+    Ok((reg_finish.message.serialize().to_vec().into(), export_key.to_vec().into()))
 }
 
 pub fn login_start(password: &[u8]) -> api::Result<(OpaqueState, OpaqueClientStartMsg)> {
@@ -39,14 +45,16 @@ pub fn login_start(password: &[u8]) -> api::Result<(OpaqueState, OpaqueClientSta
         password,
     ).map_err(|e| eyre!(e))?;
 
-    Ok((login_start.state.serialize().unwrap().into(), login_start.message.serialize().into())) // FIXME unwrap
+    Ok((login_start.state.serialize().to_vec().into(), login_start.message.serialize().to_vec().into()))
 }
 
 pub fn login_finish(state: &OpaqueState, msg: &OpaqueServerStartMsg, username: &Username, server_id: &[u8]) -> api::Result<(OpaqueClientFinishMsg, ExportKey)> {
     let login_finish = ClientLogin::<OpaqueConf>::deserialize(state.as_slice()).map_err(|e| eyre!(e))?.finish(
+        panic!("WTF"),
         CredentialResponse::deserialize(msg.as_slice()).map_err(|e| eyre!(e))?, 
-        ClientLoginFinishParameters::new(None, Some(Identifiers::ClientAndServerIdentifiers(username.clone().into_vec(), server_id.to_vec())), Some(&SlowHashArgon)),
+        ClientLoginFinishParameters::new(None, Identifiers{
+            client: Some(username.as_slice()), server: Some(server_id)}, Some(&Argon2::default())), // personalized argon
     ).map_err(|_| api::Error::InvalidPassword)?;
 
-    Ok((login_finish.message.serialize().into(), login_finish.export_key.to_vec().into()))
+    Ok((login_finish.message.serialize().to_vec().into(), login_finish.export_key.to_vec().into()))
 }

@@ -1,9 +1,10 @@
 use std::{iter, marker::PhantomData};
 
-use aead::{AeadCore, AeadInPlace, Key, NewAead, Nonce, Tag};
+use aead::{AeadCore, AeadInPlace, Key, KeyInit, Nonce, Tag};
 use generic_array::typenum::Unsigned;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use xchacha8blake3siv::XChaCha8Blake3Siv;
+// use xchacha8blake3siv::XChaCha8Blake3Siv;
+use aes_gcm_siv::Aes256GcmSiv;
 
 use crate::api::newtypes::Bytes;
 
@@ -22,15 +23,16 @@ pub struct AeadBox<C, A> {
     _phantom: PhantomData<(C, A)>,
 }
 
-type Aead = XChaCha8Blake3Siv;
+// type Aead = XChaCha8Blake3Siv;
+type Aead = Aes256GcmSiv;
 
 impl<C, A> AeadBox<C, A> {
     pub fn seal(key: &[u8], plaindata: &C, associated_data: &A) -> eyre::Result<Vec<u8>>
     where C: Serialize, A: Serialize,
-        Aead: NewAead + AeadInPlace {
-        let cipher = XChaCha8Blake3Siv::new(Key::<Aead>::from_slice(&key[0..32]));
+        Aead: KeyInit + AeadInPlace {
+        let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
         //let nonce = Nonce::from(rand::random::<[u8; <<Aead as AeadInPlace>::NonceSize as Unsigned>::USIZE]>()); // FIXME when const_generic are stable
-        let nonce = iter::repeat_with(rand::random).take(<<XChaCha8Blake3Siv as AeadCore>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
+        let nonce = iter::repeat_with(rand::random).take(<<Aead as AeadCore>::NonceSize as Unsigned>::USIZE).collect::<Vec<u8>>();
         let nonce = Nonce::<Aead>::from_slice(&nonce);
 
         let mut plaintext = rmp_serde::encode::to_vec(plaindata)?;
@@ -50,9 +52,9 @@ impl<C, A> AeadBox<C, A> {
 
     pub fn unseal(key: &[u8], this: &[u8]) -> eyre::Result<(C, A)> // plaindata, associated_data
     where C: DeserializeOwned, A: DeserializeOwned,
-          Aead: NewAead + AeadInPlace {
+          Aead: KeyInit + AeadInPlace {
         let mut me = rmp_serde::decode::from_slice::<Self>(this)?;
-        let cipher = XChaCha8Blake3Siv::new(Key::<Aead>::from_slice(&key[0..32]));
+        let cipher = Aead::new(Key::<Aead>::from_slice(&key[0..32]));
         let tag = Tag::<Aead>::from_slice(&me.tag);
         let nonce = Nonce::<Aead>::from_slice(&me.nonce);
 

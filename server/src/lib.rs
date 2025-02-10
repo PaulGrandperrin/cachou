@@ -10,7 +10,7 @@ mod opaque;
 pub mod http_server;
 
 use eyre::WrapErr;
-use tracing_subscriber::{EnvFilter};
+use tracing_subscriber::EnvFilter;
 
 pub fn setup_logger() -> eyre::Result<()> {
 
